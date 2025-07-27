@@ -129,6 +129,13 @@ input_number:
     step: 0.5
     unit_of_measurement: "°C"
     initial: 22
+  dummy_wettervorhersage:
+    name: "Dummy Wettervorhersage Höchsttemperatur"
+    min: 15
+    max: 30
+    step: 0.5
+    unit_of_measurement: "°C"
+    initial: 25
 
 input_boolean:
   dummy_weather_warning:
@@ -191,6 +198,11 @@ template:
       - name: "Temperatur Kind2"
         unique_id: dummy_temperatur_kind2
         state: "{{ states('input_number.dummy_innentemperatur_kind2') }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+      - name: "Wettervorhersage Höchsttemperatur"
+        unique_id: dummy_wettervorhersage_hoechsttemperatur
+        state: "{{ states('input_number.dummy_wettervorhersage') }}"
         unit_of_measurement: "°C"
         device_class: temperature
 

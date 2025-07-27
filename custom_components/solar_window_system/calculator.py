@@ -152,8 +152,17 @@ class SolarWindowCalculator:
         }
 
     def should_shade_window(self, window_data, effective_config, window_config, states):
+        """
+        Decides if shading is required based on various scenarios (A, B, C).
+        """
+        # Global override via maintenance mode
+        if states["maintenance_mode"]:
+            return False, "Maintenance mode active"
+
+        # Weather warning check (highest priority)
         if states["weather_warning"]:
             return True, "Weather warning active"
+
         try:
             indoor_temp_str = self.get_safe_state(
                 window_config["room_temp_entity"], "0"
@@ -167,8 +176,8 @@ class SolarWindowCalculator:
             )
             return False, "Invalid temperature data"
 
+        # --- Scenario A: Strong direct sun ---
         threshold_direct = effective_config["thresholds"]["direct"]
-
         if (
             window_data["power_total"] > threshold_direct
             and indoor_temp >= effective_config["temperatures"]["indoor_base"]
@@ -178,6 +187,55 @@ class SolarWindowCalculator:
                 True,
                 f"Strong sun ({window_data['power_total']:.0f}W > {threshold_direct:.0f}W)",
             )
+
+        # --- Scenario B: Diffuse heat ---
+        scenario_b_config = effective_config.get("scenario_b", {})
+        if states["scenario_b_enabled"] and scenario_b_config.get("enabled", True):
+            threshold_diffuse = effective_config["thresholds"]["diffuse"]
+            temp_indoor_b = effective_config["temperatures"][
+                "indoor_base"
+            ] + scenario_b_config.get("temp_indoor_offset", 0.5)
+            temp_outdoor_b = effective_config["temperatures"][
+                "outdoor_base"
+            ] + scenario_b_config.get("temp_outdoor_offset", 6.0)
+
+            if (
+                window_data["power_total"] > threshold_diffuse
+                and indoor_temp > temp_indoor_b
+                and outdoor_temp > temp_outdoor_b
+            ):
+                return (
+                    True,
+                    f"Diffuse heat ({window_data['power_total']:.0f}W, Indoor: {indoor_temp:.1f}°C)",
+                )
+
+        # --- Scenario C: Heatwave forecast ---
+        scenario_c_config = effective_config.get("scenario_c", {})
+        if states["scenario_c_enabled"] and scenario_c_config.get("enabled", True):
+            try:
+                # Use the forecast temperature from the pre-fetched external_states
+                forecast_temp = states["forecast_temp"]
+
+                # If forecast_temp is 0, it means the sensor was not available
+                if forecast_temp > 0:
+                    current_hour = datetime.now().hour
+                    temp_forecast_threshold = scenario_c_config.get(
+                        "temp_forecast_threshold", 28.5
+                    )
+                    start_hour = scenario_c_config.get("start_hour", 9)
+
+                    if (
+                        forecast_temp > temp_forecast_threshold
+                        and indoor_temp
+                        >= effective_config["temperatures"]["indoor_base"]
+                        and current_hour >= start_hour
+                    ):
+                        return (
+                            True,
+                            f"Heatwave forecast ({forecast_temp:.1f}°C expected)",
+                        )
+            except (ValueError, TypeError):
+                _LOGGER.warning("Could not read forecast temperature for Scenario C")
 
         return False, "No shading required"
 
@@ -189,6 +247,7 @@ class SolarWindowCalculator:
         solar_rad_entity = conf.get("solar_radiation_sensor") or ""
         outdoor_temp_entity = conf.get("outdoor_temperature_sensor") or ""
         weather_warning_entity = conf.get("weather_warning_sensor") or ""
+        forecast_temp_entity = conf.get("forecast_temperature_sensor") or ""
 
         external_states = {
             "sensitivity": float(conf.get("global_sensitivity", 1.0)),
@@ -202,6 +261,7 @@ class SolarWindowCalculator:
             "sun_azimuth": float(self.get_safe_attr("sun.sun", "azimuth", 0)),
             "sun_elevation": float(self.get_safe_attr("sun.sun", "elevation", 0)),
             "outdoor_temp": float(self.get_safe_state(outdoor_temp_entity, 0)),
+            "forecast_temp": float(self.get_safe_state(forecast_temp_entity, 0)),
             "weather_warning": self.get_safe_state(weather_warning_entity, "off")
             == "on",
         }
