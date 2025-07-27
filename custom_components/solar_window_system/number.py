@@ -38,9 +38,14 @@ class BaseNumberEntity(SolarWindowSystemConfigEntity, NumberEntity):
         return self.entry.options.get(self._key, self._default)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Update the current value in the config entry."""
+        """Update the current value and set preset mode to Custom."""
         options = dict(self.entry.options)
         options[self._key] = value
+
+        # Set preset mode to Custom, unless it's already Custom
+        if options.get("preset_mode") != "Custom":
+            options["preset_mode"] = "Custom"
+
         self.hass.config_entries.async_update_entry(self.entry, options=options)
 
 
