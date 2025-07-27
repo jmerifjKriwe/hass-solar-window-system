@@ -41,23 +41,46 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
         self.config_entry = entry
 
     async def _async_update_data(self):
-        """Update data from the calculator."""
-        try:
-            # Use the stored entry_id to get the latest entry
-            latest_entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        """Fetch data from the calculator."""
 
-            if latest_entry is None:
-                _LOGGER.warning(
-                    f"Config entry {self._entry_id} not available, skipping update."
+        latest_entry = self.hass.config_entries.async_get_entry(
+            self.config_entry.entry_id
+        )
+        if latest_entry is None:
+            _LOGGER.warning(
+                "Config entry not available during coordinator refresh, skipping update."
+            )
+            return self.data
+
+        current_options = {**latest_entry.data, **latest_entry.options}
+
+        # --- KORRIGIERTE LOGIK ---
+        if current_options.get("maintenance_mode", False):
+            _LOGGER.info("Maintenance mode active. Keeping last known values.")
+
+            # Wenn noch keine Daten vorhanden sind, führe eine einmalige Berechnung durch
+            if self.data is None:
+                _LOGGER.info(
+                    "No data available yet. Performing initial calculation despite maintenance mode."
                 )
-                return self.data
+                try:
+                    return await self.hass.async_add_executor_job(
+                        self.calculator.calculate_all_windows, current_options
+                    )
+                except Exception as exception:
+                    raise UpdateFailed(
+                        f"Error during initial calculation: {exception}"
+                    ) from exception
 
-            current_options = {**latest_entry.data, **latest_entry.options}
+            # Ansonsten die letzten bekannten Daten zurückgeben
+            return self.data
+
+        # Normale Berechnung wenn nicht im Maintenance-Modus
+        try:
             return await self.hass.async_add_executor_job(
                 self.calculator.calculate_all_windows, current_options
             )
         except Exception as exception:
-            _LOGGER.error(f"Error in _async_update_data: {exception}")
             raise UpdateFailed(
                 f"Error communicating with calculator: {exception}"
             ) from exception

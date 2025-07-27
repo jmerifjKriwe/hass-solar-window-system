@@ -55,9 +55,9 @@ class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
 
 
 class SolarMaintenanceSwitch(BaseSwitchEntity):
-    _attr_name = "Maintenance Mode"
-    _attr_unique_id = f"{DOMAIN}_maintenance_mode"
-    _attr_icon = "mdi:auto-fix"
+    _attr_name = "Beschattungsautomatik pausieren"
+    _attr_unique_id = f"{DOMAIN}_automatic_paused"
+    _attr_icon = "mdi:pause-circle-outline"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         super().__init__(hass, entry, "maintenance_mode", False)
