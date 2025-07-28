@@ -84,3 +84,8 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(
                 f"Error communicating with calculator: {exception}"
             ) from exception
+
+    @property
+    def defaults(self) -> dict:
+        """Return the default configuration data."""
+        return self.calculator.defaults

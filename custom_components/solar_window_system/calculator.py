@@ -167,14 +167,35 @@ class SolarWindowCalculator:
         power_diffuse = solar_radiation * diffuse_factor * area * g_value
         power_direct = 0
         is_visible = False
+
+        _LOGGER.debug(
+            "[CALC] ---- Solar Power Calculation for %s ----", window_config.get("name")
+        )
+        _LOGGER.debug(
+            "[CALC] Sun Elevation: %s, Sun Azimuth: %s", sun_elevation, sun_azimuth
+        )
+        _LOGGER.debug(
+            "[CALC] Window Azimuth: %s, Elevation Range: %s, Azimuth Range: %s",
+            window_config["azimuth"],
+            window_config["elevation_range"],
+            window_config["azimuth_range"],
+        )
+
         if (
             sun_elevation >= window_config["elevation_range"][0]
             and sun_elevation <= window_config["elevation_range"][1]
         ):
             az_diff = ((sun_azimuth - window_config["azimuth"] + 180) % 360) - 180
             az_min, az_max = window_config["azimuth_range"]
+            _LOGGER.debug(
+                "[CALC] Azimuth Difference: %s (Min: %s, Max: %s)",
+                az_diff,
+                az_min,
+                az_max,
+            )
             if az_min <= az_diff <= az_max:
                 is_visible = True
+                _LOGGER.debug("[CALC] Sun is VISIBLE to the window.")
                 sun_el_rad, sun_az_rad, win_az_rad, tilt_rad = (
                     math.radians(sun_elevation),
                     math.radians(sun_azimuth),
@@ -184,6 +205,7 @@ class SolarWindowCalculator:
                 cos_incidence = math.sin(sun_el_rad) * math.cos(tilt_rad) + math.cos(
                     sun_el_rad
                 ) * math.sin(tilt_rad) * math.cos(sun_az_rad - win_az_rad)
+                _LOGGER.debug("[CALC] Cosine of Incidence Angle: %s", cos_incidence)
                 if cos_incidence > 0 and sun_el_rad > 0:
                     power_direct = (
                         (
@@ -195,6 +217,15 @@ class SolarWindowCalculator:
                         * area
                         * g_value
                     )
+        else:
+            _LOGGER.debug("[CALC] Sun is OUTSIDE elevation range.")
+
+        _LOGGER.debug(
+            "[CALC] Power Direct: %.2f W, Power Diffuse: %.2f W",
+            power_direct,
+            power_diffuse,
+        )
+        _LOGGER.debug("[CALC] Total Power: %.2f W", power_direct + power_diffuse)
         return {
             "power_total": power_direct + power_diffuse,
             "power_direct": power_direct,
@@ -207,12 +238,16 @@ class SolarWindowCalculator:
         """
         Decides if shading is required based on various scenarios (A, B, C).
         """
-        # Global override via maintenance mode
+        _LOGGER.debug(
+            "[SHADE] ---- Shading Logic for %s ----", window_config.get("name")
+        )
+
         if states["maintenance_mode"]:
+            _LOGGER.debug("[SHADE] Result: OFF (Maintenance mode active)")
             return False, "Maintenance mode active"
 
-        # Weather warning check (highest priority)
         if states["weather_warning"]:
+            _LOGGER.debug("[SHADE] Result: ON (Weather warning active)")
             return True, "Weather warning active"
 
         try:
@@ -221,6 +256,11 @@ class SolarWindowCalculator:
             )
             indoor_temp = float(indoor_temp_str)
             outdoor_temp = states["outdoor_temp"]
+            _LOGGER.debug(
+                "[SHADE] Temps - Indoor: %.1f°C, Outdoor: %.1f°C",
+                indoor_temp,
+                outdoor_temp,
+            )
         except (ValueError, TypeError):
             _LOGGER.warning(
                 "Could not parse temperature for window %s",
@@ -230,11 +270,21 @@ class SolarWindowCalculator:
 
         # --- Scenario A: Strong direct sun ---
         threshold_direct = effective_config["thresholds"]["direct"]
+        _LOGGER.debug(
+            "[SHADE] Scenario A Check: Power (%.1fW) > Threshold (%.1fW)? AND Indoor (%.1f°C) >= Base (%.1f°C)? AND Outdoor (%.1f°C) >= Base (%.1f°C)?",
+            window_data["power_total"],
+            threshold_direct,
+            indoor_temp,
+            effective_config["temperatures"]["indoor_base"],
+            outdoor_temp,
+            effective_config["temperatures"]["outdoor_base"],
+        )
         if (
             window_data["power_total"] > threshold_direct
             and indoor_temp >= effective_config["temperatures"]["indoor_base"]
             and outdoor_temp >= effective_config["temperatures"]["outdoor_base"]
         ):
+            _LOGGER.debug("[SHADE] Result: ON (Scenario A triggered)")
             return (
                 True,
                 f"Strong sun ({window_data['power_total']:.0f}W > {threshold_direct:.0f}W)",
@@ -251,11 +301,22 @@ class SolarWindowCalculator:
                 "outdoor_base"
             ] + scenario_b_config.get("temp_outdoor_offset", 6.0)
 
+            _LOGGER.debug(
+                "[SHADE] Scenario B Check: Power (%.1fW) > Threshold (%.1fW)? AND Indoor (%.1f°C) > Offset (%.1f°C)? AND Outdoor (%.1f°C) > Offset (%.1f°C)?",
+                window_data["power_total"],
+                threshold_diffuse,
+                indoor_temp,
+                temp_indoor_b,
+                outdoor_temp,
+                temp_outdoor_b,
+            )
+
             if (
                 window_data["power_total"] > threshold_diffuse
                 and indoor_temp > temp_indoor_b
                 and outdoor_temp > temp_outdoor_b
             ):
+                _LOGGER.debug("[SHADE] Result: ON (Scenario B triggered)")
                 return (
                     True,
                     f"Diffuse heat ({window_data['power_total']:.0f}W, Indoor: {indoor_temp:.1f}°C)",
@@ -265,10 +326,7 @@ class SolarWindowCalculator:
         scenario_c_config = effective_config.get("scenario_c", {})
         if states["scenario_c_enabled"] and scenario_c_config.get("enabled", True):
             try:
-                # Use the forecast temperature from the pre-fetched external_states
                 forecast_temp = states["forecast_temp"]
-
-                # If forecast_temp is 0, it means the sensor was not available
                 if forecast_temp > 0:
                     current_hour = datetime.now().hour
                     temp_forecast_threshold = scenario_c_config.get(
@@ -276,12 +334,23 @@ class SolarWindowCalculator:
                     )
                     start_hour = scenario_c_config.get("start_hour", 9)
 
+                    _LOGGER.debug(
+                        "[SHADE] Scenario C Check: Forecast (%.1f°C) > Threshold (%.1f°C)? AND Indoor (%.1f°C) >= Base (%.1f°C)? AND Hour (%d) >= Start (%d)?",
+                        forecast_temp,
+                        temp_forecast_threshold,
+                        indoor_temp,
+                        effective_config["temperatures"]["indoor_base"],
+                        current_hour,
+                        start_hour,
+                    )
+
                     if (
                         forecast_temp > temp_forecast_threshold
                         and indoor_temp
                         >= effective_config["temperatures"]["indoor_base"]
                         and current_hour >= start_hour
                     ):
+                        _LOGGER.debug("[SHADE] Result: ON (Scenario C triggered)")
                         return (
                             True,
                             f"Heatwave forecast ({forecast_temp:.1f}°C expected)",
@@ -289,13 +358,14 @@ class SolarWindowCalculator:
             except (ValueError, TypeError):
                 _LOGGER.warning("Could not read forecast temperature for Scenario C")
 
+        _LOGGER.debug("[SHADE] Result: OFF (No scenario triggered)")
         return False, "No shading required"
 
     def calculate_all_windows(self, current_options: dict):
         """
         Main calculation function.
         """
-        conf = current_options  # Use the passed-in options directly
+        conf = current_options
         solar_rad_entity = conf.get("solar_radiation_sensor") or ""
         outdoor_temp_entity = conf.get("outdoor_temperature_sensor") or ""
         weather_warning_entity = conf.get("weather_warning_sensor") or ""
@@ -318,34 +388,27 @@ class SolarWindowCalculator:
             == "on",
         }
 
+        _LOGGER.debug("---- Starting Full Calculation Cycle ----")
+        _LOGGER.debug("External States: %s", external_states)
+
         results = {}
         total_power, shading_count = 0, 0
 
-        # Process each window
         for window_id, window_config in self.windows.items():
             try:
-                # Get effective configuration for this window (now includes config flow values)
                 effective_config, _ = self.get_effective_config(
                     window_id, current_options
                 )
-
-                # Apply global factors
                 group_type = window_config.get("group_type", "default")
                 effective_config = self.apply_global_factors(
                     effective_config, group_type, external_states
                 )
-
-                # Calculate solar power for this window
                 solar_data = self.calculate_window_solar_power(
                     effective_config, window_config, external_states
                 )
-
-                # Determine if shading is required
                 shade_required, shade_reason = self.should_shade_window(
                     solar_data, effective_config, window_config, external_states
                 )
-
-                # Store results for this window
                 results[window_id] = {
                     "name": window_config.get("name", window_id),
                     "power_total": solar_data["power_total"],
@@ -357,15 +420,13 @@ class SolarWindowCalculator:
                     "shade_reason": shade_reason,
                     "effective_threshold": effective_config["thresholds"]["direct"],
                 }
-
-                # Update totals
                 total_power += solar_data["power_total"]
                 if shade_required:
                     shading_count += 1
-
             except Exception as e:
-                _LOGGER.error(f"Error calculating window {window_id}: {e}")
-                # Add a minimal result to prevent crashes
+                _LOGGER.error(
+                    f"Error calculating window {window_id}: {e}", exc_info=True
+                )
                 results[window_id] = {
                     "name": window_config.get("name", window_id),
                     "power_total": 0,
@@ -377,16 +438,11 @@ class SolarWindowCalculator:
                     "shade_reason": f"Calculation error: {e}",
                     "effective_threshold": 0,
                 }
-
-        # Add summary
         results["summary"] = {
             "total_power": total_power,
             "window_count": len(self.windows),
             "shading_count": shading_count,
             "calculation_time": datetime.now().isoformat(),
         }
-
-        _LOGGER.debug(
-            f"Calculated data for {len(self.windows)} windows, total power: {total_power:.1f}W"
-        )
+        _LOGGER.debug("---- Full Calculation Cycle Finished ----")
         return results
