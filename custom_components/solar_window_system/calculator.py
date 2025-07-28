@@ -36,7 +36,6 @@ class SolarWindowCalculator:
 
         return state.state
 
-    # This function was missing
     def get_safe_attr(
         self, entity_id: str, attr: str, default: Union[str, int, float] = 0
     ):
@@ -56,11 +55,16 @@ class SolarWindowCalculator:
 
         return state.attributes.get(attr, default)
 
-    def get_effective_config(self, window_id):
+    def get_effective_config(self, window_id, current_options: dict):
+        """Get effective configuration with entity values taking precedence."""
         window_config = self.windows.get(window_id, {})
         group_type = window_config.get("group_type", "default")
         group_config = self.groups.get(group_type, {})
+
+        # Start with defaults
         effective = yaml.safe_load(yaml.safe_dump(self.defaults))
+
+        # Apply group overrides
         for key in [
             "thresholds",
             "temperatures",
@@ -72,6 +76,8 @@ class SolarWindowCalculator:
                 if key not in effective:
                     effective[key] = {}
                 effective[key].update(group_config[key])
+
+        # Apply window-specific overrides
         if "overrides" in window_config:
             for key, value in window_config["overrides"].items():
                 if key not in effective:
@@ -80,7 +86,53 @@ class SolarWindowCalculator:
                     effective[key].update(value)
                 else:
                     effective[key] = value
+
+        # Override with entity values (highest priority)
+        self._apply_entity_overrides(effective, current_options)
+
         return effective, window_config
+
+    def _apply_entity_overrides(self, effective: dict, options: dict):
+        """Apply entity values to override defaults."""
+        # Physical properties
+        if "g_value" in options:
+            effective["physical"]["g_value"] = options["g_value"]
+        if "frame_width" in options:
+            effective["physical"]["frame_width"] = options["frame_width"]
+        if "diffuse_factor" in options:
+            effective["physical"]["diffuse_factor"] = options["diffuse_factor"]
+        if "tilt" in options:
+            effective["physical"]["tilt"] = options["tilt"]
+
+        # Thresholds
+        if "threshold_direct" in options:
+            effective["thresholds"]["direct"] = options["threshold_direct"]
+        if "threshold_diffuse" in options:
+            effective["thresholds"]["diffuse"] = options["threshold_diffuse"]
+
+        # Temperatures
+        if "temp_indoor_base" in options:
+            effective["temperatures"]["indoor_base"] = options["temp_indoor_base"]
+        if "temp_outdoor_base" in options:
+            effective["temperatures"]["outdoor_base"] = options["temp_outdoor_base"]
+
+        # Scenario B
+        if "scenario_b_temp_indoor_offset" in options:
+            effective["scenario_b"]["temp_indoor_offset"] = options[
+                "scenario_b_temp_indoor_offset"
+            ]
+        if "scenario_b_temp_outdoor_offset" in options:
+            effective["scenario_b"]["temp_outdoor_offset"] = options[
+                "scenario_b_temp_outdoor_offset"
+            ]
+
+        # Scenario C
+        if "scenario_c_temp_forecast_threshold" in options:
+            effective["scenario_c"]["temp_forecast_threshold"] = options[
+                "scenario_c_temp_forecast_threshold"
+            ]
+        if "scenario_c_start_hour" in options:
+            effective["scenario_c"]["start_hour"] = options["scenario_c_start_hour"]
 
     def apply_global_factors(self, config, group_type, states):
         sensitivity = states.get("sensitivity", 1.0)
@@ -92,7 +144,7 @@ class SolarWindowCalculator:
             config["thresholds"]["direct"] *= factor
             config["thresholds"]["diffuse"] *= factor
 
-        temp_offset = states.get("temperature_offset", 0.0)  # Changed from temp_offset
+        temp_offset = states.get("temperature_offset", 0.0)
         config["temperatures"]["indoor_base"] += temp_offset
         config["temperatures"]["outdoor_base"] += temp_offset
 
@@ -272,8 +324,10 @@ class SolarWindowCalculator:
         # Process each window
         for window_id, window_config in self.windows.items():
             try:
-                # Get effective configuration for this window
-                effective_config, _ = self.get_effective_config(window_id)
+                # Get effective configuration for this window (now includes config flow values)
+                effective_config, _ = self.get_effective_config(
+                    window_id, current_options
+                )
 
                 # Apply global factors
                 group_type = window_config.get("group_type", "default")

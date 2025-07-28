@@ -1,5 +1,5 @@
 # /config/custom_components/solar_window_system/binary_sensor.py
-import logging  # <-- HINZUGEFÜGT
+import logging
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
@@ -24,9 +24,10 @@ async def async_setup_entry(
     """Set up the binary sensor entities."""
     coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
+    # Data should now be available after async_config_entry_first_refresh
     if coordinator.data is None:
-        _LOGGER.debug(
-            "Coordinator data is not yet available. Binary sensor setup will be deferred."
+        _LOGGER.error(
+            "Coordinator data is None after initial refresh. This shouldn't happen."
         )
         return
 
@@ -54,17 +55,21 @@ class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if shading is required."""
+        if self.coordinator.data is None:
+            return None
         return self.coordinator.data.get(self._window_id, {}).get("shade_required")
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
+        if self.coordinator.data is None:
+            return {}
+
         window_data = self.coordinator.data.get(self._window_id, {})
         power_total = window_data.get("power_total", 0)
 
         return {
             "reason": window_data.get("shade_reason"),
             "power_total_w": round(power_total, 1),
-            # HIER HINZUGEFÜGT: Das neue Attribut
             "shading_threshold_w": round(window_data.get("effective_threshold", 0), 1),
         }

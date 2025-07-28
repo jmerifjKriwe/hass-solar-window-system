@@ -19,16 +19,39 @@ def _load_config_from_files(hass: HomeAssistant) -> dict:
     """Load configuration from YAML files in a separate thread."""
     config_path = hass.config.path("solar_windows")
     try:
-        with open(
-            os.path.join(config_path, "defaults.yaml"), "r", encoding="utf-8"
-        ) as f:
-            defaults_config = yaml.safe_load(f).get("defaults", {})
+        # Only load groups and windows - defaults come from UI entities
         with open(os.path.join(config_path, "groups.yaml"), "r", encoding="utf-8") as f:
             groups_config = yaml.safe_load(f).get("groups", {})
         with open(
             os.path.join(config_path, "windows.yaml"), "r", encoding="utf-8"
         ) as f:
             windows_config = yaml.safe_load(f).get("windows", {})
+
+        # Create built-in defaults that match the number.py default values
+        defaults_config = {
+            "physical": {
+                "g_value": 0.5,
+                "frame_width": 0.125,
+                "diffuse_factor": 0.15,
+                "tilt": 90,
+            },
+            "thresholds": {"direct": 200, "diffuse": 150},
+            "temperatures": {"indoor_base": 23.0, "outdoor_base": 19.5},
+            "scenario_b": {
+                "enabled": True,
+                "temp_indoor_offset": 0.5,
+                "temp_outdoor_offset": 6.0,
+            },
+            "scenario_c": {
+                "enabled": True,
+                "temp_forecast_threshold": 28.5,
+                "temp_indoor_threshold": 21.5,
+                "temp_outdoor_threshold": 24.0,
+                "start_hour": 9,
+            },
+            "calculation": {"min_solar_radiation": 50, "min_sun_elevation": 10},
+        }
+
         return {
             "defaults": defaults_config,
             "groups": groups_config,
@@ -36,7 +59,7 @@ def _load_config_from_files(hass: HomeAssistant) -> dict:
         }
     except FileNotFoundError as e:
         raise ConfigEntryNotReady(
-            f"Configuration file not found in {config_path}"
+            f"Configuration file not found in {config_path}: {e}"
         ) from e
 
 
@@ -50,12 +73,8 @@ async def _setup_integration(
 
     coordinator = SolarWindowDataUpdateCoordinator(hass, entry, config_data)
 
-    # Use async_config_entry_first_refresh only during initial setup
-    if not is_delayed:
-        await coordinator.async_config_entry_first_refresh()
-    else:
-        # For delayed setup, just do a regular refresh
-        await coordinator.async_refresh()
+    # Use async_config_entry_first_refresh to ensure data is available before entity setup
+    await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

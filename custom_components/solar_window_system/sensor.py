@@ -1,5 +1,5 @@
 # /config/custom_components/solar_window_system/sensor.py
-import logging  # <-- HINZUGEFÜGT
+import logging
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -25,9 +25,10 @@ async def async_setup_entry(
     """Set up the sensor entities."""
     coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
+    # Data should now be available after async_config_entry_first_refresh
     if coordinator.data is None:
-        _LOGGER.debug(
-            "Coordinator data is not yet available. Sensor setup will be deferred."
+        _LOGGER.error(
+            "Coordinator data is None after initial refresh. This shouldn't happen."
         )
         return
 
@@ -57,12 +58,16 @@ class SolarWindowSummarySensor(SolarWindowSystemDataEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the state of the sensor."""
+        if self.coordinator.data is None:
+            return None
         value = self.coordinator.data.get("summary", {}).get("total_power")
         return round(value, 1) if isinstance(value, (int, float)) else None
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
+        if self.coordinator.data is None:
+            return {}
         summary = self.coordinator.data.get("summary", {})
         return {
             "window_count": summary.get("window_count"),
@@ -91,12 +96,16 @@ class SolarWindowPowerSensor(SolarWindowSystemDataEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the state of the sensor."""
+        if self.coordinator.data is None:
+            return None
         value = self.coordinator.data.get(self._window_id, {}).get("power_total")
         return round(value, 1) if isinstance(value, (int, float)) else None
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
+        if self.coordinator.data is None:
+            return {}
         window_data = self.coordinator.data.get(self._window_id, {})
         return {
             "power_direct": round(window_data.get("power_direct", 0), 1),
