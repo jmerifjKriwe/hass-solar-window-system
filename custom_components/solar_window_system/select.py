@@ -50,8 +50,12 @@ class SolarPresetSelect(SolarWindowSystemConfigEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option and update related number entity values."""
-        if option not in PRESET_OPTIONS[:-1]:  # 'Custom' darf nicht direkt gesetzt werden
-            raise ValueError(f"Ungültiges Preset: {option}. Gültige Optionen: {PRESET_OPTIONS[:-1]}")
+        if (
+            option not in PRESET_OPTIONS[:-1]
+        ):  # 'Custom' darf nicht direkt gesetzt werden
+            raise ValueError(
+                f"Ungültiges Preset: {option}. Gültige Optionen: {PRESET_OPTIONS[:-1]}"
+            )
 
         options = dict(self.entry.options)
         options["preset_mode"] = option  # Save the selected preset name
