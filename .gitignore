@@ -5,6 +5,8 @@ __pycache__
 */build/*
 */dist/*
 
+# .github und Unterordner werden versioniert (keine Ignore-Regel für .github)
+
 
 # misc
 .coverage
