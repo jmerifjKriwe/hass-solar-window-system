@@ -49,7 +49,11 @@ def _load_config_from_files(hass: HomeAssistant) -> dict:
 
     try:
         with open(os.path.join(config_path, "groups.yaml"), "r", encoding="utf-8") as f:
-            groups_config = yaml.safe_load(f).get("groups", {})
+            loaded = yaml.safe_load(f)
+            if loaded is None:
+                groups_config = {}
+            else:
+                groups_config = loaded.get("groups", {})
             _LOGGER.info(
                 f"groups.yaml loaded successfully with groups: {list(groups_config.keys())}"
             )
@@ -62,7 +66,11 @@ def _load_config_from_files(hass: HomeAssistant) -> dict:
         with open(
             os.path.join(config_path, "windows.yaml"), "r", encoding="utf-8"
         ) as f:
-            windows_config = yaml.safe_load(f).get("windows", {})
+            loaded = yaml.safe_load(f)
+            if loaded is None:
+                windows_config = {}
+            else:
+                windows_config = loaded.get("windows", {})
             _LOGGER.info(
                 f"windows.yaml loaded successfully with windows: {list(windows_config.keys())}"
             )

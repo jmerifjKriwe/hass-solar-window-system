@@ -12,12 +12,5 @@
     "input_number",
     "template",
     "sun"
-  ],
-  "platforms": [
-    "sensor",
-    "binary_sensor",
-    "number",
-    "select",
-    "switch"
   ]
 }

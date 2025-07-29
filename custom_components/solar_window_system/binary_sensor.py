@@ -46,11 +46,16 @@ class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self._window_id = window_id
 
-        self._attr_name = (
-            f"{coordinator.data[self._window_id].get('name', window_id)} Shading"
-        )
+        # Set a default name. It will be updated in the first refresh if data is available.
+        self._attr_name = f"{window_id.replace('_', ' ').title()} Shading"
         self._attr_unique_id = f"{DOMAIN}_{window_id}_shading"
         self._attr_device_class = BinarySensorDeviceClass.OPENING
+
+        # Update the name if coordinator data is available
+        if coordinator.data and window_id in coordinator.data:
+            self._attr_name = (
+                f"{coordinator.data[self._window_id].get('name', window_id)} Shading"
+            )
 
     @property
     def is_on(self) -> bool | None:
