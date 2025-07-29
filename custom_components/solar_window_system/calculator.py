@@ -136,10 +136,12 @@ class SolarWindowCalculator:
 
     def apply_global_factors(self, config, group_type, states):
         sensitivity = states.get("sensitivity", 1.0)
-        config["thresholds"]["direct"] /= sensitivity
-        config["thresholds"]["diffuse"] /= sensitivity
+        if sensitivity > 0:
+            config["thresholds"]["direct"] /= sensitivity
+            config["thresholds"]["diffuse"] /= sensitivity
 
-        if group_type == "children":
+        # This check was incorrect, it should be based on the group_type, not a hardcoded string
+        if "children" in group_type:
             factor = states.get("children_factor", 1.0)
             config["thresholds"]["direct"] *= factor
             config["thresholds"]["diffuse"] *= factor
@@ -396,10 +398,17 @@ class SolarWindowCalculator:
 
         for window_id, window_config in self.windows.items():
             try:
+                group_type = window_config.get("group_type", "default")
+                if group_type != "default" and group_type not in self.groups:
+                    _LOGGER.warning(
+                        f"Group '{group_type}' for window '{window_id}' not found, falling back to default."
+                    )
+                    # Fallback to default to prevent crash
+                    group_type = "default"
+
                 effective_config, _ = self.get_effective_config(
                     window_id, current_options
                 )
-                group_type = window_config.get("group_type", "default")
                 effective_config = self.apply_global_factors(
                     effective_config, group_type, external_states
                 )

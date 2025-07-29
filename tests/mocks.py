@@ -1,28 +1,12 @@
+# tests/mocks.py
+
+"""Mock data for tests."""
+
 MOCK_CONFIG = {
-    "defaults": {
-        "physical": {
-            "g_value": 0.5,
-            "frame_width": 0.125,
-            "diffuse_factor": 0.15,
-            "tilt": 90,
-        },
-        "thresholds": {"direct": 200, "diffuse": 150},
-        "temperatures": {"indoor_base": 23.0, "outdoor_base": 19.5},
-        "scenario_b": {
-            "enabled": True,
-            "temp_indoor_offset": 0.5,
-            "temp_outdoor_offset": 6.0,
-        },
-        "scenario_c": {
-            "enabled": True,
-            "temp_forecast_threshold": 28.5,
-            "temp_indoor_threshold": 21.5,
-            "temp_outdoor_threshold": 24.0,
-            "start_hour": 9,
-        },
-        "calculation": {"min_solar_radiation": 50, "min_sun_elevation": 10},
+    "groups": {
+        "group_with_override": {"thresholds": {"direct": 100}},
+        "children": {},  # Gruppe für den children_factor Test
     },
-    "groups": {},
     "windows": {
         "test_window_south": {
             "name": "Test Window South",
@@ -32,16 +16,60 @@ MOCK_CONFIG = {
             "azimuth": 180,
             "azimuth_range": [-90, 90],
             "elevation_range": [0, 90],
-        }
+            "group_type": "default",
+        },
+        "test_window_group": {
+            "name": "Test Window Group Override",
+            "room_temp_entity": "sensor.dummy_indoor_temp_group",
+            "width": 1.0,
+            "height": 1.0,
+            "azimuth": 180,
+            "azimuth_range": [-90, 90],
+            "elevation_range": [0, 90],
+            "group_type": "group_with_override",
+        },
+        "test_window_direct": {
+            "name": "Test Window Direct Override",
+            "room_temp_entity": "sensor.dummy_indoor_temp_direct",
+            "width": 1.0,
+            "height": 1.0,
+            "azimuth": 180,
+            "azimuth_range": [-90, 90],
+            "elevation_range": [0, 90],
+            "group_type": "default",
+            "overrides": {"thresholds": {"direct": 120}},
+        },
+        "test_window_children": {
+            "name": "Test Window Children",
+            "room_temp_entity": "sensor.dummy_indoor_temp_children",
+            "width": 1.5,
+            "height": 1.5,
+            "azimuth": 180,
+            "azimuth_range": [-90, 90],
+            "elevation_range": [0, 90],
+            "group_type": "children",
+        },
+        "test_window_bad_group": {
+            "name": "Test Window Bad Group",
+            "room_temp_entity": "sensor.dummy_indoor_temp_bad_group",
+            "width": 1.0,
+            "height": 1.0,
+            "azimuth": 180,  # KORREKTUR: Von 90 auf 180 geändert, um die Sonne direkt zu sehen
+            "azimuth_range": [-90, 90],
+            "elevation_range": [0, 90],
+            "group_type": "non_existent_group",  # Diese Gruppe gibt es nicht
+        },
     },
 }
 
 MOCK_USER_INPUT = {
     "solar_radiation_sensor": "sensor.dummy_solar_radiation",
     "outdoor_temperature_sensor": "sensor.dummy_outdoor_temp",
+    "forecast_temperature_sensor": "sensor.dummy_forecast_temp",
 }
 
 MOCK_OPTIONS = {
+    "update_interval": 5,
     "global_sensitivity": 1.0,
     "children_factor": 1.0,
     "temperature_offset": 0.0,

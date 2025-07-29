@@ -1,5 +1,10 @@
 {
-    "name": "Integration blueprint",
+    "name": "Solar Window System",
+    "domain": "solar_window_system",
     "homeassistant": "2025.2.4",
-    "hacs": "2.0.5"
+    "render_readme": true,
+    "iot_class": "local_polling",
+    "codeowners": [
+        "@jmerifjKriwe"
+    ]
 }

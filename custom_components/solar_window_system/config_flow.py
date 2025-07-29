@@ -25,11 +25,6 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
 
-        if user_input is not None:
-            # User has filled out the form, create the config entry
-            return self.async_create_entry(title="Solar Window System", data=user_input)
-
-        # Show the form to the user for the initial setup
         data_schema = vol.Schema(
             {
                 vol.Required("solar_radiation_sensor"): selector.EntitySelector(
@@ -51,9 +46,32 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
+        if user_input is not None:
+            try:
+                await self._validate_user_input(user_input)
+            except Exception:
+                errors["base"] = "invalid_entity"
+            else:
+                cleaned_input = {k: v for k, v in user_input.items() if v is not None}
+                return self.async_create_entry(
+                    title="Solar Window System", data=cleaned_input
+                )
+
         return self.async_show_form(
             step_id="user", data_schema=data_schema, errors=errors
         )
+
+    async def _validate_user_input(self, data: dict[str, Any]) -> None:
+        """Validate that the selected entities exist."""
+        for key in [
+            "solar_radiation_sensor",
+            "outdoor_temperature_sensor",
+            "weather_warning_sensor",
+            "forecast_temperature_sensor",
+        ]:
+            if entity_id := data.get(key):
+                if not self.hass.states.get(entity_id):
+                    raise vol.Invalid(f"Entity {entity_id} not found")
 
     @staticmethod
     @callback
@@ -67,33 +85,37 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
-        # Combine initial data and subsequent options
-        self.data = {**config_entry.data, **config_entry.options}
+        # KORRIGIERT: self.config_entry wird von der Basisklasse geerbt.
+        # Die _initial_data werden direkt aus dem übergebenen config_entry erstellt.
+        self._initial_data = {**config_entry.data, **config_entry.options}
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the options after the integration is set up."""
         if user_input is not None:
-            # Merge new options with existing data and create the entry
-            self.data.update(user_input)
-            return self.async_create_entry(title="", data=self.data)
+            updated_options = dict(self.config_entry.options)
+            updated_options.update(user_input)
 
-        # Build the schema for the options form, using existing values as defaults
+            for key in ["weather_warning_sensor", "forecast_temperature_sensor"]:
+                if updated_options.get(key) == "":
+                    updated_options.pop(key, None)
+
+            return self.async_create_entry(title="", data=updated_options)
+
         schema = vol.Schema(
             {
                 vol.Required(
                     "update_interval",
-                    default=self.data.get("update_interval", 5),
+                    default=self._initial_data.get("update_interval", 5),
                 ): vol.All(vol.Coerce(int), vol.Range(min=1)),
                 vol.Required(
                     "solar_radiation_sensor",
-                    default=self.data.get("solar_radiation_sensor"),
+                    default=self._initial_data.get("solar_radiation_sensor"),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor")
                 ),
                 vol.Required(
                     "outdoor_temperature_sensor",
-                    default=self.data.get("outdoor_temperature_sensor"),
+                    default=self._initial_data.get("outdoor_temperature_sensor"),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="sensor", device_class="temperature"
@@ -101,17 +123,23 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(
                     "weather_warning_sensor",
-                    default=self.data.get("weather_warning_sensor"),
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="binary_sensor")
+                    default=self._initial_data.get("weather_warning_sensor", ""),
+                ): vol.Any(
+                    "",
+                    selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="binary_sensor")
+                    ),
                 ),
                 vol.Optional(
                     "forecast_temperature_sensor",
-                    default=self.data.get("forecast_temperature_sensor"),
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor", device_class="temperature"
-                    )
+                    default=self._initial_data.get("forecast_temperature_sensor", ""),
+                ): vol.Any(
+                    "",
+                    selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain="sensor", device_class="temperature"
+                        )
+                    ),
                 ),
             }
         )
