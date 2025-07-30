@@ -3,23 +3,66 @@ from unittest.mock import MagicMock
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from custom_components.solar_window_system.switch import (
+    async_setup_entry,
     SolarMaintenanceSwitch,
     SolarDebugSwitch,
     SolarScenarioBSwitch,
     SolarScenarioCSwitch,
 )
+from custom_components.solar_window_system.const import DOMAIN
 
 
 @pytest.fixture
 def mock_entry():
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry_id"
+    entry.options = {}
     return entry
 
 
 @pytest.fixture
 def mock_hass():
-    return MagicMock(spec=HomeAssistant)
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    def fake_update_entry(entry, options):
+        entry.options.clear()
+        entry.options.update(options)
+    hass.config_entries.async_update_entry.side_effect = fake_update_entry
+    return hass
+
+
+@pytest.mark.asyncio
+async def test_async_setup_entry(mock_hass, mock_entry):
+    """Test the switch setup creates the correct entities."""
+    async_add_entities = MagicMock()
+
+    await async_setup_entry(mock_hass, mock_entry, async_add_entities)
+
+    async_add_entities.assert_called_once()
+    entities_added = async_add_entities.call_args[0][0]
+    assert len(entities_added) == 4
+    assert any(isinstance(e, SolarMaintenanceSwitch) for e in entities_added)
+    assert any(isinstance(e, SolarDebugSwitch) for e in entities_added)
+    assert any(isinstance(e, SolarScenarioBSwitch) for e in entities_added)
+    assert any(isinstance(e, SolarScenarioCSwitch) for e in entities_added)
+
+
+@pytest.mark.parametrize(
+    "switch_class,expected_name,expected_unique_id,expected_icon",
+    [
+        (SolarMaintenanceSwitch, "Beschattungsautomatik pausieren", f"{DOMAIN}_automatic_paused", "mdi:pause-circle-outline"),
+        (SolarDebugSwitch, "Debug Mode", f"{DOMAIN}_debug_mode", "mdi:bug"),
+        (SolarScenarioBSwitch, "Scenario B Enabled", f"{DOMAIN}_scenario_b_enabled", "mdi:weather-cloudy"),
+        (SolarScenarioCSwitch, "Scenario C Enabled", f"{DOMAIN}_scenario_c_enabled", "mdi:white-balance-sunny"),
+    ],
+)
+def test_entity_attributes(switch_class, mock_hass, mock_entry, expected_name, expected_unique_id, expected_icon):
+    """Test the attributes of the switch entities."""
+    switch = switch_class(mock_hass, mock_entry)
+    assert switch.name == expected_name
+    assert switch.unique_id == expected_unique_id
+    assert switch.icon == expected_icon
+    assert switch.should_poll is False
 
 
 @pytest.mark.parametrize(
@@ -58,3 +101,57 @@ def test_switch_on_off(switch_class, mock_hass, mock_entry):
     switch._attr_is_on = True
     asyncio.run(switch.async_turn_off())
     mock_update.assert_awaited_with(False)
+
+
+@pytest.mark.parametrize(
+    "switch_class,expected_default",
+    [
+        (SolarMaintenanceSwitch, False),
+        (SolarDebugSwitch, False),
+        (SolarScenarioBSwitch, True),
+        (SolarScenarioCSwitch, True),
+    ],
+)
+def test_switch_default_state(switch_class, mock_hass, mock_entry, expected_default):
+    # Ensure options dict exists for all switches
+    mock_entry.options = {}
+    switch = switch_class(mock_hass, mock_entry)
+    assert switch.is_on == expected_default
+
+
+def test_switch_state_from_options(mock_hass, mock_entry):
+    # Test SolarMaintenanceSwitch
+    mock_entry.options = {"maintenance_mode": True}
+    switch = SolarMaintenanceSwitch(mock_hass, mock_entry)
+    assert switch.is_on is True
+
+    mock_entry.options = {"maintenance_mode": False}
+    switch = SolarMaintenanceSwitch(mock_hass, mock_entry)
+    assert switch.is_on is False
+
+    # Test SolarDebugSwitch
+    mock_entry.options = {"debug_mode": True}
+    switch = SolarDebugSwitch(mock_hass, mock_entry)
+    assert switch.is_on is True
+
+    mock_entry.options = {"debug_mode": False}
+    switch = SolarDebugSwitch(mock_hass, mock_entry)
+    assert switch.is_on is False
+
+    # Test SolarScenarioBSwitch
+    mock_entry.options = {"scenario_b_enabled": True}
+    switch = SolarScenarioBSwitch(mock_hass, mock_entry)
+    assert switch.is_on is True
+
+    mock_entry.options = {"scenario_b_enabled": False}
+    switch = SolarScenarioBSwitch(mock_hass, mock_entry)
+    assert switch.is_on is False
+
+    # Test SolarScenarioCSwitch
+    mock_entry.options = {"scenario_c_enabled": True}
+    switch = SolarScenarioCSwitch(mock_hass, mock_entry)
+    assert switch.is_on is True
+
+    mock_entry.options = {"scenario_c_enabled": False}
+    switch = SolarScenarioCSwitch(mock_hass, mock_entry)
+    assert switch.is_on is False

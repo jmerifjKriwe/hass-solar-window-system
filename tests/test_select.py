@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import MagicMock
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from custom_components.solar_window_system.select import SolarPresetSelect
+from custom_components.solar_window_system.select import SolarPresetSelect, async_setup_entry, PRESET_OPTIONS
+from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.number import SolarTiltNumber, SolarGlobalSensitivityNumber
 
 
@@ -28,6 +29,28 @@ def mock_hass():
 
     hass.config_entries.async_update_entry.side_effect = fake_update_entry
     return hass
+
+
+@pytest.mark.asyncio
+async def test_async_setup_entry(mock_hass, mock_entry):
+    """Test the select setup creates the correct entity."""
+    async_add_entities = MagicMock()
+
+    await async_setup_entry(mock_hass, mock_entry, async_add_entities)
+
+    async_add_entities.assert_called_once()
+    entities_added = async_add_entities.call_args[0][0]
+    assert len(entities_added) == 1
+    assert isinstance(entities_added[0], SolarPresetSelect)
+
+
+def test_entity_attributes(mock_hass, mock_entry):
+    """Test the attributes of the SolarPresetSelect entity."""
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.name == "Preset Mode"
+    assert select.unique_id == f"{DOMAIN}_preset_mode"
+    assert select.icon == "mdi:tune"
+    assert select.options == PRESET_OPTIONS
 
 
 def test_select_option_and_current(mock_hass, mock_entry):
@@ -190,3 +213,26 @@ def test_irrelevant_number_change_does_not_change_preset(mock_hass, mock_entry):
     # Verify preset is still "Normal"
     assert select_entity.current_option == "Normal"
 
+
+
+def test_manual_custom_override(mock_hass, mock_entry):
+    """Test that if preset_mode is 'Custom', it remains 'Custom' even if values match a preset."""
+    # Values match "Normal", but preset_mode is "Custom"
+    mock_entry.options = {
+        "preset_mode": "Custom",
+        "global_sensitivity": 1.0,
+        "children_factor": 0.8,
+    }
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Custom"
+
+    # Change to a preset
+    import asyncio
+
+    asyncio.run(select.async_select_option("Relaxed"))
+    assert select.current_option == "Relaxed"
+
+    # Manually change a value, which should implicitly set to Custom
+    number_entity = SolarGlobalSensitivityNumber(mock_hass, mock_entry)
+    asyncio.run(number_entity.async_set_native_value(1.1))
+    assert select.current_option == "Custom"

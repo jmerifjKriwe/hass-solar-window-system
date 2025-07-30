@@ -24,18 +24,16 @@ async def async_setup_entry(
     """Set up the binary sensor entities."""
     coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Data should now be available after async_config_entry_first_refresh
-    if coordinator.data is None:
-        _LOGGER.error(
-            "Coordinator data is None after initial refresh. This shouldn't happen."
+    if coordinator.data:
+        async_add_entities(
+            [
+                SolarWindowShadingSensor(coordinator, window_id)
+                for window_id in coordinator.data
+                if window_id != "summary"
+            ]
         )
-        return
-
-    async_add_entities(
-        SolarWindowShadingSensor(coordinator, window_id)
-        for window_id in coordinator.data
-        if window_id != "summary"
-    )
+    else:
+        _LOGGER.info("Coordinator data is None")
 
 
 class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):
@@ -62,7 +60,10 @@ class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):
         """Return true if shading is required."""
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.get(self._window_id, {}).get("shade_required")
+        shade_required = self.coordinator.data.get(self._window_id, {}).get("shade_required")
+        if isinstance(shade_required, bool):
+            return shade_required
+        return None
 
     @property
     def extra_state_attributes(self):
@@ -72,9 +73,15 @@ class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):
 
         window_data = self.coordinator.data.get(self._window_id, {})
         power_total = window_data.get("power_total", 0)
+        effective_threshold = window_data.get("effective_threshold", 0)
+
+        if not isinstance(power_total, (int, float)):
+            power_total = 0
+        if not isinstance(effective_threshold, (int, float)):
+            effective_threshold = 0
 
         return {
             "reason": window_data.get("shade_reason"),
-            "power_total_w": round(power_total, 1),
-            "shading_threshold_w": round(window_data.get("effective_threshold", 0), 1),
+            "power_total_w": power_total,
+            "shading_threshold_w": effective_threshold,
         }

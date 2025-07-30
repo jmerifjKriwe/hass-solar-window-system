@@ -27,9 +27,7 @@ async def async_setup_entry(
 
     # Data should now be available after async_config_entry_first_refresh
     if coordinator.data is None:
-        _LOGGER.error(
-            "Coordinator data is None after initial refresh. This shouldn't happen."
-        )
+        _LOGGER.info("Coordinator data is None")
         return
 
     summary_sensors = [SolarWindowSummarySensor(coordinator)]
@@ -69,10 +67,14 @@ class SolarWindowSummarySensor(SolarWindowSystemDataEntity, SensorEntity):
         if self.coordinator.data is None:
             return {}
         summary = self.coordinator.data.get("summary", {})
+        window_count = summary.get("window_count")
+        shading_count = summary.get("shading_count")
+        last_calculation = summary.get("calculation_time")
+
         return {
-            "window_count": summary.get("window_count"),
-            "shading_count": summary.get("shading_count"),
-            "last_calculation": summary.get("calculation_time"),
+            "window_count": window_count if isinstance(window_count, (int, float)) else None,
+            "shading_count": shading_count if isinstance(shading_count, (int, float)) else None,
+            "last_calculation": last_calculation if isinstance(last_calculation, str) else None,
         }
 
 
@@ -107,8 +109,12 @@ class SolarWindowPowerSensor(SolarWindowSystemDataEntity, SensorEntity):
         if self.coordinator.data is None:
             return {}
         window_data = self.coordinator.data.get(self._window_id, {})
+        power_direct = window_data.get("power_direct", 0)
+        power_diffuse = window_data.get("power_diffuse", 0)
+        area_m2 = window_data.get("area_m2")
+
         return {
-            "power_direct": round(window_data.get("power_direct", 0), 1),
-            "power_diffuse": round(window_data.get("power_diffuse", 0), 1),
-            "area_m2": window_data.get("area_m2"),
+            "power_direct": round(power_direct, 1) if isinstance(power_direct, (int, float)) else 0,
+            "power_diffuse": round(power_diffuse, 1) if isinstance(power_diffuse, (int, float)) else 0,
+            "area_m2": area_m2 if isinstance(area_m2, (int, float)) else None,
         }

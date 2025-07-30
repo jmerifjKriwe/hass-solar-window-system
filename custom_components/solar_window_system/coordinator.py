@@ -84,3 +84,17 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
     def defaults(self) -> dict:
         """Return the default configuration data."""
         return self.calculator.defaults
+
+    async def async_config_entry_first_refresh(self) -> None:
+        """Perform the first refresh of the coordinator data."""
+        async with self._first_refresh_lock:
+            if self.data is not None:
+                return
+
+            _LOGGER.debug("Performing first refresh for %s", self.name)
+            await self.async_refresh()
+
+            if self.data is None:
+                raise UpdateFailed(f"Initial refresh failed for {self.name}")
+
+            _LOGGER.debug("First refresh for %s complete", self.name)

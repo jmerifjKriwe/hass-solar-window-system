@@ -58,7 +58,9 @@ class BaseNumberEntity(SolarWindowSystemConfigEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
         options = dict(self.entry.options)
-        options[self._key] = value
+        options[self._key] = max(
+            self.native_min_value, min(self.native_max_value, value)
+        )
         self.hass.config_entries.async_update_entry(self.entry, options=options)
 
 

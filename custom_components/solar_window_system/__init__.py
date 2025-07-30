@@ -105,10 +105,6 @@ async def _setup_integration(hass: HomeAssistant, entry: ConfigEntry, is_delayed
     coordinator = SolarWindowDataUpdateCoordinator(hass, entry, config_data)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    # 3. Create and store the coordinator
-    coordinator = SolarWindowDataUpdateCoordinator(hass, entry, config_data)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-
     # 4. Initial data refresh
     await coordinator.async_config_entry_first_refresh()
 
