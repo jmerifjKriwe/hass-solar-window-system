@@ -204,7 +204,7 @@ async def test_cold_day_no_shading(hass: HomeAssistant, setup_integration):
 @pytest.mark.asyncio
 async def test_high_sensitivity_triggers_sooner(hass: HomeAssistant, setup_integration):
     """Test that a higher sensitivity triggers shading sooner."""
-    hass.states.async_set("sensor.dummy_solar_radiation", "400")
+    hass.states.async_set("sensor.dummy_solar_radiation", "550")
     hass.config_entries.async_update_entry(
         setup_integration, options={**setup_integration.options, "global_sensitivity": 2.0}
     )
@@ -289,6 +289,8 @@ async def test_missing_group_falls_back_gracefully(hass: HomeAssistant, setup_in
 @pytest.mark.asyncio
 async def test_calculation_with_optional_sensor_not_set(hass: HomeAssistant, setup_integration):
     """Test that the calculation remains stable even without optional sensors."""
+    hass.states.async_set("sensor.dummy_solar_radiation", "550")
+    hass.states.async_set("sun.sun", "above_horizon", {"elevation": 45, "azimuth": 170})
     hass.config_entries.async_update_entry(
         setup_integration, options={**setup_integration.options, "weather_warning_sensor": None}
     )

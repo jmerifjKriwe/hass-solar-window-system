@@ -32,21 +32,30 @@ class SolarPresetSelect(SolarWindowSystemConfigEntity, SelectEntity):
     def current_option(self) -> str:
         """Return the currently selected option, determining if it's Custom."""
         options = self.entry.options
+
+        # Determine preset based on primary values
         sensitivity = options.get("global_sensitivity", 1.0)
         children_factor = options.get("children_factor", 0.8)
 
-        # Check if current values match any known preset
+        value_based_preset = "Custom"
         if sensitivity == 1.0 and children_factor == 0.8:
-            return "Normal"
+            value_based_preset = "Normal"
         elif sensitivity == 0.7 and children_factor == 1.2:
-            return "Relaxed"
+            value_based_preset = "Relaxed"
         elif sensitivity == 1.5 and children_factor == 0.5:
-            return "Sensitive"
+            value_based_preset = "Sensitive"
         elif children_factor == 0.3:
-            # Simplified check for Children preset for this example
-            return "Children"
-        else:
-            return "Custom"
+            value_based_preset = "Children"
+
+        # If values match a preset, the state is that preset, unless a manual
+        # override to "Custom" was made by changing another number entity.
+        if value_based_preset != "Custom":
+            if options.get("preset_mode") == "Custom":
+                return "Custom"
+            return value_based_preset
+
+        # If values don't match a preset, it's always "Custom".
+        return "Custom"
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option and update related number entity values."""

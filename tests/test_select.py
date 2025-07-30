@@ -3,23 +3,35 @@ from unittest.mock import MagicMock
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from custom_components.solar_window_system.select import SolarPresetSelect
+from custom_components.solar_window_system.number import SolarTiltNumber, SolarGlobalSensitivityNumber
 
 
 @pytest.fixture
 def mock_entry():
+    """Fixture for a mock config entry."""
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry_id"
+    entry.options = {}
     return entry
 
 
 @pytest.fixture
 def mock_hass():
-    return MagicMock(spec=HomeAssistant)
+    """Fixture for a mock Home Assistant."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+
+    def fake_update_entry(entry, options):
+        """Fake implementation of async_update_entry."""
+        entry.options.clear()
+        entry.options.update(options)
+
+    hass.config_entries.async_update_entry.side_effect = fake_update_entry
+    return hass
 
 
 def test_select_option_and_current(mock_hass, mock_entry):
     # Provide options attribute for the mock entry
-    mock_entry.options = {}
     select = SolarPresetSelect(mock_hass, mock_entry)
     # Default option
     assert select.current_option in select.options
@@ -43,15 +55,7 @@ def test_select_option_and_current(mock_hass, mock_entry):
 def test_preset_sets_options_correctly(
     mock_hass, mock_entry, preset, expected_sensitivity, expected_children_factor
 ):
-    mock_entry.options = {}
     select = SolarPresetSelect(mock_hass, mock_entry)
-
-    # Patch async_update_entry to just update the entry.options dict
-    def fake_update_entry(entry, options):
-        entry.options.clear()
-        entry.options.update(options)
-
-    mock_hass.config_entries.async_update_entry.side_effect = fake_update_entry
 
     import asyncio
 
@@ -78,13 +82,6 @@ def test_invalid_option_does_not_change_options(mock_hass, mock_entry):
     mock_entry.options = {"global_sensitivity": 1.0, "children_factor": 0.8}
     select = SolarPresetSelect(mock_hass, mock_entry)
 
-    # Patch async_update_entry to just update the entry.options dict
-    def fake_update_entry(entry, options):
-        entry.options.clear()
-        entry.options.update(options)
-
-    mock_hass.config_entries.async_update_entry.side_effect = fake_update_entry
-
     import asyncio
 
     # Save original state
@@ -94,3 +91,102 @@ def test_invalid_option_does_not_change_options(mock_hass, mock_entry):
         asyncio.run(select.async_select_option("INVALID"))
     # Optionally, check that options did not change
     assert mock_entry.options == original_options
+
+
+def test_children_preset_sets_sensitivity_to_default(mock_hass, mock_entry):
+    """Test that selecting the 'Children' preset sets a default sensitivity."""
+    mock_entry.options = {"global_sensitivity": 1.5}  # Start with a non-default value
+    select = SolarPresetSelect(mock_hass, mock_entry)
+
+    import asyncio
+
+    asyncio.run(select.async_select_option("Children"))
+
+    assert mock_entry.options["global_sensitivity"] == 1.0
+    assert mock_entry.options["children_factor"] == 0.3
+
+
+def test_current_option_is_custom_when_not_matching_preset(mock_hass, mock_entry):
+    """Test that current_option is 'Custom' if values don't match any preset."""
+    mock_entry.options = {
+        "global_sensitivity": 0.9,  # Not a preset value
+        "children_factor": 0.8,
+    }
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Custom"
+
+    mock_entry.options = {
+        "global_sensitivity": 1.0,
+        "children_factor": 0.9,  # Not a preset value
+    }
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Custom"
+
+
+def test_current_option_matches_preset(mock_hass, mock_entry):
+    """Test that current_option correctly identifies a preset."""
+    mock_entry.options = {"global_sensitivity": 0.7, "children_factor": 1.2}
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Relaxed"
+
+    mock_entry.options = {"global_sensitivity": 1.5, "children_factor": 0.5}
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Sensitive"
+
+    mock_entry.options = {"global_sensitivity": 1.0, "children_factor": 0.8}
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Normal"
+
+    mock_entry.options = {"global_sensitivity": 1.0, "children_factor": 0.3}
+    select = SolarPresetSelect(mock_hass, mock_entry)
+    assert select.current_option == "Children"
+
+
+def test_relevant_number_change_sets_preset_to_custom(mock_hass, mock_entry):
+    """Test that changing a relevant number entity sets the mode to Custom."""
+    # Initial state: "Normal" preset
+    mock_entry.options = {
+        "preset_mode": "Normal",
+        "global_sensitivity": 1.0,
+        "children_factor": 0.8,
+    }
+
+    select_entity = SolarPresetSelect(mock_hass, mock_entry)
+    number_entity = SolarGlobalSensitivityNumber(mock_hass, mock_entry)
+
+    # Verify initial state
+    assert select_entity.current_option == "Normal"
+
+    # Change a relevant number entity value
+    import asyncio
+
+    asyncio.run(number_entity.async_set_native_value(1.5))
+
+    # Verify preset is now "Custom"
+    assert select_entity.current_option == "Custom"
+
+
+def test_irrelevant_number_change_does_not_change_preset(mock_hass, mock_entry):
+    """Test that changing an irrelevant number entity does not change the preset."""
+    # Initial state: "Normal" preset
+    mock_entry.options = {
+        "preset_mode": "Normal",
+        "global_sensitivity": 1.0,
+        "children_factor": 0.8,
+        "tilt": 90,
+    }
+
+    select_entity = SolarPresetSelect(mock_hass, mock_entry)
+    number_entity = SolarTiltNumber(mock_hass, mock_entry)
+
+    # Verify initial state
+    assert select_entity.current_option == "Normal"
+
+    # Change an irrelevant number entity value
+    import asyncio
+
+    asyncio.run(number_entity.async_set_native_value(45.0))
+
+    # Verify preset is still "Normal"
+    assert select_entity.current_option == "Normal"
+
