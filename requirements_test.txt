@@ -1,5 +1,5 @@
 # Stable versions that work well together
-pytest==8.4.0
+pytest==8.4.1
 pytest-asyncio
 pytest-homeassistant-custom-component
 pytest-cov==6.1.1
