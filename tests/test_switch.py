@@ -24,10 +24,11 @@ def mock_entry():
 def mock_hass():
     hass = MagicMock(spec=HomeAssistant)
     hass.config_entries = MagicMock()
-    def fake_update_entry(entry, options):
+    from unittest.mock import AsyncMock
+    async def fake_update_entry(entry, options):
         entry.options.clear()
         entry.options.update(options)
-    hass.config_entries.async_update_entry.side_effect = fake_update_entry
+    hass.config_entries.async_update_entry = AsyncMock(side_effect=fake_update_entry)
     return hass
 
 
@@ -155,3 +156,59 @@ def test_switch_state_from_options(mock_hass, mock_entry):
     mock_entry.options = {"scenario_c_enabled": False}
     switch = SolarScenarioCSwitch(mock_hass, mock_entry)
     assert switch.is_on is False
+
+
+@pytest.mark.parametrize(
+    "switch_class,key,initial_state",
+    [
+        (SolarMaintenanceSwitch, "maintenance_mode", True),
+        (SolarDebugSwitch, "debug_mode", False),
+        (SolarScenarioBSwitch, "scenario_b_enabled", True),
+        (SolarScenarioCSwitch, "scenario_c_enabled", False),
+    ],
+)
+async def test_switch_restore_state(switch_class, mock_hass, mock_entry, key, initial_state):
+    """Test that the switch state is correctly restored after a simulated restart."""
+    # Set an initial state in options
+    mock_entry.options = {key: initial_state}
+
+    # Simulate Home Assistant restart by re-initializing the switch
+    switch = switch_class(mock_hass, mock_entry)
+
+    # Assert that the switch's is_on property reflects the restored state
+    assert switch.is_on == initial_state
+
+
+@pytest.mark.parametrize(
+    "switch_class,key",
+    [
+        (SolarMaintenanceSwitch, "maintenance_mode"),
+        (SolarDebugSwitch, "debug_mode"),
+        (SolarScenarioBSwitch, "scenario_b_enabled"),
+        (SolarScenarioCSwitch, "scenario_c_enabled"),
+    ],
+)
+async def test_switch_multiple_toggles(switch_class, mock_hass, mock_entry, key):
+    """Test that multiple toggles do not cause side effects and state is consistent."""
+    mock_entry.options = {key: False}  # Start with switch off
+    switch = switch_class(mock_hass, mock_entry)
+    mock_hass.async_add_job = lambda func, *args, **kwargs: func(*args, **kwargs)
+
+    
+
+    # Perform multiple toggles
+    for i in range(5):
+        # Turn on
+        await switch.async_turn_on()
+        assert switch.is_on is True
+        mock_hass.config_entries.async_update_entry.assert_called_with(mock_entry, options={key: True})
+        mock_hass.config_entries.async_update_entry.reset_mock()
+
+        # Turn off
+        await switch.async_turn_off()
+        assert switch.is_on is False
+        mock_hass.config_entries.async_update_entry.assert_called_with(mock_entry, options={key: False})
+        mock_hass.config_entries.async_update_entry.reset_mock()
+
+    # Ensure no extra calls to async_update_entry beyond the toggles
+    mock_hass.config_entries.async_update_entry.assert_not_called()

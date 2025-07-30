@@ -51,7 +51,7 @@ class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
         """Update the config entry option."""
         options = dict(self.entry.options)
         options[self._key] = value
-        self.hass.config_entries.async_update_entry(self.entry, options=options)
+        await self.hass.config_entries.async_update_entry(self.entry, options=options)
 
 
 class SolarMaintenanceSwitch(BaseSwitchEntity):
