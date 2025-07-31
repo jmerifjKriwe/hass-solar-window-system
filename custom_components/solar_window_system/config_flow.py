@@ -18,50 +18,7 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self._async_current_entries():
             return self.async_abort(reason="already_configured")
 
-        if user_input is not None:
-            # Remove optional entity selectors if None (HA does not accept None as entity_id)
-            cleaned_input = dict(user_input)
-            for key in ("weather_warning_sensor", "forecast_temperature_sensor"):
-                if cleaned_input.get(key) is None:
-                    cleaned_input.pop(key, None)
-            return self.async_create_entry(
-                title="Solar Window System", data=cleaned_input
-            )
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("solar_radiation_sensor"): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="sensor")
-                    ),
-                    vol.Required("outdoor_temperature_sensor"): selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain="sensor", device_class="temperature"
-                        )
-                    ),
-                    vol.Required("update_interval", default=5): vol.All(
-                        vol.Coerce(int), vol.Range(min=1)
-                    ),
-                    vol.Required("min_solar_radiation", default=50): vol.All(
-                        vol.Coerce(float), vol.Range(min=0)
-                    ),
-                    vol.Required("min_sun_elevation", default=10): vol.All(
-                        vol.Coerce(float), vol.Range(min=0, max=90)
-                    ),
-                    vol.Optional("weather_warning_sensor"): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="binary_sensor")
-                    ),
-                    vol.Optional(
-                        "forecast_temperature_sensor"
-                    ): selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain="sensor", device_class="temperature"
-                        )
-                    ),
-                }
-            ),
-        )
+        return self.async_create_entry(title="Solar Window System", data={})
 
     @staticmethod
     @callback
@@ -104,24 +61,33 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
 
             return self.async_create_entry(title="", data=updated_data)
 
-        weather_sensor_val = self._get_value("weather_warning_sensor")
-        forecast_sensor_val = self._get_value("forecast_temperature_sensor")
-
         fields = {}
-        fields[
-            vol.Required(
-                "solar_radiation_sensor",
-                default=self._get_value("solar_radiation_sensor"),
+
+        # Handle required fields that might not have a value on first run
+        solar_radiation_sensor = self._get_value("solar_radiation_sensor")
+        if solar_radiation_sensor:
+            fields[
+                vol.Required("solar_radiation_sensor", default=solar_radiation_sensor)
+            ] = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
+        else:
+            fields[vol.Required("solar_radiation_sensor")] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
             )
-        ] = selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
-        fields[
-            vol.Required(
-                "outdoor_temperature_sensor",
-                default=self._get_value("outdoor_temperature_sensor"),
+
+        outdoor_temperature_sensor = self._get_value("outdoor_temperature_sensor")
+        if outdoor_temperature_sensor:
+            fields[
+                vol.Required(
+                    "outdoor_temperature_sensor", default=outdoor_temperature_sensor
+                )
+            ] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
             )
-        ] = selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
-        )
+        else:
+            fields[vol.Required("outdoor_temperature_sensor")] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+            )
+
         fields[
             vol.Required(
                 "update_interval",
@@ -142,6 +108,7 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
         ] = vol.All(vol.Coerce(float), vol.Range(min=0, max=90))
 
         # Optional: weather_warning_sensor
+        weather_sensor_val = self._get_value("weather_warning_sensor")
         if weather_sensor_val is not None:
             fields[
                 vol.Optional("weather_warning_sensor", default=weather_sensor_val)
@@ -155,9 +122,12 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
             )
 
         # Optional: forecast_temperature_sensor
+        forecast_sensor_val = self._get_value("forecast_temperature_sensor")
         if forecast_sensor_val is not None:
             fields[
-                vol.Optional("forecast_temperature_sensor", default=forecast_sensor_val)
+                vol.Optional(
+                    "forecast_temperature_sensor", default=forecast_sensor_val
+                )
             ] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain="sensor", device_class="temperature"
@@ -167,11 +137,11 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional("delete_forecast_temperature_sensor", default=False)
             ] = bool
         else:
-            fields[vol.Optional("forecast_temperature_sensor")] = (
-                selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor", device_class="temperature"
-                    )
+            fields[
+                vol.Optional("forecast_temperature_sensor")
+            ] = selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain="sensor", device_class="temperature"
                 )
             )
 
