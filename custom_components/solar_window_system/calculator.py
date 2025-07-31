@@ -365,8 +365,19 @@ class SolarWindowCalculator:
 
     def calculate_all_windows(self, current_options: dict):
         """
-        Main calculation function.
+        Main calculation function. Returns empty summary if no windows are configured.
         """
+        if not self.windows:
+            _LOGGER.info("No windows configured. Calculation returns empty summary.")
+            return {
+                "summary": {
+                    "total_power": 0,
+                    "window_count": 0,
+                    "shading_count": 0,
+                    "calculation_time": None,
+                }
+            }
+
         conf = current_options
         solar_rad_entity = conf.get("solar_radiation_sensor") or ""
         outdoor_temp_entity = conf.get("outdoor_temperature_sensor") or ""
@@ -391,6 +402,7 @@ class SolarWindowCalculator:
         }
 
         _LOGGER.debug("---- Starting Full Calculation Cycle ----")
+        _LOGGER.debug("Current options in calculate_all_windows: %s", current_options)
         _LOGGER.debug("External States: %s", external_states)
 
         results = {}
