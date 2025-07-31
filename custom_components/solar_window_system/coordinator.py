@@ -37,6 +37,7 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Fetch data from the calculator."""
+
         latest_entry = self.hass.config_entries.async_get_entry(
             self.config_entry.entry_id
         )
@@ -48,22 +49,11 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
 
         current_options = {**latest_entry.data, **latest_entry.options}
 
-        # No windows: do not perform any calculation, just return empty result
-        if not self.calculator.windows:
-            _LOGGER.info(
-                "No windows configured. Skipping calculation and returning empty result."
-            )
-            return {
-                "summary": {
-                    "total_power": 0,
-                    "window_count": 0,
-                    "shading_count": 0,
-                    "calculation_time": None,
-                }
-            }
-
+        # --- KORRIGIERTE LOGIK ---
         if current_options.get("maintenance_mode", False):
             _LOGGER.info("Maintenance mode active. Keeping last known values.")
+
+            # Wenn noch keine Daten vorhanden sind, führe eine einmalige Berechnung durch
             if self.data is None:
                 _LOGGER.info(
                     "No data available yet. Performing initial calculation despite maintenance mode."
@@ -76,8 +66,11 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
                     raise UpdateFailed(
                         f"Error during initial calculation: {exception}"
                     ) from exception
+
+            # Ansonsten die letzten bekannten Daten zurückgeben
             return self.data
 
+        # Normale Berechnung wenn nicht im Maintenance-Modus
         try:
             return await self.hass.async_add_executor_job(
                 self.calculator.calculate_all_windows, current_options

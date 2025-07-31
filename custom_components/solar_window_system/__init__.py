@@ -1,11 +1,11 @@
-"""Solar Window System Home Assistant integration."""
-
 import logging
+import os
+import yaml
 
+from homeassistant.core import HomeAssistant, CoreState, ServiceCall
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
-from homeassistant.core import CoreState, HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import SolarWindowDataUpdateCoordinator
@@ -38,72 +38,87 @@ def _get_default_config() -> dict:
     }
 
 
-async def _load_config_from_subentries(hass: HomeAssistant, entry: ConfigEntry) -> dict:
-    """Load Defaults, Groups, and Windows config from sub-entries."""
-    # Home Assistant 2025.7.4+ sub-entry API
-    # Use async_children if available, else filter async_entries by parent_entry_id
-    sub_entries = []
-    # Only use fallback, as async_children is not always present
-    sub_entries = [
-        e
-        for e in hass.config_entries.async_entries(DOMAIN)
-        if getattr(e, "parent_entry_id", None) == entry.entry_id
-    ]
+def _load_config_from_files(hass: HomeAssistant) -> dict:
+    """Load window and group configuration from YAML files."""
+    config_path = hass.config.path("solar_windows")
 
-    defaults_config = None
+    _LOGGER.info(f"Looking for config files in: {config_path}")
+
     groups_config = {}
     windows_config = {}
 
-    for sub in sub_entries:
-        # Identify by title or a type field in data
-        if sub.title.lower() == "defaults":
-            defaults_config = dict(sub.data)
-        elif sub.title.lower().startswith("group") or sub.data.get("type") == "group":
-            group_name = sub.data.get("name") or sub.title
-            groups_config[group_name] = dict(sub.data)
-        elif sub.title.lower().startswith("window") or sub.data.get("type") == "window":
-            window_name = sub.data.get("name") or sub.title
-            windows_config[window_name] = dict(sub.data)
+    try:
+        with open(os.path.join(config_path, "groups.yaml"), "r", encoding="utf-8") as f:
+            loaded = yaml.safe_load(f)
+            if loaded is None:
+                groups_config = {}
+            else:
+                groups_config = loaded.get("groups", {})
+            _LOGGER.info(
+                f"groups.yaml loaded successfully with groups: {list(groups_config.keys())}"
+            )
+    except FileNotFoundError:
+        _LOGGER.debug("groups.yaml not found, using empty configuration.")
+    except Exception as e:
+        _LOGGER.error("Error loading groups.yaml: %s", e)
 
-    if defaults_config is None:
-        defaults_config = _get_default_config()
+    try:
+        with open(
+            os.path.join(config_path, "windows.yaml"), "r", encoding="utf-8"
+        ) as f:
+            loaded = yaml.safe_load(f)
+            if loaded is None:
+                windows_config = {}
+            else:
+                windows_config = loaded.get("windows", {})
+            _LOGGER.info(
+                f"windows.yaml loaded successfully with windows: {list(windows_config.keys())}"
+            )
+    except FileNotFoundError:
+        _LOGGER.warning("windows.yaml not found. No windows will be configured.")
+    except Exception as e:
+        _LOGGER.error("Error loading windows.yaml: %s", e)
 
-    return {
-        "defaults": defaults_config,
-        "groups": groups_config,
-        "windows": windows_config,
+    return {"groups": groups_config, "windows": windows_config}
+
+
+async def _setup_integration(hass: HomeAssistant, entry: ConfigEntry, is_delayed: bool):
+    _LOGGER.info(
+        f"Proceeding with setup for entry {entry.entry_id} (delayed: {is_delayed})"
+    )
+    file_config = await hass.async_add_executor_job(_load_config_from_files, hass)
+
+    if not file_config.get("windows"):
+        _LOGGER.error(
+            f"No windows configured, aborting setup. File config: {file_config}"
+        )
+        raise ConfigEntryNotReady("No windows configured in windows.yaml")
+
+    # 2. Get built-in defaults and combine into the final config object
+    config_data = {
+        "defaults": _get_default_config(),
+        "groups": file_config.get("groups", {}),
+        "windows": file_config.get("windows", {}),
     }
 
-
-async def _setup_integration(
-    hass: HomeAssistant, entry: ConfigEntry, *, delayed: bool
-) -> None:
-    _LOGGER.info(
-        "Proceeding with setup for entry %s (delayed: %s)", entry.entry_id, delayed
-    )
-    config_data = await _load_config_from_subentries(hass, entry)
-
-    if not config_data.get("windows"):
-        _LOGGER.info(
-            "No windows configured in sub-entries. Integration will remain idle until at least one window is added. No platforms will be loaded."
-        )
-        # Do not set up coordinator or platforms, just return
-        return
-
+    # 3. Create and store the coordinator
     coordinator = SolarWindowDataUpdateCoordinator(hass, entry, config_data)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
+    # 4. Initial data refresh
     await coordinator.async_config_entry_first_refresh()
 
+    # 5. Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     hass.data[DOMAIN]["loaded_platforms"] = set(PLATFORMS)
 
+    # 6. Set up listeners and services
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     if not hass.services.has_service(DOMAIN, "update_now"):
         _LOGGER.info("Registering service solar_window_system.update_now")
 
-        async def handle_update_now(_: ServiceCall) -> None:
+        async def handle_update_now(call: ServiceCall):
             """Handle the service call."""
             _LOGGER.info("Service 'update_now' called. Forcing data refresh.")
             await coordinator.async_request_refresh()
@@ -114,15 +129,15 @@ async def _setup_integration(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Solar Window System from a config entry."""
     if hass.state is CoreState.running:
-        await _setup_integration(hass, entry, delayed=False)
+        await _setup_integration(hass, entry, is_delayed=False)
     else:
         _LOGGER.info("Home Assistant not started yet, delaying setup.")
 
-        async def delayed_setup(_: object) -> None:
+        async def delayed_setup(event):
             _LOGGER.info("Delayed setup started after Home Assistant start event")
             fresh_entry = hass.config_entries.async_get_entry(entry.entry_id)
             if fresh_entry:
-                await _setup_integration(hass, fresh_entry, delayed=True)
+                await _setup_integration(hass, fresh_entry, is_delayed=True)
             else:
                 _LOGGER.error(
                     "Could not find config entry %s during delayed setup",
@@ -136,14 +151,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.info("Unloading entry %s", entry.entry_id)
+    _LOGGER.info(f"Unloading entry {entry.entry_id}")
 
     domain_data = hass.data.get(DOMAIN)
     if not domain_data:
         return True  # Nothing to unload
 
     loaded_platforms = domain_data.get("loaded_platforms", set())
-    _LOGGER.info("Platforms to unload: %s", loaded_platforms)
+    _LOGGER.info(f"Platforms to unload: {loaded_platforms}")
 
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, list(loaded_platforms)
@@ -155,11 +170,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not domain_data:
             hass.data.pop(DOMAIN)
 
-    if not hass.config_entries.async_entries(DOMAIN) and hass.services.has_service(
-        DOMAIN, "update_now"
-    ):
-        hass.services.async_remove(DOMAIN, "update_now")
-        _LOGGER.info("Unregistered service solar_window_system.update_now")
+    if not hass.config_entries.async_entries(DOMAIN):
+        if hass.services.has_service(DOMAIN, "update_now"):
+            hass.services.async_remove(DOMAIN, "update_now")
+            _LOGGER.info("Unregistered service solar_window_system.update_now")
 
     return unload_ok
 
