@@ -8,9 +8,6 @@ from homeassistant.helpers import selector
 from .const import DOMAIN
 
 
-# -------------------------------------------------------------------
-# HELPER FUNCTION: Central schema definition for config & options flow
-# -------------------------------------------------------------------
 def _get_schema(options: dict | None = None) -> vol.Schema:
     """Return the data schema for the config and options flow."""
     if options is None:
@@ -63,13 +60,11 @@ def _get_schema(options: dict | None = None) -> vol.Schema:
     return vol.Schema(fields)
 
 
-# -------------------------------------------------------------------
-# CONFIG FLOW: For initial setup
-# -------------------------------------------------------------------
 class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Solar Window System."""
 
     VERSION = 1
+    _user_input = {}
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initiated by the user."""
@@ -77,79 +72,183 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="already_configured")
 
         if user_input is not None:
-            return self.async_create_entry(
-                title="Solar Window System", data={}, options=user_input
-            )
+            self._user_input.update(user_input)
+            return await self.async_step_thresholds()
 
         return self.async_show_form(step_id="user", data_schema=_get_schema())
+
+    async def async_step_thresholds(self, user_input=None):
+        """Handle the thresholds step."""
+        if user_input is not None:
+            self._user_input.update(user_input)
+            return await self.async_step_scenarios()
+
+        return self.async_show_form(
+            step_id="thresholds",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("threshold_direct", default=200): vol.All(
+                        vol.Coerce(float), vol.Range(min=0)
+                    ),
+                    vol.Required("threshold_diffuse", default=150): vol.All(
+                        vol.Coerce(float), vol.Range(min=0)
+                    ),
+                    vol.Required("diffuse_factor", default=0.5): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=1)
+                    ),
+                    vol.Required("indoor_base", default=23.0): vol.All(
+                        vol.Coerce(float), vol.Range(min=10, max=30)
+                    ),
+                    vol.Required("outdoor_base", default=19.5): vol.All(
+                        vol.Coerce(float), vol.Range(min=10, max=30)
+                    ),
+                }
+            ),
+        )
+
+    async def async_step_scenarios(self, user_input=None):
+        """Handle the scenarios step."""
+        if user_input is not None:
+            self._user_input.update(user_input)
+            return self.async_create_entry(
+                title="Solar Window System", data={}, options=self._user_input
+            )
+
+        return self.async_show_form(
+            step_id="scenarios",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("enabled_scenario_b", default=False): bool,
+                    vol.Required("scenario_b_temp_indoor_offset", default=0.5): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=5)
+                    ),
+                    vol.Required("scenario_b_temp_outdoor_offset", default=6.0): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=10)
+                    ),
+                    vol.Required("scenario_c_enable", default=False): bool,
+                    vol.Required(
+                        "scenario_c_temp_forecast_threshold", default=28.5
+                    ): vol.All(vol.Coerce(float), vol.Range(min=20, max=40)),
+                    vol.Required(
+                        "scenario_c_temp_indoor_threshold", default=21.5
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
+                    vol.Required(
+                        "scenario_c_temp_outdoor_threshold", default=24.0
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
+                    vol.Required("scenario_c_start_hour", default=9): vol.All(
+                        vol.Coerce(int), vol.Range(min=0, max=23)
+                    ),
+                }
+            ),
+        )
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         """Get the options flow handler for this config entry."""
-
-        # --- WORKAROUND: Manually attach config_entry to OptionsFlowHandler ----------
-        #
-        # Home Assistant does NOT currently support passing the config_entry directly
-        # into the constructor of OptionsFlowHandler (as of HA 2025.7).
-        #
-        # Attempting to use `super().__init__(config_entry)` results in:
-        # → TypeError: object.__init__() takes exactly one argument (the instance)
-        #
-        # Therefore, the config_entry must be manually attached to the instance
-        # using a private attribute (_config_entry). This is NOT officially supported,
-        # but is the only functional approach at the moment.
-        #
-        # ⚠️ Important:
-        # - `_config_entry` is considered a private/internal attribute.
-        # - This implementation may break in a future Home Assistant release
-        #   if internal APIs change (e.g., renaming or new constructor support).
-        #
-        # ✅ What to do when breaking changes are introduced:
-        # - If Home Assistant adds official constructor support, replace this:
-        #     flow = SolarWindowOptionsFlowHandler()
-        #     flow._config_entry = config_entry
-        #   with:
-        #     return SolarWindowOptionsFlowHandler(config_entry)
-        #
-        # 🛠️ How to find this later:
-        # - Search for "WORKAROUND: Manually attach config_entry" in your codebase
-        #
-        # 🔗 Reference:
-        # https://github.com/home-assistant/core/issues?q=optionsflow+config_entry
-        #
-        # Last verified working in Home Assistant 2025.7
-        # ----------------------------------------------------------------------------
-
         flow = SolarWindowOptionsFlowHandler()
         flow._config_entry = config_entry
         return flow
 
 
-# -------------------------------------------------------------------
-# OPTIONS FLOW: For editing config later
-# -------------------------------------------------------------------
 class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
     """Handles options flow for the component."""
 
+    def __init__(self):
+        """Initialize the options flow."""
+        self._config_entry = None
+        self._user_input = {}
+
     async def async_step_init(self, user_input=None):
-        """Manage the options."""
-        config_entry = self._config_entry
-
+        """Manage the first step of the options flow."""
         if user_input is not None:
-            updated_data = config_entry.options.copy()
-            updated_data.update(user_input)
-
-            if updated_data.get("delete_weather_warning_sensor"):
-                updated_data.pop("weather_warning_sensor", None)
-            if updated_data.get("delete_forecast_temperature_sensor"):
-                updated_data.pop("forecast_temperature_sensor", None)
-
-            updated_data.pop("delete_weather_warning_sensor", None)
-            updated_data.pop("delete_forecast_temperature_sensor", None)
-
-            return self.async_create_entry(title="", data=updated_data)
+            self._user_input.update(user_input)
+            return await self.async_step_thresholds()
 
         return self.async_show_form(
-            step_id="init", data_schema=_get_schema(config_entry.options)
+            step_id="init", data_schema=_get_schema(self._config_entry.options)
+        )
+
+    async def async_step_thresholds(self, user_input=None):
+        """Manage the thresholds step of the options flow."""
+        if user_input is not None:
+            self._user_input.update(user_input)
+            return await self.async_step_scenarios()
+
+        options = self._config_entry.options
+        threshold_schema = vol.Schema(
+            {
+                vol.Required(
+                    "threshold_direct", default=options.get("threshold_direct", 200)
+                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                vol.Required(
+                    "threshold_diffuse", default=options.get("threshold_diffuse", 150)
+                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                vol.Required(
+                    "diffuse_factor", default=options.get("diffuse_factor", 0.5)
+                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+                vol.Required(
+                    "indoor_base", default=options.get("indoor_base", 23.0)
+                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
+                vol.Required(
+                    "outdoor_base", default=options.get("outdoor_base", 19.5)
+                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
+            }
+        )
+        return self.async_show_form(step_id="thresholds", data_schema=threshold_schema)
+
+    async def async_step_scenarios(self, user_input=None):
+        """Manage the scenarios step of the options flow."""
+        if user_input is not None:
+            self._user_input.update(user_input)
+
+            if self._user_input.get("delete_weather_warning_sensor"):
+                self._user_input.pop("weather_warning_sensor", None)
+            if self._user_input.get("delete_forecast_temperature_sensor"):
+                self._user_input.pop("forecast_temperature_sensor", None)
+
+            self._user_input.pop("delete_weather_warning_sensor", None)
+            self._user_input.pop("delete_forecast_temperature_sensor", None)
+
+            return self.async_create_entry(title="", data=self._user_input)
+
+        options = self._config_entry.options
+        scenarios_schema = vol.Schema(
+            {
+                vol.Required(
+                    "enabled_scenario_b",
+                    default=options.get("enabled_scenario_b", False),
+                ): bool,
+                vol.Required(
+                    "scenario_b_temp_indoor_offset",
+                    default=options.get("scenario_b_temp_indoor_offset", 0.5),
+                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                vol.Required(
+                    "scenario_b_temp_outdoor_offset",
+                    default=options.get("scenario_b_temp_outdoor_offset", 6.0),
+                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=10)),
+                vol.Required(
+                    "scenario_c_enable",
+                    default=options.get("scenario_c_enable", False),
+                ): bool,
+                vol.Required(
+                    "scenario_c_temp_forecast_threshold",
+                    default=options.get("scenario_c_temp_forecast_threshold", 28.5),
+                ): vol.All(vol.Coerce(float), vol.Range(min=20, max=40)),
+                vol.Required(
+                    "scenario_c_temp_indoor_threshold",
+                    default=options.get("scenario_c_temp_indoor_threshold", 21.5),
+                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
+                vol.Required(
+                    "scenario_c_temp_outdoor_threshold",
+                    default=options.get("scenario_c_temp_outdoor_threshold", 24.0),
+                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
+                vol.Required(
+                    "scenario_c_start_hour",
+                    default=options.get("scenario_c_start_hour", 9),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+            }
+        )
+        return self.async_show_form(
+            step_id="scenarios", data_schema=scenarios_schema
         )

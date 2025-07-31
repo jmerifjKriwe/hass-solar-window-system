@@ -19,6 +19,42 @@
                     "weather_warning_sensor": "A binary sensor that indicates a weather warning (e.g., storm). If 'on', the blinds will close.",
                     "forecast_temperature_sensor": "A sensor that provides the temperature forecast for the day. Used for advanced scenarios."
                 }
+            },
+            "thresholds": {
+                "title": "Thresholds and Temperatures",
+                "description": "Configure the thresholds for solar radiation and the base temperatures for the scenarios.",
+                "data": {
+                    "threshold_direct": "Direct radiation threshold",
+                    "threshold_diffuse": "Diffuse radiation threshold",
+                    "diffuse_factor": "Diffuse factor",
+                    "indoor_base": "Base indoor temperature",
+                    "outdoor_base": "Base outdoor temperature"
+                },
+                "data_description": {
+                    "threshold_direct": "Standard threshold for direct radiation in W/m².",
+                    "threshold_diffuse": "Standard threshold for diffuse radiation in W/m².",
+                    "diffuse_factor": "Factor for the diffuse radiation.",
+                    "indoor_base": "Standard indoor temperature for scenario A.",
+                    "outdoor_base": "Standard outdoor temperature for scenario A."
+                }
+            },
+            "scenarios": {
+                "title": "Scenarios",
+                "description": "Configure the scenarios for the shading logic.",
+                "data": {
+                    "enabled_scenario_b": "Enable Scenario B",
+                    "scenario_b_temp_indoor_offset": "Scenario B: Indoor temperature offset",
+                    "scenario_b_temp_outdoor_offset": "Scenario B: Outdoor temperature offset",
+                    "scenario_c_enable": "Enable Scenario C",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast temperature threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor temperature threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor temperature threshold",
+                    "scenario_c_start_hour": "Scenario C: Start hour"
+                },
+                "data_description": {
+                    "enabled_scenario_b": "Enable Scenario B to handle diffuse heat.",
+                    "scenario_c_enable": "Enable Scenario C to handle heatwave forecasts."
+                }
             }
         },
         "abort": {
@@ -48,6 +84,42 @@
                     "forecast_temperature_sensor": "A sensor that provides the temperature forecast for the day. Used for advanced scenarios.",
                     "delete_weather_warning_sensor": "Select this to remove the weather warning sensor.",
                     "delete_forecast_temperature_sensor": "Select this to remove the forecast temperature sensor."
+                }
+            },
+            "thresholds": {
+                "title": "Thresholds and Temperatures",
+                "description": "Configure the thresholds for solar radiation and the base temperatures for the scenarios.",
+                "data": {
+                    "threshold_direct": "Direct radiation threshold",
+                    "threshold_diffuse": "Diffuse radiation threshold",
+                    "diffuse_factor": "Diffuse factor",
+                    "indoor_base": "Base indoor temperature",
+                    "outdoor_base": "Base outdoor temperature"
+                },
+                "data_description": {
+                    "threshold_direct": "Standard threshold for direct radiation in W/m².",
+                    "threshold_diffuse": "Standard threshold for diffuse radiation in W/m².",
+                    "diffuse_factor": "Factor for the diffuse radiation.",
+                    "indoor_base": "Standard indoor temperature for scenario A.",
+                    "outdoor_base": "Standard outdoor temperature for scenario A."
+                }
+            },
+            "scenarios": {
+                "title": "Scenarios",
+                "description": "Configure the scenarios for the shading logic.",
+                "data": {
+                    "enabled_scenario_b": "Enable Scenario B",
+                    "scenario_b_temp_indoor_offset": "Scenario B: Indoor temperature offset",
+                    "scenario_b_temp_outdoor_offset": "Scenario B: Outdoor temperature offset",
+                    "scenario_c_enable": "Enable Scenario C",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast temperature threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor temperature threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor temperature threshold",
+                    "scenario_c_start_hour": "Scenario C: Start hour"
+                },
+                "data_description": {
+                    "enabled_scenario_b": "Enable Scenario B to handle diffuse heat.",
+                    "scenario_c_enable": "Enable Scenario C to handle heatwave forecasts."
                 }
             }
         }

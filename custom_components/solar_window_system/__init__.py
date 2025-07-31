@@ -78,6 +78,11 @@ async def _load_config_from_subentries(hass: HomeAssistant, entry: ConfigEntry) 
 async def _setup_integration(
     hass: HomeAssistant, entry: ConfigEntry, *, delayed: bool
 ) -> None:
+    _LOGGER.warning(
+        "The Solar Window System integration is currently under development and has been temporarily disabled. Please remove this block in __init__.py to re-enable it."
+    )
+    return
+
     _LOGGER.info(
         "Proceeding with setup for entry %s (delayed: %s)", entry.entry_id, delayed
     )
