@@ -1,21 +1,32 @@
 {
-    "config": {
+    "abort": {
+        "already_configured": "Device is already configured."
+    },
+    "options": {
         "step": {
-            "user": {
-                "description": "If you need help with the configuration have a look here: https://github.com/jmerifjKriwe/hass_solar_window_system",
+            "init": {
+                "title": "Solar Window System Configuration",
+                "description": "Set up the basic parameters for the Solar Window System. All settings can be changed later.",
                 "data": {
-                    "username": "Username",
-                    "password": "Password"
+                    "solar_radiation_sensor": "Solar radiation sensor",
+                    "outdoor_temperature_sensor": "Outdoor temperature sensor",
+                    "update_interval": "Update interval (minutes)",
+                    "min_solar_radiation": "Minimum solar radiation",
+                    "min_sun_elevation": "Minimum sun elevation",
+                    "weather_warning_sensor": "Weather warning sensor (Optional)",
+                    "forecast_temperature_sensor": "Forecast temperature sensor (Optional)",
+                    "delete_weather_warning_sensor": "Clear weather warning sensor",
+                    "delete_forecast_temperature_sensor": "Clear forecast temperature sensor"
+                },
+                "data_description": {
+                    "min_solar_radiation": "Minimum radiation (in W/m²) for the calculation to be active.",
+                    "min_sun_elevation": "Minimum sun elevation (in degrees) for the calculation to be active.",
+                    "weather_warning_sensor": "A binary sensor that indicates a weather warning (e.g., storm). If 'on', the blinds will close.",
+                    "forecast_temperature_sensor": "A sensor that provides the temperature forecast for the day. Used for advanced scenarios.",
+                    "delete_weather_warning_sensor": "Select this to remove the weather warning sensor.",
+                    "delete_forecast_temperature_sensor": "Select this to remove the forecast temperature sensor."
                 }
             }
-        },
-        "error": {
-            "auth": "Username/Password is wrong.",
-            "connection": "Unable to connect to the server.",
-            "unknown": "Unknown error occurred."
-        },
-        "abort": {
-            "already_configured": "This entry is already configured."
         }
     }
 }
