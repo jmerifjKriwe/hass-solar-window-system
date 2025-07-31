@@ -4,7 +4,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from custom_components.solar_window_system.select import SolarPresetSelect, async_setup_entry, PRESET_OPTIONS
 from custom_components.solar_window_system.const import DOMAIN
-from custom_components.solar_window_system.number import SolarTiltNumber, SolarGlobalSensitivityNumber
+from custom_components.solar_window_system.number import SolarGlobalSensitivityNumber
 
 
 @pytest.fixture
@@ -187,32 +187,6 @@ def test_relevant_number_change_sets_preset_to_custom(mock_hass, mock_entry):
 
     # Verify preset is now "Custom"
     assert select_entity.current_option == "Custom"
-
-
-def test_irrelevant_number_change_does_not_change_preset(mock_hass, mock_entry):
-    """Test that changing an irrelevant number entity does not change the preset."""
-    # Initial state: "Normal" preset
-    mock_entry.options = {
-        "preset_mode": "Normal",
-        "global_sensitivity": 1.0,
-        "children_factor": 0.8,
-        "tilt": 90,
-    }
-
-    select_entity = SolarPresetSelect(mock_hass, mock_entry)
-    number_entity = SolarTiltNumber(mock_hass, mock_entry)
-
-    # Verify initial state
-    assert select_entity.current_option == "Normal"
-
-    # Change an irrelevant number entity value
-    import asyncio
-
-    asyncio.run(number_entity.async_set_native_value(45.0))
-
-    # Verify preset is still "Normal"
-    assert select_entity.current_option == "Normal"
-
 
 
 def test_manual_custom_override(mock_hass, mock_entry):

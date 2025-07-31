@@ -21,39 +21,29 @@
                 }
             },
             "thresholds": {
-                "title": "Thresholds and Temperatures",
-                "description": "Configure the thresholds for solar radiation and the base temperatures for the scenarios.",
+                "title": "Default Thresholds and Physical Properties",
+                "description": "Configure the default thresholds for solar radiation and the physical properties of the windows. These values are used when they are not set on a window or group.",
                 "data": {
-                    "threshold_direct": "Direct radiation threshold",
-                    "threshold_diffuse": "Diffuse radiation threshold",
-                    "diffuse_factor": "Diffuse factor",
-                    "indoor_base": "Base indoor temperature",
-                    "outdoor_base": "Base outdoor temperature"
-                },
-                "data_description": {
-                    "threshold_direct": "Standard threshold for direct radiation in W/m².",
-                    "threshold_diffuse": "Standard threshold for diffuse radiation in W/m².",
-                    "diffuse_factor": "Factor for the diffuse radiation.",
-                    "indoor_base": "Standard indoor temperature for scenario A.",
-                    "outdoor_base": "Standard outdoor temperature for scenario A."
+                    "g_value": "g-Value (Energy Transmittance)",
+                    "frame_width": "Frame Width",
+                    "tilt": "Window Tilt",
+                    "diffuse_factor": "Diffuse Factor",
+                    "threshold_direct": "Direct Radiation Threshold",
+                    "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "indoor_base": "Base Indoor Temperature",
+                    "outdoor_base": "Base Outdoor Temperature"
                 }
             },
             "scenarios": {
-                "title": "Scenarios",
-                "description": "Configure the scenarios for the shading logic.",
+                "title": "Default Scenario Parameters",
+                "description": "Configure the default parameters for the shading scenarios. These values are used when they are not set on a window or group.",
                 "data": {
-                    "enabled_scenario_b": "Enable Scenario B",
-                    "scenario_b_temp_indoor_offset": "Scenario B: Indoor temperature offset",
-                    "scenario_b_temp_outdoor_offset": "Scenario B: Outdoor temperature offset",
-                    "scenario_c_enable": "Enable Scenario C",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast temperature threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor temperature threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor temperature threshold",
-                    "scenario_c_start_hour": "Scenario C: Start hour"
-                },
-                "data_description": {
-                    "enabled_scenario_b": "Enable Scenario B to handle diffuse heat.",
-                    "scenario_c_enable": "Enable Scenario C to handle heatwave forecasts."
+                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
+                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
+                    "scenario_c_start_hour": "Scenario C: Start Hour"
                 }
             }
         },
@@ -87,39 +77,29 @@
                 }
             },
             "thresholds": {
-                "title": "Thresholds and Temperatures",
-                "description": "Configure the thresholds for solar radiation and the base temperatures for the scenarios.",
+                "title": "Default Thresholds and Physical Properties",
+                "description": "Configure the default thresholds for solar radiation and the physical properties of the windows. These values are used when they are not set on a window or group.",
                 "data": {
-                    "threshold_direct": "Direct radiation threshold",
-                    "threshold_diffuse": "Diffuse radiation threshold",
-                    "diffuse_factor": "Diffuse factor",
-                    "indoor_base": "Base indoor temperature",
-                    "outdoor_base": "Base outdoor temperature"
-                },
-                "data_description": {
-                    "threshold_direct": "Standard threshold for direct radiation in W/m².",
-                    "threshold_diffuse": "Standard threshold for diffuse radiation in W/m².",
-                    "diffuse_factor": "Factor for the diffuse radiation.",
-                    "indoor_base": "Standard indoor temperature for scenario A.",
-                    "outdoor_base": "Standard outdoor temperature for scenario A."
+                    "g_value": "g-Value (Energy Transmittance)",
+                    "frame_width": "Frame Width",
+                    "tilt": "Window Tilt",
+                    "diffuse_factor": "Diffuse Factor",
+                    "threshold_direct": "Direct Radiation Threshold",
+                    "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "indoor_base": "Base Indoor Temperature",
+                    "outdoor_base": "Base Outdoor Temperature"
                 }
             },
             "scenarios": {
-                "title": "Scenarios",
-                "description": "Configure the scenarios for the shading logic.",
+                "title": "Default Scenario Parameters",
+                "description": "Configure the default parameters for the shading scenarios. These values are used when they are not set on a window or group.",
                 "data": {
-                    "enabled_scenario_b": "Enable Scenario B",
-                    "scenario_b_temp_indoor_offset": "Scenario B: Indoor temperature offset",
-                    "scenario_b_temp_outdoor_offset": "Scenario B: Outdoor temperature offset",
-                    "scenario_c_enable": "Enable Scenario C",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast temperature threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor temperature threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor temperature threshold",
-                    "scenario_c_start_hour": "Scenario C: Start hour"
-                },
-                "data_description": {
-                    "enabled_scenario_b": "Enable Scenario B to handle diffuse heat.",
-                    "scenario_c_enable": "Enable Scenario C to handle heatwave forecasts."
+                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
+                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
+                    "scenario_c_start_hour": "Scenario C: Start Hour"
                 }
             }
         }

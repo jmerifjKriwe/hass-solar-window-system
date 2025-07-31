@@ -32,26 +32,23 @@ class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
         super().__init__(hass, entry)
         self._key = key
         self._default = default
-        self._attr_should_poll = False
 
     @property
     def is_on(self) -> bool:
-        """Return the state of the entity."""
+        """Return the state of the entity from the config entry options."""
         return self.entry.options.get(self._key, self._default)
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the entity on."""
-        await self._async_update_option(True)
+        options = dict(self.entry.options)
+        options[self._key] = True
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the entity off."""
-        await self._async_update_option(False)
-
-    async def _async_update_option(self, value: bool) -> None:
-        """Update the config entry option."""
         options = dict(self.entry.options)
-        options[self._key] = value
-        await self.hass.config_entries.async_update_entry(self.entry, options=options)
+        options[self._key] = False
+        self.hass.config_entries.async_update_entry(self.entry, options=options)
 
 
 class SolarMaintenanceSwitch(BaseSwitchEntity):
@@ -78,7 +75,7 @@ class SolarScenarioBSwitch(BaseSwitchEntity):
     _attr_icon = "mdi:weather-cloudy"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
-        super().__init__(hass, entry, "scenario_b_enabled", True)
+        super().__init__(hass, entry, "scenario_b_enabled", False)
 
 
 class SolarScenarioCSwitch(BaseSwitchEntity):
@@ -87,4 +84,4 @@ class SolarScenarioCSwitch(BaseSwitchEntity):
     _attr_icon = "mdi:white-balance-sunny"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
-        super().__init__(hass, entry, "scenario_c_enabled", True)
+        super().__init__(hass, entry, "scenario_c_enabled", False)

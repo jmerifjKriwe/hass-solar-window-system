@@ -23,10 +23,10 @@ async def test_all_power_attributes(hass: HomeAssistant, setup_integration):
     state = hass.states.get(entity_id)
 
     assert state is not None
-    assert state.attributes.get("area_m2") == pytest.approx(3.0625)
-    assert state.attributes.get("power_direct") == pytest.approx(1025.5, rel=0.01)
-    assert state.attributes.get("power_diffuse") == pytest.approx(183.8, rel=0.01)
-    assert float(state.state) == pytest.approx(1209.3, rel=0.01)
+    assert state.attributes.get("area_m2") == pytest.approx(2.8)
+    assert state.attributes.get("power_direct") == pytest.approx(475.3, rel=0.01)
+    assert state.attributes.get("power_diffuse") == pytest.approx(120.0, rel=0.01)
+    assert float(state.state) == pytest.approx(595.3, rel=0.01)
 
 
 @pytest.mark.asyncio
@@ -73,7 +73,7 @@ async def test_window_override(hass: HomeAssistant, setup_integration):
 async def test_scenario_b(hass: HomeAssistant, setup_integration):
     """Test that scenario B is triggered correctly."""
     hass.states.async_set("sun.sun", "above_horizon", {"elevation": 45, "azimuth": 170})
-    hass.states.async_set("sensor.dummy_solar_radiation", "130")
+    hass.states.async_set("sensor.dummy_solar_radiation", "160")
     hass.states.async_set("sensor.dummy_outdoor_temp", "26.0")
     hass.states.async_set("sensor.dummy_indoor_temp", "24.0")
     await hass.async_block_till_done()
@@ -168,9 +168,9 @@ async def test_scenario_c_before_start_hour(hass: HomeAssistant, setup_integrati
 @pytest.mark.asyncio
 async def test_weather_warning_override(hass: HomeAssistant, setup_integration):
     """Test that a weather warning forces shading."""
-    hass.states.async_set("sensor.dummy_weather_warning", "on")
+    hass.states.async_set("binary_sensor.dummy_weather_warning", "on")
     hass.config_entries.async_update_entry(
-        setup_integration, options={"weather_warning_sensor": "sensor.dummy_weather_warning"}
+        setup_integration, options={"weather_warning_sensor": "binary_sensor.dummy_weather_warning"}
     )
     await hass.async_block_till_done()
 
@@ -204,7 +204,7 @@ async def test_cold_day_no_shading(hass: HomeAssistant, setup_integration):
 @pytest.mark.asyncio
 async def test_high_sensitivity_triggers_sooner(hass: HomeAssistant, setup_integration):
     """Test that a higher sensitivity triggers shading sooner."""
-    hass.states.async_set("sensor.dummy_solar_radiation", "550")
+    hass.states.async_set("sensor.dummy_solar_radiation", "110")
     hass.config_entries.async_update_entry(
         setup_integration, options={**setup_integration.options, "global_sensitivity": 2.0}
     )
@@ -224,7 +224,7 @@ async def test_high_sensitivity_triggers_sooner(hass: HomeAssistant, setup_integ
 async def test_children_factor_reduces_threshold(hass: HomeAssistant, setup_integration):
     """Test that the children_factor correctly reduces the threshold."""
     hass.states.async_set("sun.sun", "above_horizon", {"elevation": 45, "azimuth": 170})
-    hass.states.async_set("sensor.dummy_solar_radiation", "450")
+    hass.states.async_set("sensor.dummy_solar_radiation", "110")
     hass.states.async_set("sensor.dummy_indoor_temp_children", "24.0")
     # Set outdoor temp to a value that would trigger shading
     hass.states.async_set("sensor.dummy_outdoor_temp", "24.0")
@@ -289,7 +289,7 @@ async def test_missing_group_falls_back_gracefully(hass: HomeAssistant, setup_in
 @pytest.mark.asyncio
 async def test_calculation_with_optional_sensor_not_set(hass: HomeAssistant, setup_integration):
     """Test that the calculation remains stable even without optional sensors."""
-    hass.states.async_set("sensor.dummy_solar_radiation", "550")
+    hass.states.async_set("sensor.dummy_solar_radiation", "210")
     hass.states.async_set("sun.sun", "above_horizon", {"elevation": 45, "azimuth": 170})
     hass.config_entries.async_update_entry(
         setup_integration, options={**setup_integration.options, "weather_warning_sensor": None}

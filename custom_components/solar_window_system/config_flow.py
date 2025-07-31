@@ -87,14 +87,23 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="thresholds",
             data_schema=vol.Schema(
                 {
+                    vol.Required("g_value", default=0.5): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.1, max=0.9)
+                    ),
+                    vol.Required("frame_width", default=0.125): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.05, max=0.3)
+                    ),
+                    vol.Required("tilt", default=90): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=90)
+                    ),
+                    vol.Required("diffuse_factor", default=0.15): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.05, max=0.5)
+                    ),
                     vol.Required("threshold_direct", default=200): vol.All(
                         vol.Coerce(float), vol.Range(min=0)
                     ),
                     vol.Required("threshold_diffuse", default=150): vol.All(
                         vol.Coerce(float), vol.Range(min=0)
-                    ),
-                    vol.Required("diffuse_factor", default=0.5): vol.All(
-                        vol.Coerce(float), vol.Range(min=0, max=1)
                     ),
                     vol.Required("indoor_base", default=23.0): vol.All(
                         vol.Coerce(float), vol.Range(min=10, max=30)
@@ -118,14 +127,12 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="scenarios",
             data_schema=vol.Schema(
                 {
-                    vol.Required("enabled_scenario_b", default=False): bool,
-                    vol.Required("scenario_b_temp_indoor_offset", default=0.5): vol.All(
-                        vol.Coerce(float), vol.Range(min=0, max=5)
-                    ),
-                    vol.Required("scenario_b_temp_outdoor_offset", default=6.0): vol.All(
-                        vol.Coerce(float), vol.Range(min=0, max=10)
-                    ),
-                    vol.Required("scenario_c_enable", default=False): bool,
+                    vol.Required(
+                        "scenario_b_temp_indoor_threshold", default=23.5
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
+                    vol.Required(
+                        "scenario_b_temp_outdoor_threshold", default=25.5
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
                     vol.Required(
                         "scenario_c_temp_forecast_threshold", default=28.5
                     ): vol.All(vol.Coerce(float), vol.Range(min=20, max=40)),
@@ -178,15 +185,24 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
         options = self._config_entry.options
         threshold_schema = vol.Schema(
             {
+                vol.Required("g_value", default=options.get("g_value", 0.5)): vol.All(
+                    vol.Coerce(float), vol.Range(min=0.1, max=0.9)
+                ),
+                vol.Required(
+                    "frame_width", default=options.get("frame_width", 0.125)
+                ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
+                vol.Required("tilt", default=options.get("tilt", 90)): vol.All(
+                    vol.Coerce(float), vol.Range(min=0, max=90)
+                ),
+                vol.Required(
+                    "diffuse_factor", default=options.get("diffuse_factor", 0.15)
+                ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.5)),
                 vol.Required(
                     "threshold_direct", default=options.get("threshold_direct", 200)
                 ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                 vol.Required(
                     "threshold_diffuse", default=options.get("threshold_diffuse", 150)
                 ): vol.All(vol.Coerce(float), vol.Range(min=0)),
-                vol.Required(
-                    "diffuse_factor", default=options.get("diffuse_factor", 0.5)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
                 vol.Required(
                     "indoor_base", default=options.get("indoor_base", 23.0)
                 ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
@@ -216,21 +232,13 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
         scenarios_schema = vol.Schema(
             {
                 vol.Required(
-                    "enabled_scenario_b",
-                    default=options.get("enabled_scenario_b", False),
-                ): bool,
+                    "scenario_b_temp_indoor_threshold",
+                    default=options.get("scenario_b_temp_indoor_threshold", 23.5),
+                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
                 vol.Required(
-                    "scenario_b_temp_indoor_offset",
-                    default=options.get("scenario_b_temp_indoor_offset", 0.5),
-                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
-                vol.Required(
-                    "scenario_b_temp_outdoor_offset",
-                    default=options.get("scenario_b_temp_outdoor_offset", 6.0),
-                ): vol.All(vol.Coerce(float), vol.Range(min=0, max=10)),
-                vol.Required(
-                    "scenario_c_enable",
-                    default=options.get("scenario_c_enable", False),
-                ): bool,
+                    "scenario_b_temp_outdoor_threshold",
+                    default=options.get("scenario_b_temp_outdoor_threshold", 25.5),
+                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
                 vol.Required(
                     "scenario_c_temp_forecast_threshold",
                     default=options.get("scenario_c_temp_forecast_threshold", 28.5),
@@ -249,6 +257,4 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
             }
         )
-        return self.async_show_form(
-            step_id="scenarios", data_schema=scenarios_schema
-        )
+        return self.async_show_form(step_id="scenarios", data_schema=scenarios_schema)

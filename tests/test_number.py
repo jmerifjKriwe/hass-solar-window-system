@@ -7,18 +7,6 @@ from custom_components.solar_window_system.number import (
     SolarGlobalSensitivityNumber,
     SolarChildrenFactorNumber,
     SolarTemperatureOffsetNumber,
-    SolarGValueNumber,
-    SolarFrameWidthNumber,
-    SolarDiffuseFactorNumber,
-    SolarTiltNumber,
-    SolarThresholdDirectNumber,
-    SolarThresholdDiffuseNumber,
-    SolarTempIndoorBaseNumber,
-    SolarTempOutdoorBaseNumber,
-    SolarScenarioBTempIndoorOffsetNumber,
-    SolarScenarioBTempOutdoorOffsetNumber,
-    SolarScenarioCTempForecastThresholdNumber,
-    SolarScenarioCStartHourNumber,
 )
 
 
@@ -96,7 +84,7 @@ def test_async_setup_entry(mock_hass, mock_entry):
     async_add_entities.assert_called_once()
     
     # Check that all number entities are created
-    assert len(async_add_entities.call_args[0][0]) == 15
+    assert len(async_add_entities.call_args[0][0]) == 3
 
 
 @pytest.mark.parametrize(
@@ -105,18 +93,6 @@ def test_async_setup_entry(mock_hass, mock_entry):
         (SolarGlobalSensitivityNumber, "Global Sensitivity", "solar_window_system_global_sensitivity", "mdi:brightness-6", 0.5, 2.0, 0.1),
         (SolarChildrenFactorNumber, "Children Factor", "solar_window_system_children_factor", "mdi:human-child", 0.3, 1.5, 0.1),
         (SolarTemperatureOffsetNumber, "Temperature Offset", "solar_window_system_temperature_offset", "mdi:thermometer-plus", -5.0, 5.0, 0.5),
-        (SolarGValueNumber, "G-Value (Energiedurchlassgrad)", "solar_window_system_g_value", "mdi:brightness-7", 0.1, 0.9, 0.01),
-        (SolarFrameWidthNumber, "Frame Width", "solar_window_system_frame_width", "mdi:border-outside", 0.05, 0.3, 0.005),
-        (SolarDiffuseFactorNumber, "Diffuse Factor", "solar_window_system_diffuse_factor", "mdi:weather-cloudy", 0.05, 0.5, 0.01),
-        (SolarTiltNumber, "Window Tilt", "solar_window_system_tilt", "mdi:angle-acute", 0, 90, 1),
-        (SolarThresholdDirectNumber, "Direct Radiation Threshold", "solar_window_system_threshold_direct", "mdi:weather-sunny", 50, 1000, 10),
-        (SolarThresholdDiffuseNumber, "Diffuse Radiation Threshold", "solar_window_system_threshold_diffuse", "mdi:weather-partly-cloudy", 30, 800, 10),
-        (SolarTempIndoorBaseNumber, "Base Indoor Temperature", "solar_window_system_temp_indoor_base", "mdi:home-thermometer", 18.0, 28.0, 0.5),
-        (SolarTempOutdoorBaseNumber, "Base Outdoor Temperature", "solar_window_system_temp_outdoor_base", "mdi:thermometer", 15.0, 30.0, 0.5),
-        (SolarScenarioBTempIndoorOffsetNumber, "Scenario B Indoor Temp Offset", "solar_window_system_scenario_b_temp_indoor_offset", "mdi:home-thermometer-outline", 0.0, 3.0, 0.1),
-        (SolarScenarioBTempOutdoorOffsetNumber, "Scenario B Outdoor Temp Offset", "solar_window_system_scenario_b_temp_outdoor_offset", "mdi:thermometer-chevron-up", 3.0, 15.0, 0.5),
-        (SolarScenarioCTempForecastThresholdNumber, "Scenario C Forecast Threshold", "solar_window_system_scenario_c_temp_forecast_threshold", "mdi:weather-sunny-alert", 25.0, 40.0, 0.5),
-        (SolarScenarioCStartHourNumber, "Scenario C Start Hour", "solar_window_system_scenario_c_start_hour", "mdi:clock-time-nine", 6, 12, 1),
     ],
 )
 def test_entity_attributes(
