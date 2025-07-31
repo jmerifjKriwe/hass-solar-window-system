@@ -13,92 +13,28 @@ from .coordinator import SolarWindowDataUpdateCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-def _get_default_config() -> dict:
-    """Return the built-in default configuration matching number entities."""
-    return {
-        "physical": {
-            "g_value": 0.5,
-            "frame_width": 0.125,
-            "diffuse_factor": 0.15,
-            "tilt": 90,
-        },
-        "thresholds": {"direct": 200, "diffuse": 150},
-        "temperatures": {"indoor_base": 23.0, "outdoor_base": 19.5},
-        "scenario_b": {
-            "enabled": True,
-            "temp_indoor_offset": 0.5,
-            "temp_outdoor_offset": 6.0,
-        },
-        "scenario_c": {
-            "enabled": True,
-            "temp_forecast_threshold": 28.5,
-            "start_hour": 9,
-        },
-        "calculation": {"min_sun_elevation": 10},
-    }
 
-
-async def _load_config_from_subentries(hass: HomeAssistant, entry: ConfigEntry) -> dict:
-    """Load Defaults, Groups, and Windows config from sub-entries."""
-    # Home Assistant 2025.7.4+ sub-entry API
-    # Use async_children if available, else filter async_entries by parent_entry_id
-    sub_entries = []
-    # Only use fallback, as async_children is not always present
-    sub_entries = [
-        e
-        for e in hass.config_entries.async_entries(DOMAIN)
-        if getattr(e, "parent_entry_id", None) == entry.entry_id
-    ]
-
-    defaults_config = None
-    groups_config = {}
-    windows_config = {}
-
-    for sub in sub_entries:
-        # Identify by title or a type field in data
-        if sub.title.lower() == "defaults":
-            defaults_config = dict(sub.data)
-        elif sub.title.lower().startswith("group") or sub.data.get("type") == "group":
-            group_name = sub.data.get("name") or sub.title
-            groups_config[group_name] = dict(sub.data)
-        elif sub.title.lower().startswith("window") or sub.data.get("type") == "window":
-            window_name = sub.data.get("name") or sub.title
-            windows_config[window_name] = dict(sub.data)
-
-    if defaults_config is None:
-        defaults_config = _get_default_config()
-
-    return {
-        "defaults": defaults_config,
-        "groups": groups_config,
-        "windows": windows_config,
-    }
 
 
 async def _setup_integration(
     hass: HomeAssistant, entry: ConfigEntry, *, delayed: bool
 ) -> None:
-    _LOGGER.warning(
-        "The Solar Window System integration is currently under development and has been temporarily disabled. Please remove this block in __init__.py to re-enable it."
-    )
-    return
-
     _LOGGER.info(
         "Proceeding with setup for entry %s (delayed: %s)", entry.entry_id, delayed
     )
-    config_data = await _load_config_from_subentries(hass, entry)
+    config_data = entry.options
 
-    if not config_data.get("windows"):
+    if not config_data:
         _LOGGER.info(
-            "No windows configured in sub-entries. Integration will remain idle until at least one window is added. No platforms will be loaded."
+            "No configuration provided yet. Integration will be idle until configured."
         )
-        # Do not set up coordinator or platforms, just return
-        return
+        # Continue to set up coordinator and platforms to allow UI configuration
+        # No platforms will be loaded if config_data is empty, as they rely on it.
 
     coordinator = SolarWindowDataUpdateCoordinator(hass, entry, config_data)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    await coordinator.async_config_entry_first_refresh()
+    # await coordinator.async_config_entry_first_refresh() # Temporarily disabled to prevent immediate calculations
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     hass.data[DOMAIN]["loaded_platforms"] = set(PLATFORMS)

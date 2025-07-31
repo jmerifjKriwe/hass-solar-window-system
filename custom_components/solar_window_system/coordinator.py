@@ -18,9 +18,39 @@ class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, config_data: dict):
         """Initialize."""
         self._entry_id = entry.entry_id
-        self.calculator = SolarWindowCalculator(
-            hass, config_data["defaults"], config_data["groups"], config_data["windows"]
-        )
+        # Construct the defaults dictionary from the flat config_data (entry.options)
+        defaults = {
+            "physical": {
+                "g_value": config_data.get("g_value"),
+                "frame_width": config_data.get("frame_width"),
+                "tilt": config_data.get("tilt"),
+                "diffuse_factor": config_data.get("diffuse_factor"),
+            },
+            "thresholds": {
+                "direct": config_data.get("threshold_direct"),
+                "diffuse": config_data.get("threshold_diffuse"),
+            },
+            "temperatures": {
+                "indoor_base": config_data.get("indoor_base"),
+                "outdoor_base": config_data.get("outdoor_base"),
+            },
+            "scenario_b": {
+                "temp_indoor_threshold": config_data.get("scenario_b_temp_indoor_threshold"),
+                "temp_outdoor_threshold": config_data.get("scenario_b_temp_outdoor_threshold"),
+            },
+            "scenario_c": {
+                "temp_forecast_threshold": config_data.get("scenario_c_temp_forecast_threshold"),
+                "temp_indoor_threshold": config_data.get("scenario_c_temp_indoor_threshold"),
+                "temp_outdoor_threshold": config_data.get("scenario_c_temp_outdoor_threshold"),
+                "start_hour": config_data.get("scenario_c_start_hour"),
+            },
+            "calculation": {
+                "min_sun_elevation": config_data.get("min_sun_elevation"),
+            },
+        }
+
+        # Pass the constructed defaults, and empty groups/windows for now
+        self.calculator = SolarWindowCalculator(hass, defaults, {}, {})
         self._first_refresh_lock = asyncio.Lock()
 
         update_interval_minutes = entry.options.get("update_interval", 5)

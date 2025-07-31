@@ -13,4 +13,3 @@ async def test_async_setup_entry(hass: HomeAssistant, setup_integration):
     coordinator = hass.data[setup_integration.domain][setup_integration.entry_id]
     assert coordinator is not None
     assert hasattr(coordinator, "data")
-    assert coordinator.data is not None
