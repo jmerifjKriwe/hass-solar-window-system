@@ -90,6 +90,13 @@ class SolarWindowCalculator:
         # Override with entity values (highest priority)
         self._apply_entity_overrides(effective, current_options)
 
+        # Calculate and add azimuth and elevation ranges
+        window_config["azimuth_range"] = (-90, 90)
+        window_config["elevation_range"] = (
+            effective.get("calculation", {}).get("min_sun_elevation", 10),
+            90,
+        )
+
         return effective, window_config
 
     def _apply_entity_overrides(self, effective: dict, options: dict):
