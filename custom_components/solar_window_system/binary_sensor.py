@@ -5,11 +5,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorDeviceClass,
 )
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryType
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_ENTRY_TYPE
 from .coordinator import SolarWindowDataUpdateCoordinator
 from .entity import SolarWindowSystemDataEntity
 
@@ -22,18 +22,29 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary sensor entities."""
-    coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    if entry.data.get(CONF_ENTRY_TYPE) == "window":
+        # For window entries, the config is directly in entry.options
+        window_config = entry.options
+        # The coordinator for global data is still needed
+        # Assuming the global config entry ID is stored somewhere accessible, or we find it.
+        # For now, let's assume the global coordinator is available via DOMAIN and its entry_id
+        # This part needs careful consideration of how to access the global coordinator.
+        # For now, we'll pass a dummy coordinator or find the global one.
+        # Let's assume the global config entry is the first one found for simplicity for now.
+        global_entry = None
+        for ent in hass.config_entries.async_entries(DOMAIN):
+            if ent.data.get(CONF_ENTRY_TYPE) == "global":
+                global_entry = ent
+                break
 
-    if coordinator.data:
-        async_add_entities(
-            [
-                SolarWindowShadingSensor(coordinator, window_id)
-                for window_id in coordinator.data
-                if window_id != "summary"
-            ]
-        )
+        if global_entry:
+            coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][global_entry.entry_id]
+            async_add_entities([SolarWindowShadingSensor(coordinator, entry.entry_id, window_config)])
+        else:
+            _LOGGER.warning("Global configuration entry not found. Cannot set up window binary sensor.")
     else:
-        _LOGGER.info("Coordinator data is None")
+        # This platform only handles window entries now
+        return
 
 
 class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):

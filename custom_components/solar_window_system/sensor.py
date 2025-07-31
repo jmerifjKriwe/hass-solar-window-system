@@ -1,4 +1,3 @@
-# /config/custom_components/solar_window_system/sensor.py
 import logging
 
 from homeassistant.components.sensor import (
@@ -6,11 +5,11 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryType
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_ENTRY_TYPE, CONF_WINDOW_NAME
 from .coordinator import SolarWindowDataUpdateCoordinator
 from .entity import SolarWindowSystemDataEntity
 
@@ -23,22 +22,29 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor entities."""
-    coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    entry_type = entry.data.get(CONF_ENTRY_TYPE)
 
-    # Data should now be available after async_config_entry_first_refresh
-    if coordinator.data is None:
-        _LOGGER.info("Coordinator data is None")
-        return
+    if entry_type == "global":
+        coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        if coordinator.data is None:
+            _LOGGER.info("Coordinator data is None for global entry.")
+            return
+        async_add_entities([SolarWindowSummarySensor(coordinator)])
 
-    summary_sensors = [SolarWindowSummarySensor(coordinator)]
+    elif entry_type == "window":
+        window_config = entry.options
+        # Find the global config entry to get the coordinator
+        global_entry = None
+        for ent in hass.config_entries.async_entries(DOMAIN):
+            if ent.data.get(CONF_ENTRY_TYPE) == "global":
+                global_entry = ent
+                break
 
-    window_sensors = [
-        SolarWindowPowerSensor(coordinator, window_id)
-        for window_id in coordinator.data
-        if window_id != "summary"
-    ]
-
-    async_add_entities(summary_sensors + window_sensors)
+        if global_entry:
+            coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][global_entry.entry_id]
+            async_add_entities([SolarWindowPowerSensor(coordinator, entry.entry_id, window_config)])
+        else:
+            _LOGGER.warning("Global configuration entry not found. Cannot set up window power sensor.")
 
 
 class SolarWindowSummarySensor(SolarWindowSystemDataEntity, SensorEntity):
@@ -81,13 +87,14 @@ class SolarWindowSummarySensor(SolarWindowSystemDataEntity, SensorEntity):
 class SolarWindowPowerSensor(SolarWindowSystemDataEntity, SensorEntity):
     """Representation of a power sensor for a single window."""
 
-    def __init__(self, coordinator: SolarWindowDataUpdateCoordinator, window_id: str):
+    def __init__(self, coordinator: SolarWindowDataUpdateCoordinator, window_id: str, window_config: dict):
         """Initialize the window sensor."""
         super().__init__(coordinator)
         self._window_id = window_id
+        self._window_config = window_config
 
         self._attr_name = (
-            f"{coordinator.data[self._window_id].get('name', window_id)} Power"
+            f"{window_config.get(CONF_WINDOW_NAME, window_id)} Power"
         )
         self._attr_unique_id = f"{DOMAIN}_{window_id}_power"
         self._attr_device_class = SensorDeviceClass.POWER

@@ -1,21 +1,22 @@
-# /config/custom_components/solar_window_system/select.py
-
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_ENTRY_TYPE
 from .entity import SolarWindowSystemConfigEntity
 
 PRESET_OPTIONS = ["Normal", "Relaxed", "Sensitive", "Children", "Custom"]
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the select entities."""
-    async_add_entities([SolarPresetSelect(hass, entry)])
+    if entry.data.get(CONF_ENTRY_TYPE) == "global":
+        async_add_entities([SolarPresetSelect(hass, entry)])
 
 
 class SolarPresetSelect(SolarWindowSystemConfigEntity, SelectEntity):

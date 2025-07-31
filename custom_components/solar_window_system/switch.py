@@ -1,26 +1,27 @@
-# /config/custom_components/solar_window_system/switch.py
-
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_ENTRY_TYPE
 from .entity import SolarWindowSystemConfigEntity
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the switch entities."""
-    async_add_entities(
-        [
-            SolarMaintenanceSwitch(hass, entry),
-            SolarDebugSwitch(hass, entry),
-            SolarScenarioBSwitch(hass, entry),
-            SolarScenarioCSwitch(hass, entry),
-        ]
-    )
+    if entry.data.get(CONF_ENTRY_TYPE) == "global":
+        async_add_entities(
+            [
+                SolarMaintenanceSwitch(hass, entry),
+                SolarDebugSwitch(hass, entry),
+                SolarScenarioBSwitch(hass, entry),
+                SolarScenarioCSwitch(hass, entry),
+            ]
+        )
 
 
 class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
