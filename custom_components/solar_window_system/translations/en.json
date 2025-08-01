@@ -8,7 +8,7 @@
                     "entry_type": "Configuration Type"
                 }
             },
-            "global": {
+            "global_init": {
                 "title": "Solar Window System",
                 "description": "Set up the basic parameters for the Solar Window System. All settings can be changed later.",
                 "data": {
@@ -105,7 +105,7 @@
     },
     "options": {
         "step": {
-            "global_options_init": {
+            "global_init": {
                 "title": "Solar Window System Configuration",
                 "description": "Set up the basic parameters for the Solar Window System. All settings can be changed later.",
                 "data": {
@@ -128,7 +128,7 @@
                     "delete_forecast_temperature_sensor": "Select this to remove the forecast temperature sensor."
                 }
             },
-            "global_options_thresholds": {
+            "global_thresholds": {
                 "title": "Default Thresholds and Physical Properties",
                 "description": "Configure the default thresholds for solar radiation and the physical properties of the windows. These values are used when they are not set on a window or group.",
                 "data": {
@@ -142,7 +142,7 @@
                     "outdoor_base": "Base Outdoor Temperature"
                 }
             },
-            "global_options_scenarios": {
+            "global_scenarios": {
                 "title": "Default Scenario Parameters",
                 "description": "Configure the default parameters for the shading scenarios. These values are used when they are not set on a window or group.",
                 "data": {
