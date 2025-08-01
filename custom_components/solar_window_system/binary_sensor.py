@@ -5,7 +5,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorDeviceClass,
 )
-from homeassistant.config_entries import ConfigEntry, ConfigEntryType
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -38,10 +38,16 @@ async def async_setup_entry(
                 break
 
         if global_entry:
-            coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][global_entry.entry_id]
-            async_add_entities([SolarWindowShadingSensor(coordinator, entry.entry_id, window_config)])
+            coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][
+                global_entry.entry_id
+            ]
+            async_add_entities(
+                [SolarWindowShadingSensor(coordinator, entry.entry_id, window_config)]
+            )
         else:
-            _LOGGER.warning("Global configuration entry not found. Cannot set up window binary sensor.")
+            _LOGGER.warning(
+                "Global configuration entry not found. Cannot set up window binary sensor."
+            )
     else:
         # This platform only handles window entries now
         return
@@ -71,7 +77,9 @@ class SolarWindowShadingSensor(SolarWindowSystemDataEntity, BinarySensorEntity):
         """Return true if shading is required."""
         if self.coordinator.data is None:
             return None
-        shade_required = self.coordinator.data.get(self._window_id, {}).get("shade_required")
+        shade_required = self.coordinator.data.get(self._window_id, {}).get(
+            "shade_required"
+        )
         if isinstance(shade_required, bool):
             return shade_required
         return None

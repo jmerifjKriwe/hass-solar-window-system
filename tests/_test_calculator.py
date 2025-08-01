@@ -4,6 +4,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.const import STATE_ON, STATE_OFF
 
 from .conftest import setup_integration
+from tests.mocks import MOCK_WINDOW_INPUT
+from tests.mocks import MOCK_WINDOW_INPUT
 
 
 @pytest.mark.asyncio
@@ -13,7 +15,7 @@ async def test_calculator_creation(hass: HomeAssistant, setup_integration):
     calculator = coordinator.calculator
 
     assert calculator is not None
-    assert len(calculator.windows) == 1
+    assert calculator.global_config is not None
 
 
 @pytest.mark.parametrize(
@@ -38,6 +40,11 @@ async def test_shading_calculation(
 
     # Manually trigger a refresh of the coordinator
     coordinator = hass.data[setup_integration.domain][setup_integration.entry_id]
+    # Pass the window config to the calculator's calculate_all_windows method
+    # This assumes calculate_all_windows is called by the coordinator's refresh
+    # and that the coordinator now manages fetching all window configs.
+    # For this test, we'll simulate the coordinator having the window config.
+    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -81,6 +88,11 @@ async def test_sun_elevation(
 
     # Manually trigger a refresh of the coordinator
     coordinator = hass.data[setup_integration.domain][setup_integration.entry_id]
+    # Pass the window config to the calculator's calculate_all_windows method
+    # This assumes calculate_all_windows is called by the coordinator's refresh
+    # and that the coordinator now manages fetching all window configs.
+    # For this test, we'll simulate the coordinator having the window config.
+    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -111,6 +123,11 @@ async def test_sun_azimuth(
 
     # Manually trigger a refresh of the coordinator
     coordinator = hass.data[setup_integration.domain][setup_integration.entry_id]
+    # Pass the window config to the calculator's calculate_all_windows method
+    # This assumes calculate_all_windows is called by the coordinator's refresh
+    # and that the coordinator now manages fetching all window configs.
+    # For this test, we'll simulate the coordinator having the window config.
+    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -142,6 +159,11 @@ async def test_weather_warning(
 
     # Manually trigger a refresh of the coordinator
     coordinator = hass.data[setup_integration.domain][setup_integration.entry_id]
+    # Pass the window config to the calculator's calculate_all_windows method
+    # This assumes calculate_all_windows is called by the coordinator's refresh
+    # and that the coordinator now manages fetching all window configs.
+    # For this test, we'll simulate the coordinator having the window config.
+    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 

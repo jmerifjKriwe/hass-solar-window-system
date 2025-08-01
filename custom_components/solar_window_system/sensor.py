@@ -5,7 +5,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry, ConfigEntryType
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -25,7 +25,9 @@ async def async_setup_entry(
     entry_type = entry.data.get(CONF_ENTRY_TYPE)
 
     if entry_type == "global":
-        coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][
+            entry.entry_id
+        ]
         if coordinator.data is None:
             _LOGGER.info("Coordinator data is None for global entry.")
             return
@@ -41,10 +43,16 @@ async def async_setup_entry(
                 break
 
         if global_entry:
-            coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][global_entry.entry_id]
-            async_add_entities([SolarWindowPowerSensor(coordinator, entry.entry_id, window_config)])
+            coordinator: SolarWindowDataUpdateCoordinator = hass.data[DOMAIN][
+                global_entry.entry_id
+            ]
+            async_add_entities(
+                [SolarWindowPowerSensor(coordinator, entry.entry_id, window_config)]
+            )
         else:
-            _LOGGER.warning("Global configuration entry not found. Cannot set up window power sensor.")
+            _LOGGER.warning(
+                "Global configuration entry not found. Cannot set up window power sensor."
+            )
 
 
 class SolarWindowSummarySensor(SolarWindowSystemDataEntity, SensorEntity):
@@ -78,24 +86,33 @@ class SolarWindowSummarySensor(SolarWindowSystemDataEntity, SensorEntity):
         last_calculation = summary.get("calculation_time")
 
         return {
-            "window_count": window_count if isinstance(window_count, (int, float)) else None,
-            "shading_count": shading_count if isinstance(shading_count, (int, float)) else None,
-            "last_calculation": last_calculation if isinstance(last_calculation, str) else None,
+            "window_count": window_count
+            if isinstance(window_count, (int, float))
+            else None,
+            "shading_count": shading_count
+            if isinstance(shading_count, (int, float))
+            else None,
+            "last_calculation": last_calculation
+            if isinstance(last_calculation, str)
+            else None,
         }
 
 
 class SolarWindowPowerSensor(SolarWindowSystemDataEntity, SensorEntity):
     """Representation of a power sensor for a single window."""
 
-    def __init__(self, coordinator: SolarWindowDataUpdateCoordinator, window_id: str, window_config: dict):
+    def __init__(
+        self,
+        coordinator: SolarWindowDataUpdateCoordinator,
+        window_id: str,
+        window_config: dict,
+    ):
         """Initialize the window sensor."""
         super().__init__(coordinator)
         self._window_id = window_id
         self._window_config = window_config
 
-        self._attr_name = (
-            f"{window_config.get(CONF_WINDOW_NAME, window_id)} Power"
-        )
+        self._attr_name = f"{window_config.get(CONF_WINDOW_NAME, window_id)} Power"
         self._attr_unique_id = f"{DOMAIN}_{window_id}_power"
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -121,7 +138,11 @@ class SolarWindowPowerSensor(SolarWindowSystemDataEntity, SensorEntity):
         area_m2 = window_data.get("area_m2")
 
         return {
-            "power_direct": round(power_direct, 1) if isinstance(power_direct, (int, float)) else 0,
-            "power_diffuse": round(power_diffuse, 1) if isinstance(power_diffuse, (int, float)) else 0,
+            "power_direct": round(power_direct, 1)
+            if isinstance(power_direct, (int, float))
+            else 0,
+            "power_diffuse": round(power_diffuse, 1)
+            if isinstance(power_diffuse, (int, float))
+            else 0,
             "area_m2": area_m2 if isinstance(area_m2, (int, float)) else None,
         }
