@@ -45,7 +45,6 @@ async def test_no_duplicate_global_entry(hass: HomeAssistant):
     )
     existing_entry.add_to_hass(hass)
 
-    # Starte den Flow initial (ohne user_input)
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_USER},
@@ -53,18 +52,15 @@ async def test_no_duplicate_global_entry(hass: HomeAssistant):
     assert result["type"] == "form"
     assert result["step_id"] == "user"
 
-    # Prüfe, dass 'global' nicht in choices ist
     choices = result["data_schema"].schema[CONF_ENTRY_TYPE].container
     assert "global" not in choices
 
-    # Versuche, den Flow mit "window" zu konfigurieren, das ist erlaubt
     result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={CONF_ENTRY_TYPE: "window"},
     )
     assert result2["type"] == "form"  # oder was dein Flow für window macht
 
-    # Versuche, den Flow direkt mit "global" zu starten (ohne Formular) - sollte abgelehnt werden
     result3 = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_USER},
