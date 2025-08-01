@@ -14,14 +14,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up the switch entities."""
     if entry.data.get(CONF_ENTRY_TYPE) == "global":
-        async_add_entities(
-            [
-                SolarMaintenanceSwitch(hass, entry),
-                SolarDebugSwitch(hass, entry),
-                SolarScenarioBSwitch(hass, entry),
-                SolarScenarioCSwitch(hass, entry),
-            ]
-        )
+        entities = [
+            SolarMaintenanceSwitch(hass, entry),
+            SolarDebugSwitch(hass, entry),
+            SolarScenarioBSwitch(hass, entry),
+            SolarScenarioCSwitch(hass, entry),
+        ]
+        async_add_entities(entities)
 
 
 class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
@@ -54,35 +53,35 @@ class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
 
 class SolarMaintenanceSwitch(BaseSwitchEntity):
     _attr_name = "Beschattungsautomatik pausieren"
-    _attr_unique_id = f"{DOMAIN}_automatic_paused"
     _attr_icon = "mdi:pause-circle-outline"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         super().__init__(hass, entry, "maintenance_mode", False)
+        self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_automatic_paused"
 
 
 class SolarDebugSwitch(BaseSwitchEntity):
     _attr_name = "Debug Mode"
-    _attr_unique_id = f"{DOMAIN}_debug_mode"
     _attr_icon = "mdi:bug"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         super().__init__(hass, entry, "debug_mode", False)
+        self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_debug_mode"
 
 
 class SolarScenarioBSwitch(BaseSwitchEntity):
     _attr_name = "Scenario B Enabled"
-    _attr_unique_id = f"{DOMAIN}_scenario_b_enabled"
     _attr_icon = "mdi:weather-cloudy"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         super().__init__(hass, entry, "scenario_b_enabled", False)
+        self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_scenario_b_enabled"
 
 
 class SolarScenarioCSwitch(BaseSwitchEntity):
     _attr_name = "Scenario C Enabled"
-    _attr_unique_id = f"{DOMAIN}_scenario_c_enabled"
     _attr_icon = "mdi:white-balance-sunny"
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         super().__init__(hass, entry, "scenario_c_enabled", False)
+        self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_scenario_c_enabled"

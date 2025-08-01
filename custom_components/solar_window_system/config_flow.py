@@ -1,12 +1,11 @@
-# coding: utf-8
-"""Config flow for Solar Window System."""
-
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, CONF_ENTRY_TYPE
+from .const import CONF_WINDOW_NAME
 
 
 def _get_schema(options: dict | None = None) -> vol.Schema:
@@ -67,7 +66,8 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        """Get the options flow for this handler."""
+        if config_entry.data.get(CONF_ENTRY_TYPE) == "window":
+            return SolarWindowOptionsFlowWindow(config_entry)
         return SolarWindowOptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
@@ -214,7 +214,7 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="add_window",
             data_schema=vol.Schema(
                 {
-                    vol.Required("name"): str,
+                    vol.Required(CONF_WINDOW_NAME): str,
                     vol.Required("azimuth"): vol.All(
                         vol.Coerce(float), vol.Range(min=0, max=360)
                     ),
@@ -356,12 +356,10 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
     """Handles options flow for the component."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Initialize the options flow."""
         self.config_entry = config_entry
         self._user_input = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None):
-        """Manage the first step of the options flow."""
         if user_input is not None:
             self._user_input.update(user_input)
             return await self.async_step_thresholds()
@@ -371,44 +369,45 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_thresholds(self, user_input=None):
-        """Manage the thresholds step of the options flow."""
         if user_input is not None:
             self._user_input.update(user_input)
             return await self.async_step_scenarios()
 
         options = self._user_input
-        threshold_schema = vol.Schema(
-            {
-                vol.Required(
-                    "g_value", default=options.get("g_value", 0.5)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=0.9)),
-                vol.Required(
-                    "frame_width", default=options.get("frame_width", 0.125)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
-                vol.Required("tilt", default=options.get("tilt", 90)): vol.All(
-                    vol.Coerce(float), vol.Range(min=0, max=90)
-                ),
-                vol.Required(
-                    "diffuse_factor", default=options.get("diffuse_factor", 0.15)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.5)),
-                vol.Required(
-                    "threshold_direct", default=options.get("threshold_direct", 200)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
-                vol.Required(
-                    "threshold_diffuse", default=options.get("threshold_diffuse", 150)
-                ): vol.All(vol.Coerce(float), vol.Range(min=0)),
-                vol.Required(
-                    "indoor_base", default=options.get("indoor_base", 23.0)
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
-                    "outdoor_base", default=options.get("outdoor_base", 19.5)
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-            }
+        return self.async_show_form(
+            step_id="thresholds",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "g_value", default=options.get("g_value", 0.5)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=0.9)),
+                    vol.Required(
+                        "frame_width", default=options.get("frame_width", 0.125)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
+                    vol.Required("tilt", default=options.get("tilt", 90)): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=90)
+                    ),
+                    vol.Required(
+                        "diffuse_factor", default=options.get("diffuse_factor", 0.15)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.5)),
+                    vol.Required(
+                        "threshold_direct", default=options.get("threshold_direct", 200)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Required(
+                        "threshold_diffuse",
+                        default=options.get("threshold_diffuse", 150),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Required(
+                        "indoor_base", default=options.get("indoor_base", 23.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
+                    vol.Required(
+                        "outdoor_base", default=options.get("outdoor_base", 19.5)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
+                }
+            ),
         )
-        return self.async_show_form(step_id="thresholds", data_schema=threshold_schema)
 
     async def async_step_scenarios(self, user_input=None):
-        """Manage the scenarios step of the options flow."""
         if user_input is not None:
             self._user_input.update(user_input)
 
@@ -423,34 +422,120 @@ class SolarWindowOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=self._user_input)
 
         options = self._user_input
-        scenarios_schema = vol.Schema(
-            {
-                vol.Required(
-                    "scenario_b_temp_indoor_threshold",
-                    default=options.get("scenario_b_temp_indoor_threshold", 23.5),
-                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
-                vol.Required(
-                    "scenario_b_temp_outdoor_threshold",
-                    default=options.get("scenario_b_temp_outdoor_threshold", 25.5),
-                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
-                vol.Required(
-                    "scenario_c_temp_forecast_threshold",
-                    default=options.get("scenario_c_temp_forecast_threshold", 28.5),
-                ): vol.All(vol.Coerce(float), vol.Range(min=20, max=40)),
-                vol.Required(
-                    "scenario_c_temp_indoor_threshold",
-                    default=options.get("scenario_c_temp_indoor_threshold", 21.5),
-                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
-                vol.Required(
-                    "scenario_c_temp_outdoor_threshold",
-                    default=options.get("scenario_c_temp_outdoor_threshold", 24.0),
-                ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
-                vol.Required(
-                    "scenario_c_start_hour",
-                    default=options.get("scenario_c_start_hour", 9),
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
-            }
-        )
         return self.async_show_form(
-            step_id="scenarios", data_schema=scenarios_schema
+            step_id="scenarios",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "scenario_b_temp_indoor_threshold",
+                        default=options.get("scenario_b_temp_indoor_threshold", 23.5),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
+                    vol.Required(
+                        "scenario_b_temp_outdoor_threshold",
+                        default=options.get("scenario_b_temp_outdoor_threshold", 25.5),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
+                    vol.Required(
+                        "scenario_c_temp_forecast_threshold",
+                        default=options.get("scenario_c_temp_forecast_threshold", 28.5),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=20, max=40)),
+                    vol.Required(
+                        "scenario_c_temp_indoor_threshold",
+                        default=options.get("scenario_c_temp_indoor_threshold", 21.5),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=30)),
+                    vol.Required(
+                        "scenario_c_temp_outdoor_threshold",
+                        default=options.get("scenario_c_temp_outdoor_threshold", 24.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=18, max=35)),
+                    vol.Required(
+                        "scenario_c_start_hour",
+                        default=options.get("scenario_c_start_hour", 9),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+                }
+            ),
+        )
+
+
+class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
+    """Handle options flow for a window entry."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry):
+        self.config_entry = config_entry
+        self._user_input = dict(config_entry.data)
+
+    async def async_step_init(self, user_input=None):
+        errors = {}
+
+        if user_input is not None:
+            if user_input["azimuth_min"] > user_input["azimuth"]:
+                errors["azimuth_min"] = "min_greater_than_azimuth"
+            if user_input["azimuth_max"] < user_input["azimuth"]:
+                errors["azimuth_max"] = "max_less_than_azimuth"
+            if user_input["azimuth_min"] > user_input["azimuth_max"]:
+                errors["azimuth_min"] = "min_greater_than_max"
+                errors["azimuth_max"] = "max_less_than_min"
+            if user_input["elevation_min"] > user_input["elevation_max"]:
+                errors["elevation_min"] = "min_greater_than_max"
+                errors["elevation_max"] = "max_less_than_min"
+
+            if not errors:
+                self._user_input.update(user_input)
+                return self.async_create_entry(
+                    title=self._user_input["name"],
+                    data=self._user_input,
+                    options={},
+                )
+
+        defaults = self._user_input
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("name", default=defaults.get("name", "")): str,
+                    vol.Required(
+                        "azimuth", default=defaults.get("azimuth", 180.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=360)),
+                    vol.Required(
+                        "azimuth_min", default=defaults.get("azimuth_min", -20.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
+                    vol.Required(
+                        "azimuth_max", default=defaults.get("azimuth_max", 20.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
+                    vol.Required(
+                        "elevation_min", default=defaults.get("elevation_min", 0.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                    vol.Required(
+                        "elevation_max", default=defaults.get("elevation_max", 90.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                    vol.Required("width", default=defaults.get("width", 1.0)): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.1, max=10)
+                    ),
+                    vol.Required(
+                        "height", default=defaults.get("height", 1.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=10)),
+                    vol.Required(
+                        "shadow_depth", default=defaults.get("shadow_depth", 0.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                    vol.Required(
+                        "shadow_offset", default=defaults.get("shadow_offset", 0.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                    vol.Required(
+                        "room_temp_entity", default=defaults.get("room_temp_entity", "")
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain="sensor", device_class="temperature"
+                        )
+                    ),
+                    vol.Optional("tilt", default=defaults.get("tilt")): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=90)
+                    ),
+                    vol.Optional("g_value", default=defaults.get("g_value")): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.1, max=0.9)
+                    ),
+                    vol.Optional(
+                        "frame_width", default=defaults.get("frame_width")
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
+                }
+            ),
+            errors=errors,
         )

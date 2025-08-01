@@ -10,7 +10,7 @@ ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
 
 # New Constants for Config Flow
 CONF_ENTRY_TYPE = "entry_type"
-CONF_WINDOW_NAME = "window_name"
+CONF_WINDOW_NAME = "name"
 CONF_AZIMUTH = "azimuth"
 CONF_AZIMUTH_RANGE = "azimuth_range"
 CONF_ELEVATION_RANGE = "elevation_range"
