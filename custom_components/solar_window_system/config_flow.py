@@ -100,7 +100,7 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_thresholds()
 
         return self.async_show_form(
-            step_id="global",
+            step_id="user",
             data_schema=_get_schema(self._user_input),
             last_step="user",
         )
@@ -140,7 +140,7 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                 }
             ),
-            last_step="global",
+            last_step="user",
         )
 
     async def async_step_scenarios(self, user_input=None):
@@ -470,6 +470,10 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
         self.options = dict(config_entry.data)
 
     async def async_step_init(self, user_input=None):
+        """Entry point for the options flow."""
+        return await self.async_step_window_init(user_input)
+
+    async def async_step_window_init(self, user_input=None):
         """Manage the options for a window."""
         # Find the global configuration entry
         global_entry = next(
@@ -574,9 +578,15 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(
-            step_id="init",
+            step_id="window_init",
             data_schema=self.add_suggested_values_to_schema(schema, options),
             errors=errors,
+            description_placeholders={
+                "tilt": str(global_defaults.get("tilt", 90)),
+                "g_value": str(global_defaults.get("g_value", 0.5)),
+                "frame_width": str(global_defaults.get("frame_width", 0.125)),
+                "name": self.config_entry.data.get("name", "Unknown Window"),
+            },
         )
 
     async def async_step_window_overrides(self, user_input=None):
@@ -621,17 +631,29 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Optional("diffuse_factor"): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.5)),
-                vol.Optional("threshold_direct"): vol.All(vol.Coerce(float), vol.Range(min=0)),
-                vol.Optional("threshold_diffuse"): vol.All(vol.Coerce(float), vol.Range(min=0)),
-                vol.Optional("indoor_base"): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Optional("outdoor_base"): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
+                vol.Optional("diffuse_factor"): vol.All(
+                    vol.Coerce(float), vol.Range(min=0.05, max=0.5)
+                ),
+                vol.Optional("threshold_direct"): vol.All(
+                    vol.Coerce(float), vol.Range(min=0)
+                ),
+                vol.Optional("threshold_diffuse"): vol.All(
+                    vol.Coerce(float), vol.Range(min=0)
+                ),
+                vol.Optional("indoor_base"): vol.All(
+                    vol.Coerce(float), vol.Range(min=10, max=30)
+                ),
+                vol.Optional("outdoor_base"): vol.All(
+                    vol.Coerce(float), vol.Range(min=10, max=30)
+                ),
                 vol.Optional("scenario_b_temp_indoor_offset"): vol.Coerce(float),
                 vol.Optional("scenario_b_temp_outdoor_offset"): vol.Coerce(float),
                 vol.Optional("scenario_c_temp_forecast_threshold"): vol.Coerce(float),
                 vol.Optional("scenario_c_temp_indoor_threshold"): vol.Coerce(float),
                 vol.Optional("scenario_c_temp_outdoor_threshold"): vol.Coerce(float),
-                vol.Optional("scenario_c_start_hour"): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+                vol.Optional("scenario_c_start_hour"): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=23)
+                ),
             }
         )
 

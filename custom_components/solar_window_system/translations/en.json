@@ -2,6 +2,13 @@
     "config": {
         "step": {
             "user": {
+                "title": "Solar Window System Setup",
+                "description": "Choose the type of configuration you want to set up.",
+                "data": {
+                    "entry_type": "Configuration Type"
+                }
+            },
+            "global": {
                 "title": "Solar Window System",
                 "description": "Set up the basic parameters for the Solar Window System. All settings can be changed later.",
                 "data": {
@@ -64,6 +71,14 @@
                     "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
                     "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
                     "scenario_c_start_hour": "Scenario C: Start Hour"
+                }
+            },
+            "add_group": {
+                "title": "Add a new Group",
+                "description": "Set up a new group for your windows.",
+                "data": {
+                    "name": "Group Name",
+                    "windows": "Windows in this group"
                 }
             }
         },
