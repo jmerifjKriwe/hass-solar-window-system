@@ -1,10 +1,12 @@
 """Global fixtures for solar_window_system integration."""
+
 import pytest
 from unittest.mock import patch
 
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 
 from custom_components.solar_window_system.const import DOMAIN, CONF_ENTRY_TYPE
 from tests.mocks import MOCK_GLOBAL_INPUT, MOCK_WINDOW_INPUT, MOCK_GROUP_INPUT
