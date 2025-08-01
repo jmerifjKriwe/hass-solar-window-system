@@ -20,6 +20,26 @@
                     "forecast_temperature_sensor": "A sensor that provides the temperature forecast for the day. Used for advanced scenarios."
                 }
             },
+            "add_window": {
+                "title": "Add a new Window",
+                "description": "Set up the basic parameters for your new window. The values for tilt, g-value and frame-width are taken from the global configuration, but can be overwritten here.",
+                "data": {
+                    "name": "Name",
+                    "azimuth": "Azimuth",
+                    "azimuth_min": "Min. Azimuth",
+                    "azimuth_max": "Max. Azimuth",
+                    "elevation_min": "Min. Elevation",
+                    "elevation_max": "Max. Elevation",
+                    "width": "Width",
+                    "height": "Height",
+                    "shadow_depth": "Shadow Depth",
+                    "shadow_offset": "Shadow Offset",
+                    "room_temp_entity": "Room Temperature Sensor",
+                    "tilt": "Window Tilt (default: {tilt})",
+                    "g_value": "g-Value (default: {g_value})",
+                    "frame_width": "Frame Width (default: {frame_width})"
+                }
+            },
             "thresholds": {
                 "title": "Default Thresholds and Physical Properties",
                 "description": "Configure the default thresholds for solar radiation and the physical properties of the windows. These values are used when they are not set on a window or group.",
@@ -94,6 +114,43 @@
                 "title": "Default Scenario Parameters",
                 "description": "Configure the default parameters for the shading scenarios. These values are used when they are not set on a window or group.",
                 "data": {
+                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
+                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
+                    "scenario_c_start_hour": "Scenario C: Start Hour"
+                }
+            },
+            "window_init": {
+                "title": "Window Configuration for '{name}'",
+                "description": "Adjust the basic parameters for your window. The values for tilt, g-value and frame-width are taken from the global configuration, but can be overwritten here.",
+                "data": {
+                    "name": "Name",
+                    "azimuth": "Azimuth",
+                    "azimuth_min": "Min. Azimuth",
+                    "azimuth_max": "Max. Azimuth",
+                    "elevation_min": "Min. Elevation",
+                    "elevation_max": "Max. Elevation",
+                    "width": "Width",
+                    "height": "Height",
+                    "shadow_depth": "Shadow Depth",
+                    "shadow_offset": "Shadow Offset",
+                    "room_temp_entity": "Room Temperature Sensor",
+                    "tilt": "Window Tilt (default: {tilt})",
+                    "g_value": "g-Value (default: {g_value})",
+                    "frame_width": "Frame Width (default: {frame_width})"
+                }
+            },
+            "window_overrides": {
+                "title": "Window Specific Overrides for '{name}'",
+                "description": "Here you can define specific overrides for the global values. If a value is not set, the global default is used.",
+                "data": {
+                    "diffuse_factor": "Diffuse Factor",
+                    "threshold_direct": "Direct Radiation Threshold",
+                    "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "indoor_base": "Base Indoor Temperature",
+                    "outdoor_base": "Base Outdoor Temperature",
                     "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
                     "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
                     "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
