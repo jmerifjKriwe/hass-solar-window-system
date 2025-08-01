@@ -273,12 +273,12 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         defaults = global_entry.options if global_entry else {}
 
         if user_input is not None:
-            clean = {
-                k: v
-                for k, v in user_input.items()
-                if v is not None and defaults.get(k) != v
-            }
-            self._user_input.update(clean)
+            self._user_input.update(user_input)
+            # Remove defaults
+            for key in list(self._user_input.keys()):
+                if self._user_input[key] == defaults.get(key) or self._user_input[key] is None:
+                    self._user_input.pop(key)
+
             return self.async_create_entry(
                 title=self._user_input["name"], data=self._user_input, options={}
             )
@@ -459,83 +459,93 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
     """Handle options flow for a window entry."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry):
+        """Initialize the options flow."""
         self.config_entry = config_entry
-        self._user_input = dict(config_entry.data)
 
     async def async_step_init(self, user_input=None):
+        """Manage the options for a window."""
+        # Find the global configuration entry
+        global_entry = next(
+            (
+                entry
+                for entry in self.hass.config_entries.async_entries(DOMAIN)
+                if entry.data.get(CONF_ENTRY_TYPE) == "global"
+            ),
+            None,
+        )
+        global_defaults = global_entry.options if global_entry else {}
+        current_config = self.config_entry.data
         errors = {}
 
         if user_input is not None:
-            if user_input["azimuth_min"] > user_input["azimuth"]:
+            # Validation logic
+            azimuth = user_input.get("azimuth")
+            azimuth_min = user_input.get("azimuth_min")
+            azimuth_max = user_input.get("azimuth_max")
+            elevation_min = user_input.get("elevation_min")
+            elevation_max = user_input.get("elevation_max")
+
+            if azimuth_min is not None and azimuth is not None and azimuth_min > azimuth:
                 errors["azimuth_min"] = "min_greater_than_azimuth"
-            if user_input["azimuth_max"] < user_input["azimuth"]:
+            if azimuth_max is not None and azimuth is not None and azimuth_max < azimuth:
                 errors["azimuth_max"] = "max_less_than_azimuth"
-            if user_input["azimuth_min"] > user_input["azimuth_max"]:
+            if azimuth_min is not None and azimuth_max is not None and azimuth_min > azimuth_max:
                 errors["azimuth_min"] = "min_greater_than_max"
                 errors["azimuth_max"] = "max_less_than_min"
-            if user_input["elevation_min"] > user_input["elevation_max"]:
+            if elevation_min is not None and elevation_max is not None and elevation_min > elevation_max:
                 errors["elevation_min"] = "min_greater_than_max"
                 errors["elevation_max"] = "max_less_than_min"
 
             if not errors:
-                self._user_input.update(user_input)
-                return self.async_create_entry(
-                    title=self._user_input["name"],
-                    data=self._user_input,
-                    options={},
-                )
+                # Start with the existing data and update with user input
+                new_data = current_config.copy()
+                new_data.update(user_input)
 
-        defaults = self._user_input
+                # Remove keys that are same as global or are empty/None
+                for key in list(new_data.keys()):
+                    if key in [CONF_ENTRY_TYPE, CONF_WINDOW_NAME]:
+                        continue
+                    
+                    if key in global_defaults and new_data.get(key) == global_defaults[key]:
+                        del new_data[key]
+                    elif new_data.get(key) in [None, ""]:
+                        del new_data[key]
+
+                # Update the config entry with the new data
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=new_data
+                )
+                # Reload the integration to apply changes
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                # Finish the flow
+                return self.async_create_entry(title="", data={})
+
+        # Merge global defaults with current window config to pre-fill the form
+        options = {**global_defaults, **current_config}
+        
+        schema = vol.Schema(
+            {
+                vol.Required("name"): str,
+                vol.Required("azimuth"): vol.All(vol.Coerce(float), vol.Range(min=0, max=360)),
+                vol.Optional("azimuth_min"): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
+                vol.Optional("azimuth_max"): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
+                vol.Optional("elevation_min"): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                vol.Optional("elevation_max"): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                vol.Required("width"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=10)),
+                vol.Required("height"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=10)),
+                vol.Optional("shadow_depth"): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                vol.Optional("shadow_offset"): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                vol.Required("room_temp_entity"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+                ),
+                vol.Optional("tilt"): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                vol.Optional("g_value"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=0.9)),
+                vol.Optional("frame_width"): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
+            }
+        )
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("name", default=defaults.get("name", "")): str,
-                    vol.Required(
-                        "azimuth", default=defaults.get("azimuth", 180.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=360)),
-                    vol.Required(
-                        "azimuth_min", default=defaults.get("azimuth_min", -20.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
-                    vol.Required(
-                        "azimuth_max", default=defaults.get("azimuth_max", 20.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=-180, max=180)),
-                    vol.Required(
-                        "elevation_min", default=defaults.get("elevation_min", 0.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
-                    vol.Required(
-                        "elevation_max", default=defaults.get("elevation_max", 90.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
-                    vol.Required("width", default=defaults.get("width", 1.0)): vol.All(
-                        vol.Coerce(float), vol.Range(min=0.1, max=10)
-                    ),
-                    vol.Required(
-                        "height", default=defaults.get("height", 1.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=10)),
-                    vol.Required(
-                        "shadow_depth", default=defaults.get("shadow_depth", 0.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
-                    vol.Required(
-                        "shadow_offset", default=defaults.get("shadow_offset", 0.0)
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
-                    vol.Required(
-                        "room_temp_entity", default=defaults.get("room_temp_entity", "")
-                    ): selector.EntitySelector(
-                        selector.EntitySelectorConfig(
-                            domain="sensor", device_class="temperature"
-                        )
-                    ),
-                    vol.Optional("tilt", default=defaults.get("tilt")): vol.All(
-                        vol.Coerce(float), vol.Range(min=0, max=90)
-                    ),
-                    vol.Optional("g_value", default=defaults.get("g_value")): vol.All(
-                        vol.Coerce(float), vol.Range(min=0.1, max=0.9)
-                    ),
-                    vol.Optional(
-                        "frame_width", default=defaults.get("frame_width")
-                    ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
-                }
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, options),
             errors=errors,
         )
