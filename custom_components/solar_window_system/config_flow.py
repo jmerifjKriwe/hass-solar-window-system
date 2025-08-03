@@ -2,6 +2,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_ENTRY_TYPE, CONF_WINDOW_NAME, DOMAIN
 
@@ -68,60 +69,47 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         self.window_flow = config_flow_window.SolarWindowConfigFlowWindow(self)
 
+    async def async_step_user(self, user_input=None):
+        # Check if a global entry already exists
+        global_entry = next(
+            (
+                entry
+                for entry in self.hass.config_entries.async_entries(DOMAIN)
+                if entry.data.get(CONF_ENTRY_TYPE) == "global"
+            ),
+            None,
+        )
+
+        if not global_entry:
+            # If no global entry, only allow creating a global entry
+            return await self.async_step_global_init()
+
+        # If a global entry exists, allow creating a window or a group
+        if user_input is not None:
+            entry_type = user_input.get(CONF_ENTRY_TYPE)
+            if entry_type == "window":
+                return await self.async_step_window_init()
+            elif entry_type == "group":
+                return await self.async_step_group_init()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ENTRY_TYPE): vol.In(["window", "group"]),
+                }
+            ),
+            errors={},
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         if config_entry.data.get(CONF_ENTRY_TYPE) == "window":
             return SolarWindowOptionsFlowWindow(config_entry)
+        if config_entry.data.get(CONF_ENTRY_TYPE) == "group":
+            return SolarWindowOptionsFlowGroup(config_entry)
         return SolarWindowOptionsFlowHandler(config_entry)
-
-    async def async_step_user(self, user_input=None):
-        """
-        Handle the initial step of the config flow.
-
-        Allows selection of entry type.
-        """
-        global_config_exists = any(
-            entry.data.get(CONF_ENTRY_TYPE) == "global"
-            for entry in self._async_current_entries()
-        )
-
-        if user_input is not None:
-            entry_type = user_input[CONF_ENTRY_TYPE]
-            if entry_type == "global":
-                if global_config_exists:
-                    return self.async_abort(
-                        reason="already_configured"
-                    )  # konsistenter Abbruchgrund
-                return await self.async_step_global_init()
-            if entry_type == "window":
-                return await self.async_step_window_init()
-            if entry_type == "group":
-                return await self.async_step_group_init()
-
-        if not global_config_exists:
-            options = [{"value": "global", "label": "Global Configuration"}]
-        else:
-            options = [
-                {"value": "window", "label": "Window Configuration"},
-                {"value": "group", "label": "Group Configuration"},
-            ]
-
-        # Convert the options list to a simple dict for vol.In to use
-        option_values = [option["value"] for option in options]
-        option_labels = {option["value"]: option["label"] for option in options}
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_ENTRY_TYPE): vol.In(option_values)}
-            ),
-            description_placeholders={
-                "options": ", ".join(
-                    [f"{value} ({option_labels[value]})" for value in option_values]
-                )
-            },
-        )
 
     async def async_step_global_init(self, user_input=None):
         """Handle the global init step. Only check for required fields, rely on schema for validation."""
@@ -270,10 +258,8 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "diffuse_factor",
                 "indoor_base",
                 "outdoor_base",
-                "scenario_b_enabled",
                 "scenario_b_temp_indoor_threshold",
                 "scenario_b_temp_outdoor_threshold",
-                "scenario_c_enabled",
                 "scenario_c_temp_forecast_threshold",
                 "scenario_c_temp_indoor_threshold",
                 "scenario_c_temp_outdoor_threshold",
@@ -304,7 +290,6 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional("outdoor_base"): selector.NumberSelector(
                     {"min": 10, "max": 30, "mode": "box", "step": 0.1}
                 ),
-                vol.Optional("scenario_b_enabled"): selector.BooleanSelector(),
                 vol.Optional(
                     "scenario_b_temp_indoor_threshold"
                 ): selector.NumberSelector(
@@ -315,7 +300,6 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): selector.NumberSelector(
                     {"min": 18, "max": 35, "mode": "box", "step": 0.1}
                 ),
-                vol.Optional("scenario_c_enabled"): selector.BooleanSelector(),
                 vol.Optional(
                     "scenario_c_temp_forecast_threshold"
                 ): selector.NumberSelector(
@@ -339,6 +323,77 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="group_init",
             data_schema=schema,
+            errors=errors,
+            last_step=True,
+        )
+
+
+class SolarWindowOptionsFlowGroup(config_entries.OptionsFlow):
+    """Handles options flow for a group entry."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize the options flow for a group entry."""
+        self.config_entry = config_entry
+        self.options = dict(config_entry.options)
+
+    async def async_step_init(self, user_input=None):
+        """Entry point for the group options flow."""
+        errors = {}
+        if user_input is not None:
+            # Update the config entry's name and title if changed
+            new_name = user_input.get("name") or self.config_entry.data.get("name")
+            if new_name != self.config_entry.data.get("name"):
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={**self.config_entry.data, "name": new_name},
+                    title=new_name,
+                )
+                # Update device name in device registry
+                device_registry = dr.async_get(self.hass)
+                device = device_registry.async_get_device(
+                    {(DOMAIN, self.config_entry.entry_id)}
+                )
+                if device:
+                    device_registry.async_update_device(device.id, name=new_name)
+            self.options.update(user_input)
+            return self.async_create_entry(title="", data=self.options)
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "name", default=self.config_entry.data.get("name", "")
+                ): str,
+                vol.Optional("threshold_direct"): vol.All(
+                    vol.Coerce(float), vol.Range(min=0)
+                ),
+                vol.Optional("threshold_diffuse"): vol.All(
+                    vol.Coerce(float), vol.Range(min=0)
+                ),
+                vol.Optional("diffuse_factor"): vol.All(
+                    vol.Coerce(float), vol.Range(min=0.05, max=0.5)
+                ),
+                vol.Optional("indoor_base"): vol.All(
+                    vol.Coerce(float), vol.Range(min=10, max=30)
+                ),
+                vol.Optional("outdoor_base"): vol.All(
+                    vol.Coerce(float), vol.Range(min=10, max=30)
+                ),
+                vol.Optional("scenario_b_temp_indoor_threshold"): vol.Coerce(float),
+                vol.Optional("scenario_b_temp_outdoor_threshold"): vol.Coerce(float),
+                vol.Optional("scenario_c_temp_forecast_threshold"): vol.Coerce(float),
+                vol.Optional("scenario_c_temp_indoor_threshold"): vol.Coerce(float),
+                vol.Optional("scenario_c_temp_outdoor_threshold"): vol.Coerce(float),
+                vol.Optional("scenario_c_start_hour"): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=23)
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(schema, self.options)
+            if hasattr(self, "add_suggested_values_to_schema")
+            else schema,
             errors=errors,
             last_step=True,
         )
@@ -575,7 +630,9 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                 )
                 self._group_labels = group_labels
             else:
-                schema_dict[vol.Optional("group", default=None)] = vol.In(group_names)
+                schema_dict[vol.Optional("group", default=None)] = vol.In(
+                    [None] + group_names
+                )
                 self._group_labels = {}
         else:
             schema_dict[vol.Optional("group")] = str
@@ -637,9 +694,10 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                 ) or self.options.get(key) in [None, ""]:
                     del self.options[key]
 
-            # Update the config entry with the new data
+            # Update the config entry with the new data and update the title if name changed
+            new_title = self.options.get("name") or self.config_entry.title
             self.hass.config_entries.async_update_entry(
-                self.config_entry, data=self.options
+                self.config_entry, data=self.options, title=new_title
             )
             # Reload the integration to apply changes
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
@@ -666,10 +724,8 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                 vol.Optional("outdoor_base"): vol.All(
                     vol.Coerce(float), vol.Range(min=10, max=30)
                 ),
-                vol.Optional("scenario_b_enabled"): selector.BooleanSelector(),
                 vol.Optional("scenario_b_temp_indoor_threshold"): vol.Coerce(float),
                 vol.Optional("scenario_b_temp_outdoor_threshold"): vol.Coerce(float),
-                vol.Optional("scenario_c_enabled"): selector.BooleanSelector(),
                 vol.Optional("scenario_c_temp_forecast_threshold"): vol.Coerce(float),
                 vol.Optional("scenario_c_temp_indoor_threshold"): vol.Coerce(float),
                 vol.Optional("scenario_c_temp_outdoor_threshold"): vol.Coerce(float),

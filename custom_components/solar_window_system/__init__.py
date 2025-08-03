@@ -56,7 +56,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Window entry %s registered as a device.", entry.entry_id)
 
     elif entry_type == "group":
-        _LOGGER.info("Group entry %s setup (no specific actions yet).", entry.entry_id)
+        device_registry = async_get_device_registry(hass)
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.data.get("name", "Virtual Group"),
+            model="Virtual Group",
+            manufacturer="Example GmbH",
+        )
+        _LOGGER.info("Group entry %s registered as a device.", entry.entry_id)
 
     return True
 

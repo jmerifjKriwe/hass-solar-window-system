@@ -30,7 +30,15 @@ class SolarWindowSystemDataEntity(CoordinatorEntity[SolarWindowDataUpdateCoordin
                 manufacturer="Example GmbH",
                 configuration_url=f"/config/integrations/integration/{DOMAIN}",
             )
-        # For global or group entries, return a generic device info
+        if entry_type == "group":
+            return DeviceInfo(
+                identifiers={(DOMAIN, self.entry.entry_id)},
+                name=self.entry.data.get("name", "Virtual Group"),
+                model="Virtual Group",
+                manufacturer="Example GmbH",
+                configuration_url=f"/config/integrations/integration/{DOMAIN}",
+            )
+        # For global or other entries, return a generic device info
         return DeviceInfo(
             identifiers={(DOMAIN, "solar_window_system_global")},
             name="Solar Window System",
@@ -45,7 +53,7 @@ class SolarWindowSystemConfigEntity:
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the config entity."""
         self.hass = hass
         self.entry = entry
@@ -59,10 +67,8 @@ class SolarWindowSystemConfigEntity:
                 identifiers={(DOMAIN, "solar_window_system_global")},
                 name="Solar Window System",
                 manufacturer="Custom Integration",
-                # configuration_url=f"/config/integrations/config_entry/{self.entry.entry_id}",
             )
         # For other entry types, return a generic device info
         return DeviceInfo(
             identifiers={(DOMAIN, self.entry.entry_id)},
-            # configuration_url=f"/config/integrations/config_entry/{self.entry.entry_id}",
         )

@@ -5,7 +5,10 @@
                 "title": "Solar Window System Setup",
                 "description": "Choose the type of configuration you want to set up.",
                 "data": {
-                    "entry_type": "Configuration Type"
+                    "entry_type": "Configuration Type",
+                    "global": "Global Configuration",
+                    "window": "Window Configuration",
+                    "group": "Group Configuration"
                 }
             },
             "global_init": {
@@ -91,12 +94,22 @@
                     "scenario_c_start_hour": "Scenario C: Start Hour"
                 }
             },
-            "add_group": {
+            "group_init": {
                 "title": "Add a new Group",
-                "description": "Set up a new group for your windows.",
+                "description": "Set up a new group for your windows. You can override global settings here.",
                 "data": {
                     "name": "Group Name",
-                    "windows": "Windows in this group"
+                    "threshold_direct": "Direct Radiation Threshold",
+                    "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "diffuse_factor": "Diffuse Factor",
+                    "indoor_base": "Base Indoor Temperature",
+                    "outdoor_base": "Base Outdoor Temperature",
+                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
+                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
+                    "scenario_c_start_hour": "Scenario C: Start Hour"
                 }
             }
         },
@@ -138,7 +151,7 @@
                     "tilt": "Window Tilt",
                     "diffuse_factor": "Diffuse Factor",
                     "threshold_direct": "Direct Radiation Threshold",
-                    "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "diffuse_threshold": "Diffuse Radiation Threshold",
                     "indoor_base": "Base Indoor Temperature",
                     "outdoor_base": "Base Outdoor Temperature"
                 }
@@ -172,7 +185,8 @@
                     "room_temp_entity": "Room Temperature Sensor",
                     "tilt": "Window Tilt (default: {tilt})",
                     "g_value": "g-Value (default: {g_value})",
-                    "frame_width": "Frame Width (default: {frame_width})"
+                    "frame_width": "Frame Width (default: {frame_width})",
+                    "group": "Group"
                 }
             },
             "window_overrides": {
@@ -182,6 +196,24 @@
                     "diffuse_factor": "Diffuse Factor",
                     "threshold_direct": "Direct Radiation Threshold",
                     "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "indoor_base": "Base Indoor Temperature",
+                    "outdoor_base": "Base Outdoor Temperature",
+                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
+                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
+                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
+                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
+                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
+                    "scenario_c_start_hour": "Scenario C: Start Hour"
+                }
+            },
+            "group_init": {
+                "title": "Group Configuration for '{name}'",
+                "description": "Adjust the settings for your group. You can override global settings here.",
+                "data": {
+                    "name": "Group Name",
+                    "threshold_direct": "Direct Radiation Threshold",
+                    "threshold_diffuse": "Diffuse Radiation Threshold",
+                    "diffuse_factor": "Diffuse Factor",
                     "indoor_base": "Base Indoor Temperature",
                     "outdoor_base": "Base Outdoor Temperature",
                     "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
