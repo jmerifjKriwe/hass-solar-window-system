@@ -622,17 +622,18 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
         if group_names:
             if current_group:
                 # Wenn eine Gruppe zugeordnet ist, biete die Option zum Entfernen an
-                group_in_values = [None] + group_names
-                group_labels = {None: no_group_label}
+                # sowie alle verfügbaren Gruppen
+                group_choices = {name: name for name in group_names}
+                group_choices[None] = no_group_label
                 default_group = current_group if current_group in group_names else None
                 schema_dict[vol.Optional("group", default=default_group)] = vol.In(
-                    group_in_values
+                    group_choices
                 )
-                self._group_labels = group_labels
+                self._group_labels = {None: no_group_label}
             else:
-                schema_dict[vol.Optional("group", default=None)] = vol.In(
-                    [None] + group_names
-                )
+                # Wenn keine Gruppe zugeordnet ist, nur die vorhandenen Gruppen anzeigen
+                # (ohne None Option)
+                schema_dict[vol.Optional("group")] = vol.In(group_names)
                 self._group_labels = {}
         else:
             schema_dict[vol.Optional("group")] = str
@@ -672,14 +673,16 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
         global_defaults = global_entry.options if global_entry else {}
 
         if user_input is not None:
-            # Gruppenauswahl: Nur wenn explizit None gewählt wurde, entferne die Gruppenzuordnung
+            # Gruppenauswahl: Nur wenn explizit None gewählt wurde,
+            # entferne die Gruppenzuordnung
             if "group" in user_input:
                 if user_input["group"] is None:
                     self.options.pop("group", None)
                     user_input = {k: v for k, v in user_input.items() if k != "group"}
                 else:
                     self.options["group"] = user_input["group"]
-                # Entferne group aus user_input, damit es nicht nochmal überschrieben wird
+                # Entferne group aus user_input, damit es nicht nochmal
+                # überschrieben wird
                 user_input = {k: v for k, v in user_input.items() if k != "group"}
             self.options.update(user_input)
 
@@ -694,7 +697,8 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                 ) or self.options.get(key) in [None, ""]:
                     del self.options[key]
 
-            # Update the config entry with the new data and update the title if name changed
+            # Update the config entry with the new data and update
+            # the title if name changed
             new_title = self.options.get("name") or self.config_entry.title
             self.hass.config_entries.async_update_entry(
                 self.config_entry, data=self.options, title=new_title

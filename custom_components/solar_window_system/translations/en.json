@@ -186,7 +186,8 @@
                     "tilt": "Window Tilt (default: {tilt})",
                     "g_value": "g-Value (default: {g_value})",
                     "frame_width": "Frame Width (default: {frame_width})",
-                    "group": "Group"
+                    "group": "Group",
+                    "no_group": "No group assigned"
                 }
             },
             "window_overrides": {
