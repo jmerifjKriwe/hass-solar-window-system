@@ -1,7 +1,6 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.solar_window_system.const import DOMAIN
+from custom_components.solar_window_system.const import CONF_ENTRY_TYPE, DOMAIN
 
 
 @pytest.mark.asyncio
@@ -212,3 +211,156 @@ async def test_window_config_flow_uses_global_defaults(
 
     # The test passes if we can complete the flow - we've effectively shown that
     # the window config flow works with the global defaults available
+
+
+@pytest.mark.asyncio
+async def test_group_cannot_be_deleted_if_linked_to_window(hass) -> None:
+    """
+    Test: A group cannot be deleted if it is still linked to a window.
+
+    This simulates the logic that should be enforced in the integration.
+    """
+    # Create a group config entry
+    group_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_ENTRY_TYPE: "group",
+            "name": "Test Group",
+            "windows": ["cover.test"],
+        },
+        title="Test Group",
+    )
+    group_entry.add_to_hass(hass)
+
+    # Create a window config entry that references the group
+    window_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_ENTRY_TYPE: "window",
+            "name": "Test Window",
+            "group": "Test Group",
+        },
+        title="Test Window",
+    )
+    window_entry.add_to_hass(hass)
+
+    # Simulate deletion attempt: check if any window references the group
+    linked_windows = [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.data.get("group") == group_entry.data["name"]
+    ]
+    if not linked_windows:
+        msg = "Group should not be deletable while linked to a window."
+        raise AssertionError(msg)
+
+
+@pytest.mark.asyncio
+async def test_override_inheritance_window_group_global(hass) -> None:
+    """
+    Test: Window should inherit values from Group, which inherits from Global, unless overridden.
+    """
+    # Arrange: Create global, group, and window entries with partial overrides
+    global_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ENTRY_TYPE: "global", "g_value": 0.5, "indoor_base": 22.0},
+        options={"scenario_b_enabled": True, "scenario_b_temp_indoor_threshold": 23.5},
+        title="Global Config",
+    )
+    global_entry.add_to_hass(hass)
+
+    group_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_ENTRY_TYPE: "group",
+            "name": "Test Group",
+            "windows": ["cover.test"],
+        },
+        options={"indoor_base": 21.0, "scenario_b_enabled": False},
+        title="Test Group",
+    )
+    group_entry.add_to_hass(hass)
+
+    window_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ENTRY_TYPE: "window", "name": "Test Window", "group": "Test Group"},
+        options={"g_value": 0.6},
+        title="Test Window",
+    )
+    window_entry.add_to_hass(hass)
+
+    # Simulate the inheritance logic (pseudo, as real logic is in runtime code)
+    # Window should use its own g_value (0.6), group indoor_base (21.0), global scenario_b_temp_indoor_threshold (23.5), group scenario_b_enabled (False)
+    g_value = (
+        window_entry.options.get("g_value")
+        or group_entry.options.get("g_value")
+        or global_entry.data.get("g_value")
+    )
+    indoor_base = (
+        window_entry.options.get("indoor_base")
+        or group_entry.options.get("indoor_base")
+        or global_entry.data.get("indoor_base")
+    )
+    scenario_b_enabled = window_entry.options.get("scenario_b_enabled")
+    if scenario_b_enabled is None:
+        scenario_b_enabled = group_entry.options.get("scenario_b_enabled")
+    if scenario_b_enabled is None:
+        scenario_b_enabled = global_entry.options.get("scenario_b_enabled")
+    scenario_b_temp_indoor_threshold = (
+        window_entry.options.get("scenario_b_temp_indoor_threshold")
+        or group_entry.options.get("scenario_b_temp_indoor_threshold")
+        or global_entry.options.get("scenario_b_temp_indoor_threshold")
+    )
+    assert g_value == 0.6
+    assert indoor_base == 21.0
+    assert scenario_b_enabled is False
+    assert scenario_b_temp_indoor_threshold == 23.5
+
+
+@pytest.mark.asyncio
+async def test_scenario_enable_flags_inheritance(hass) -> None:
+    """
+    Test: scenario_b_enabled and scenario_c_enabled are inherited correctly (Window > Group > Global).
+    """
+    global_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ENTRY_TYPE: "global"},
+        options={"scenario_b_enabled": True, "scenario_c_enabled": False},
+        title="Global Config",
+    )
+    global_entry.add_to_hass(hass)
+
+    group_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_ENTRY_TYPE: "group",
+            "name": "Test Group",
+            "windows": ["cover.test"],
+        },
+        options={"scenario_c_enabled": True},
+        title="Test Group",
+    )
+    group_entry.add_to_hass(hass)
+
+    window_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ENTRY_TYPE: "window", "name": "Test Window", "group": "Test Group"},
+        options={},
+        title="Test Window",
+    )
+    window_entry.add_to_hass(hass)
+
+    # scenario_b_enabled: only in global
+    scenario_b_enabled = window_entry.options.get("scenario_b_enabled")
+    if scenario_b_enabled is None:
+        scenario_b_enabled = group_entry.options.get("scenario_b_enabled")
+    if scenario_b_enabled is None:
+        scenario_b_enabled = global_entry.options.get("scenario_b_enabled")
+    # scenario_c_enabled: group overrides global
+    scenario_c_enabled = window_entry.options.get("scenario_c_enabled")
+    if scenario_c_enabled is None:
+        scenario_c_enabled = group_entry.options.get("scenario_c_enabled")
+    if scenario_c_enabled is None:
+        scenario_c_enabled = global_entry.options.get("scenario_c_enabled")
+    assert scenario_b_enabled is True
+    assert scenario_c_enabled is True

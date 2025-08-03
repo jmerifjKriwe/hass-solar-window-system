@@ -61,3 +61,4 @@ applyTo: '**'
 - Add new keys to `en.json` whenever UI text is added or changed.
 - Do not remove keys without verifying their usage across the codebase.
 - Use consistent key naming for translations to ensure clarity and maintainability.
+- **All UI texts, including option labels and dropdown values, must be sourced from the translation files and must not be hardcoded in the codebase.**
