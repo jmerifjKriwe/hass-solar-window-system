@@ -47,12 +47,10 @@ applyTo: '**'
 - Keep documentation up-to-date with code changes
 - Use comments to explain complex logic or important decisions
 ## Testing
-- Write unit tests for all new features and bug fixes
-- Use a consistent testing framework (pytest)
-- Use fixtures for setup and teardown of test environments
-- Use mocks for external dependencies in tests
-- Ensure tests cover both happy path and edge cases
-- Ensure automated tests run on every code change via CI/CD pipeline
+- Please refer to the comprehensive testing guide here: 📄 [`tests/TESTING.md`](tests/TESTING.md)
+- Follow the established patterns for config flow and options flow tests
+- Write both positive and negative test cases for all functionality
+- Ensure tests are independent and properly use fixtures from conftest.py
 ## Code Reviews
 - All code changes must go through peer review
 - Provide meaningful descriptions in pull requests

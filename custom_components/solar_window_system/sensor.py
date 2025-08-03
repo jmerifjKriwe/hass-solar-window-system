@@ -1,15 +1,15 @@
 import logging
 
 from homeassistant.components.sensor import (
-    SensorEntity,
     SensorDeviceClass,
+    SensorEntity,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, CONF_ENTRY_TYPE, CONF_WINDOW_NAME
+from .const import CONF_ENTRY_TYPE, CONF_WINDOW_NAME, DOMAIN
 from .coordinator import SolarWindowDataUpdateCoordinator
 from .entity import SolarWindowSystemDataEntity
 

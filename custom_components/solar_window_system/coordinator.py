@@ -1,9 +1,9 @@
-import logging
 import asyncio
+import logging
 from datetime import timedelta
 
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .calculator import SolarWindowCalculator

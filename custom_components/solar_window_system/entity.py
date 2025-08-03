@@ -1,9 +1,9 @@
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_ENTRY_TYPE, CONF_WINDOW_NAME
+from .const import CONF_ENTRY_TYPE, CONF_WINDOW_NAME, DOMAIN
 from .coordinator import SolarWindowDataUpdateCoordinator
 
 

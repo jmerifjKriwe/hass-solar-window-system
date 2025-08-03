@@ -2,32 +2,36 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import CONF_ENTRY_TYPE, CONF_WINDOW_NAME, DOMAIN
+from .const import DOMAIN, CONF_ENTRY_TYPE
+from .const import CONF_WINDOW_NAME
 
 
 def _get_schema(options: dict | None = None) -> vol.Schema:
     if options is None:
         options = {}
-
+    
     fields = {
         vol.Required(
             "solar_radiation_sensor",
             default=options.get("solar_radiation_sensor"),
-        ): selector.EntitySelector({"domain": "sensor"}),
+        ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
         vol.Required(
             "outdoor_temperature_sensor",
             default=options.get("outdoor_temperature_sensor"),
-        ): selector.EntitySelector({"domain": "sensor", "device_class": "temperature"}),
+        ): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+        ),
         vol.Required(
             "update_interval", default=options.get("update_interval", 5)
-        ): selector.NumberSelector({"min": 1, "mode": "box"}),
+        ): vol.Any(int, str),
         vol.Required(
             "min_solar_radiation", default=options.get("min_solar_radiation", 50)
-        ): selector.NumberSelector({"min": 0, "mode": "box"}),
+        ): vol.Any(float, int, str),
         vol.Required(
             "min_sun_elevation", default=options.get("min_sun_elevation", 10)
-        ): selector.NumberSelector({"min": 0, "max": 90, "mode": "box"}),
+        ): vol.Any(float, int, str),
     }
 
     weather_sensor = options.get("weather_warning_sensor")
@@ -36,11 +40,9 @@ def _get_schema(options: dict | None = None) -> vol.Schema:
             "weather_warning_sensor",
             default=weather_sensor if weather_sensor else vol.UNDEFINED,
         )
-    ] = selector.EntitySelector({"domain": "binary_sensor"})
+    ] = selector.EntitySelector(selector.EntitySelectorConfig(domain="binary_sensor"))
     if weather_sensor:
-        fields[vol.Optional("delete_weather_warning_sensor", default=False)] = (
-            selector.BooleanSelector()
-        )
+        fields[vol.Optional("delete_weather_warning_sensor", default=False)] = bool
 
     forecast_sensor = options.get("forecast_temperature_sensor")
     fields[
@@ -48,11 +50,11 @@ def _get_schema(options: dict | None = None) -> vol.Schema:
             "forecast_temperature_sensor",
             default=forecast_sensor if forecast_sensor else vol.UNDEFINED,
         )
-    ] = selector.EntitySelector({"domain": "sensor", "device_class": "temperature"})
+    ] = selector.EntitySelector(
+        selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
+    )
     if forecast_sensor:
-        fields[vol.Optional("delete_forecast_temperature_sensor", default=False)] = (
-            selector.BooleanSelector()
-        )
+        fields[vol.Optional("delete_forecast_temperature_sensor", default=False)] = bool
 
     return vol.Schema(fields)
 
@@ -69,9 +71,8 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return SolarWindowOptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
-        """
-        Handle the initial step of the config flow.
-
+        """Handle the initial step of the config flow.
+        
         Allows selection of entry type.
         """
         global_config_exists = any(
@@ -92,47 +93,63 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if entry_type == "group":
                 return await self.async_step_group_init()
 
-        if not global_config_exists:
-            options = [{"value": "global", "label": "Global Configuration"}]
-        else:
-            options = [
-                {"value": "window", "label": "Window Configuration"},
-                {"value": "group", "label": "Group Configuration"},
-            ]
-
-        # Convert the options list to a simple dict for vol.In to use
-        option_values = [option["value"] for option in options]
-        option_labels = {option["value"]: option["label"] for option in options}
+        choices = ["global"] if not global_config_exists else ["window", "group"]
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_ENTRY_TYPE): vol.In(option_values)}
-            ),
-            description_placeholders={
-                "options": ", ".join(
-                    [f"{value} ({option_labels[value]})" for value in option_values]
-                )
-            },
+            data_schema=vol.Schema({vol.Required(CONF_ENTRY_TYPE): vol.In(choices)}),
         )
 
     async def async_step_global_init(self, user_input=None):
-        """Handle the global init step. Only check for required fields, rely on schema for validation."""
         errors = {}
+        values = {}
         if user_input is not None:
-            # Check required fields
-            for field in [
-                "solar_radiation_sensor",
-                "outdoor_temperature_sensor",
+            # Typ- und Wertebereichsprüfung für alle Felder
+            # Validate sensor fields
+            fields_to_check = [
                 "update_interval",
                 "min_solar_radiation",
-                "min_sun_elevation",
-            ]:
-                if user_input.get(field) in (None, ""):
+                "min_sun_elevation"
+            ]
+            for field in fields_to_check:
+                raw = user_input.get(field)
+                if field == "update_interval":
+                    try:
+                        value = int(raw)
+                        if value < 1:
+                            errors[field] = "value must be at least 1"
+                        else:
+                            values[field] = value
+                    except Exception:
+                        errors[field] = "expected int"
+                else:
+                    try:
+                        value = float(raw)
+                        if field == "min_solar_radiation" and value < 0:
+                            errors[field] = "value must be at least 0"
+                        elif field == "min_sun_elevation" and (value < 0 or value > 90):
+                            if value < 0:
+                                errors[field] = "value must be at least 0"
+                            else:
+                                errors[field] = "value must be at most 90"
+                        else:
+                            values[field] = value
+                    except Exception:
+                        errors[field] = "expected float"
+            
+            # Entity-ID validation - these are required fields
+            for field in ["solar_radiation_sensor", "outdoor_temperature_sensor"]:
+                if not user_input.get(field):
+                    # Required field is missing
                     errors[field] = "required"
+                else:
+                    values[field] = user_input[field]
+                    
+            # Only proceed if we have no errors
             if not errors:
-                self._user_input.update(user_input)
+                self._user_input.update(values)
                 return await self.async_step_global_thresholds()
+
         return self.async_show_form(
             step_id="global_init",
             data_schema=_get_schema(self._user_input),
@@ -140,110 +157,146 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_global_thresholds(self, user_input=None):
-        """Handle the global thresholds step. Rely on schema for validation."""
-        if user_input is not None:
-            self._user_input.update(user_input)
-            return await self.async_step_global_scenarios()
+        errors = {}
+        values = {}
         schema = vol.Schema(
             {
-                vol.Required("g_value", default=0.5): selector.NumberSelector(
-                    {"min": 0.1, "max": 0.9, "mode": "box", "step": 0.01}
-                ),
-                vol.Required("frame_width", default=0.125): selector.NumberSelector(
-                    {"min": 0.05, "max": 0.3, "mode": "box", "step": 0.01}
-                ),
-                vol.Required("tilt", default=90): selector.NumberSelector(
-                    {"min": 0, "max": 90, "mode": "box"}
-                ),
-                vol.Required("diffuse_factor", default=0.15): selector.NumberSelector(
-                    {"min": 0.05, "max": 0.5, "mode": "box", "step": 0.01}
-                ),
-                vol.Required("threshold_direct", default=200): selector.NumberSelector(
-                    {"min": 0, "mode": "box"}
-                ),
-                vol.Required("threshold_diffuse", default=150): selector.NumberSelector(
-                    {"min": 0, "mode": "box"}
-                ),
-                vol.Required("indoor_base", default=23.0): selector.NumberSelector(
-                    {"min": 10, "max": 30, "mode": "box", "step": 0.1}
-                ),
-                vol.Required("outdoor_base", default=19.5): selector.NumberSelector(
-                    {"min": 10, "max": 30, "mode": "box", "step": 0.1}
-                ),
+                vol.Required("g_value", default=0.5): vol.Any(float, int, str),
+                vol.Required("frame_width", default=0.125): vol.Any(float, int, str),
+                vol.Required("tilt", default=90): vol.Any(float, int, str),
+                vol.Required("diffuse_factor", default=0.15): vol.Any(float, int, str),
+                vol.Required("threshold_direct", default=200): vol.Any(float, int, str),
+                vol.Required(
+                    "threshold_diffuse", default=150
+                ): vol.Any(float, int, str),
+                vol.Required("indoor_base", default=23.0): vol.Any(float, int, str),
+                vol.Required("outdoor_base", default=19.5): vol.Any(float, int, str),
             }
         )
+
+        if user_input is not None:
+            # Typ- und Wertebereichsprüfung für alle Felder
+            for field, (min_val, max_val, typ) in {
+                "g_value": (0.1, 0.9, "float"),
+                "frame_width": (0.05, 0.3, "float"),
+                "tilt": (0, 90, "float"),
+                "diffuse_factor": (0.05, 0.5, "float"),
+                "threshold_direct": (0, None, "float"),
+                "threshold_diffuse": (0, None, "float"),
+                "indoor_base": (10, 30, "float"),
+                "outdoor_base": (10, 30, "float"),
+            }.items():
+                raw = user_input.get(field)
+                try:
+                    value = float(raw)
+                    if min_val is not None and value < min_val:
+                        errors[field] = f"value must be at least {min_val}"
+                    elif max_val is not None and value > max_val:
+                        errors[field] = f"value must be at most {max_val}"
+                    else:
+                        values[field] = value
+                except Exception:
+                    errors[field] = f"expected {typ}"
+            if not errors:
+                self._user_input.update(values)
+                return await self.async_step_global_scenarios()
+
         return self.async_show_form(
             step_id="global_thresholds",
             data_schema=schema,
-            errors={},
+            errors=errors,
         )
 
     async def async_step_global_scenarios(self, user_input=None):
-        """Handle the global scenarios step. Rely on schema for validation."""
-        if user_input is not None:
-            # Remove deleted sensors if requested
-            if user_input.get("delete_weather_warning_sensor"):
-                self._user_input.pop("weather_warning_sensor", None)
-            if user_input.get("delete_forecast_temperature_sensor"):
-                self._user_input.pop("forecast_temperature_sensor", None)
-            user_input = {
-                k: v
-                for k, v in user_input.items()
-                if k
-                not in [
-                    "delete_weather_warning_sensor",
-                    "delete_forecast_temperature_sensor",
-                ]
-            }
-            self._user_input.update(user_input)
-            self._user_input[CONF_ENTRY_TYPE] = "global"
-            return self.async_create_entry(
-                title="Global Configuration",
-                data={CONF_ENTRY_TYPE: "global"},
-                options=self._user_input,
-            )
+        errors = {}
+        values = {}
         schema = vol.Schema(
             {
                 vol.Required(
                     "scenario_b_temp_indoor_threshold", default=23.5
-                ): selector.NumberSelector(
-                    {"min": 18, "max": 30, "mode": "box", "step": 0.1}
-                ),
+                ): vol.Any(float, int, str),
                 vol.Required(
                     "scenario_b_temp_outdoor_threshold", default=25.5
-                ): selector.NumberSelector(
-                    {"min": 18, "max": 35, "mode": "box", "step": 0.1}
-                ),
+                ): vol.Any(float, int, str),
                 vol.Required(
                     "scenario_c_temp_forecast_threshold", default=28.5
-                ): selector.NumberSelector(
-                    {"min": 20, "max": 40, "mode": "box", "step": 0.1}
-                ),
+                ): vol.Any(float, int, str),
                 vol.Required(
                     "scenario_c_temp_indoor_threshold", default=21.5
-                ): selector.NumberSelector(
-                    {"min": 18, "max": 30, "mode": "box", "step": 0.1}
-                ),
+                ): vol.Any(float, int, str),
                 vol.Required(
                     "scenario_c_temp_outdoor_threshold", default=24.0
-                ): selector.NumberSelector(
-                    {"min": 18, "max": 35, "mode": "box", "step": 0.1}
-                ),
+                ): vol.Any(float, int, str),
                 vol.Required(
                     "scenario_c_start_hour", default=9
-                ): selector.NumberSelector(
-                    {"min": 0, "max": 23, "mode": "box", "step": 1}
-                ),
+                ): vol.Any(int, str),
             }
         )
+
+        if user_input is not None:
+            current_step_data = user_input.copy()
+
+            # Process sensor deletions
+            if current_step_data.get("delete_weather_warning_sensor"):
+                self._user_input.pop("weather_warning_sensor", None)
+            if current_step_data.get("delete_forecast_temperature_sensor"):
+                self._user_input.pop("forecast_temperature_sensor", None)
+
+            current_step_data.pop("delete_weather_warning_sensor", None)
+            current_step_data.pop("delete_forecast_temperature_sensor", None)
+
+            # Type and range validation for all fields
+            validation_fields = {
+                "scenario_b_temp_indoor_threshold": (18, 30, "float"),
+                "scenario_b_temp_outdoor_threshold": (18, 35, "float"),
+                "scenario_c_temp_forecast_threshold": (20, 40, "float"),
+                "scenario_c_temp_indoor_threshold": (18, 30, "float"),
+                "scenario_c_temp_outdoor_threshold": (18, 35, "float"),
+            }
+
+            for field, (min_val, max_val, typ) in validation_fields.items():
+                raw = current_step_data.get(field)
+                try:
+                    value = float(raw)
+                    if value < min_val:
+                        errors[field] = f"value must be at least {min_val}"
+                    elif value > max_val:
+                        errors[field] = f"value must be at most {max_val}"
+                    else:
+                        values[field] = value
+                except Exception:
+                    errors[field] = f"expected {typ}"
+
+            # Special case for scenario_c_start_hour (Integer field)
+            try:
+                raw = current_step_data.get("scenario_c_start_hour")
+                value = int(raw)
+                if value < 0:
+                    errors["scenario_c_start_hour"] = "value must be at least 0"
+                elif value > 23:
+                    errors["scenario_c_start_hour"] = "value must be at most 23"
+                else:
+                    values["scenario_c_start_hour"] = value
+            except Exception:
+                errors["scenario_c_start_hour"] = "expected int"
+
+            if not errors:
+                self._user_input.update(values)
+                self._user_input[CONF_ENTRY_TYPE] = "global"
+
+                return self.async_create_entry(
+                    title="Global Configuration",
+                    data={CONF_ENTRY_TYPE: "global"},
+                    options=self._user_input,
+                )
+
         return self.async_show_form(
             step_id="global_scenarios",
             data_schema=schema,
-            errors={},
+            errors=errors,
         )
 
     async def async_step_window_init(self, user_input=None):
-        """Handle the window init step. Only cross-field validation, rely on schema for type/range."""
         global_entry = next(
             (
                 entry
@@ -253,33 +306,90 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             None,
         )
         defaults = global_entry.options if global_entry else {}
+
         errors = {}
+
         if user_input is not None:
-            # Check required entity fields
-            if user_input.get("room_temp_entity") in (None, ""):
-                errors["room_temp_entity"] = "required_entity"
-            # Only cross-field validation
-            elevation_min = user_input.get("elevation_min")
-            elevation_max = user_input.get("elevation_max")
-            if (
-                elevation_min is not None
-                and elevation_max is not None
-                and elevation_min > elevation_max
-            ):
-                errors["elevation_min"] = "min_greater_than_max"
-                errors["elevation_max"] = "max_less_than_min"
-            if not errors:
-                self._user_input = user_input.copy()
-                self._user_input[CONF_ENTRY_TYPE] = "window"
-                for key in ["tilt", "g_value", "frame_width"]:
-                    if key in self._user_input and self._user_input[
-                        key
-                    ] == defaults.get(key):
-                        self._user_input.pop(key)
-                return await self.async_step_window_overrides()
-        window_name = (user_input or {}).get(CONF_WINDOW_NAME) or defaults.get(
-            CONF_WINDOW_NAME, ""
-        )
+            try:
+                # Validate the input against the schema for this step
+                vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_WINDOW_NAME, default=defaults.get(CONF_WINDOW_NAME, "")
+                        ): str,
+                        vol.Required(
+                            "azimuth", default=defaults.get("azimuth", 180)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=360)),
+                        vol.Required(
+                            "azimuth_min", default=defaults.get("azimuth_min", 0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=-90, max=0)),
+                        vol.Required(
+                            "azimuth_max", default=defaults.get("azimuth_max", 0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                        vol.Required(
+                            "elevation_min", default=defaults.get("elevation_min", 0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                        vol.Required(
+                            "elevation_max", default=defaults.get("elevation_max", 0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=90)),
+                        vol.Required(
+                            "width", default=defaults.get("width", 1.0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=10)),
+                        vol.Required(
+                            "height", default=defaults.get("height", 1.0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=10)),
+                        vol.Required(
+                            "shadow_depth", default=defaults.get("shadow_depth", 0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                        vol.Required(
+                            "shadow_offset", default=defaults.get("shadow_offset", 0)
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=5)),
+                        vol.Required(
+                            "room_temp_entity", default=defaults.get("room_temp_entity")
+                        ): selector.EntitySelector(
+                            selector.EntitySelectorConfig(
+                                domain="sensor", device_class="temperature"
+                            )
+                        ),
+                        vol.Optional("tilt", default=defaults.get("tilt")): vol.All(
+                            vol.Coerce(float), vol.Range(min=0, max=90)
+                        ),
+                        vol.Optional(
+                            "g_value", default=defaults.get("g_value")
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=0.9)),
+                        vol.Optional(
+                            "frame_width", default=defaults.get("frame_width")
+                        ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.3)),
+                    }
+                )(user_input)
+
+                # Cross-field validation
+                azimuth = user_input.get("azimuth")
+                azimuth_min = user_input.get("azimuth_min")
+                azimuth_max = user_input.get("azimuth_max")
+                elevation_min = user_input.get("elevation_min")
+                elevation_max = user_input.get("elevation_max")
+
+                if (
+                    elevation_min is not None
+                    and elevation_max is not None
+                    and elevation_min > elevation_max
+                ):
+                    errors["elevation_min"] = "min_greater_than_max"
+                    errors["elevation_max"] = "max_less_than_min"
+
+                if not errors:
+                    self._user_input = user_input.copy()
+                    self._user_input[CONF_ENTRY_TYPE] = "window"
+                    for key in ["tilt", "g_value", "frame_width"]:
+                        if key in self._user_input and self._user_input[
+                            key
+                        ] == defaults.get(key):
+                            self._user_input.pop(key)
+                    return await self.async_step_window_overrides()
+            except vol.Invalid as err:
+                errors["base"] = str(err)
+
         return self.async_show_form(
             step_id="window_init",
             data_schema=vol.Schema(
@@ -317,7 +427,9 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         "room_temp_entity", default=defaults.get("room_temp_entity")
                     ): selector.EntitySelector(
-                        {"domain": "sensor", "device_class": "temperature"}
+                        selector.EntitySelectorConfig(
+                            domain="sensor", device_class="temperature"
+                        )
                     ),
                     vol.Optional("tilt", default=defaults.get("tilt")): vol.All(
                         vol.Coerce(float), vol.Range(min=0, max=90)
@@ -334,7 +446,7 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "tilt": str(defaults.get("tilt", 90)),
                 "g_value": str(defaults.get("g_value", 0.5)),
                 "frame_width": str(defaults.get("frame_width", 0.125)),
-                "name": window_name,
+                "name": defaults.get(CONF_WINDOW_NAME, ""),
             },
             errors=errors,
         )
@@ -410,7 +522,6 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             last_step=True,
-            description_placeholders={"name": self._user_input.get("name", "")},
         )
 
     async def async_step_group_init(self, user_input=None):
@@ -426,7 +537,7 @@ class SolarWindowConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required("name"): str,
                     vol.Required("windows"): selector.EntitySelector(
-                        {"domain": "cover", "multiple": True}
+                        selector.EntitySelectorConfig(domain="cover", multiple=True)
                     ),
                 }
             ),
@@ -569,18 +680,11 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
         current_config = self.config_entry.data
         errors = {}
 
-        required_fields = ["name", "azimuth", "width", "height"]
-
         if user_input is not None:
-            # Check for missing required fields
-            for field in required_fields:
-                if user_input.get(field) in (None, ""):
-                    errors[field] = "required"
-            # EntitySelector required field
-            if user_input.get("room_temp_entity") in (None, ""):
-                errors["room_temp_entity"] = "required_entity"
-
             # Validation logic
+            azimuth = user_input.get("azimuth")
+            azimuth_min = user_input.get("azimuth_min")
+            azimuth_max = user_input.get("azimuth_max")
             elevation_min = user_input.get("elevation_min")
             elevation_max = user_input.get("elevation_max")
 
@@ -630,7 +734,9 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                     vol.Coerce(float), vol.Range(min=0, max=5)
                 ),
                 vol.Required("room_temp_entity"): selector.EntitySelector(
-                    {"domain": "sensor", "device_class": "temperature"}
+                    selector.EntitySelectorConfig(
+                        domain="sensor", device_class="temperature"
+                    )
                 ),
                 vol.Optional("tilt"): vol.All(
                     vol.Coerce(float), vol.Range(min=0, max=90)
@@ -644,14 +750,6 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
             }
         )
 
-        # Use the name from user_input if available, else from config/data
-        window_name = (
-            (user_input or {}).get("name")
-            or options.get("name")
-            or self.config_entry.data.get("name")
-            or "Unknown Window"
-        )
-
         return self.async_show_form(
             step_id="window_init",
             data_schema=self.add_suggested_values_to_schema(schema, options),
@@ -660,7 +758,7 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                 "tilt": str(global_defaults.get("tilt", 90)),
                 "g_value": str(global_defaults.get("g_value", 0.5)),
                 "frame_width": str(global_defaults.get("frame_width", 0.125)),
-                "name": window_name,
+                "name": self.config_entry.data.get("name", "Unknown Window"),
             },
         )
 
@@ -687,7 +785,9 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
                 if (
                     key in global_defaults
                     and self.options.get(key) == global_defaults[key]
-                ) or self.options.get(key) in [None, ""]:
+                ):
+                    del self.options[key]
+                elif self.options.get(key) in [None, ""]:
                     del self.options[key]
 
             # Update the config entry with the new data
@@ -730,17 +830,8 @@ class SolarWindowOptionsFlowWindow(config_entries.OptionsFlow):
             }
         )
 
-        # Use the name from options or config_entry for placeholder
-        window_name = (
-            options.get("name")
-            or self.config_entry.data.get("name")
-            or "Unknown Window"
-        )
         return self.async_show_form(
             step_id="window_overrides",
             data_schema=self.add_suggested_values_to_schema(schema, options),
             last_step=True,
-            description_placeholders={
-                "name": window_name,
-            },
         )

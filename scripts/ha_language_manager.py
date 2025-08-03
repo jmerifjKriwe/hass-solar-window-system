@@ -4,20 +4,20 @@ Home Assistant Custom Component Language File Manager
 Automatisiert die Erstellung und Verwaltung von Translation Files
 """
 
-import os
-import json
-import re
 import argparse
-from pathlib import Path
-from typing import Dict, Set, List, Any, Optional
+import json
 import logging
+import os
+import re
+from pathlib import Path
+from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
 class HALanguageManager:
-    def __init__(self, component_path: Optional[str] = None):
+    def __init__(self, component_path: str | None = None):
         if component_path is None:
             component_path = self.find_component_directory()
 
@@ -85,7 +85,7 @@ class HALanguageManager:
                     if len(components) == 1:
                         logger.info(f"Component automatisch erkannt: {components[0]}")
                         return str(components[0])
-                    elif len(components) > 1:
+                    if len(components) > 1:
                         print(f"Mehrere Components gefunden in {search_path}:")
                         for i, comp in enumerate(components, 1):
                             print(f"  {i}. {comp.name}")
@@ -145,7 +145,7 @@ class HALanguageManager:
             "device_automation": {},
         }
 
-    def scan_translation_keys(self) -> Set[str]:
+    def scan_translation_keys(self) -> set[str]:
         """Scannt den Component Code nach Translation Keys"""
         keys = set()
 
@@ -161,7 +161,7 @@ class HALanguageManager:
         # Durchsuche alle Python Dateien im Component
         for py_file in self.component_path.rglob("*.py"):
             try:
-                with open(py_file, "r", encoding="utf-8") as f:
+                with open(py_file, encoding="utf-8") as f:
                     content = f.read()
 
                 for pattern in patterns:
@@ -173,7 +173,7 @@ class HALanguageManager:
 
         return keys
 
-    def extract_config_flow_keys(self) -> Dict[str, Any]:
+    def extract_config_flow_keys(self) -> dict[str, Any]:
         """Extrahiert spezielle Keys aus config_flow.py"""
         config_flow_path = self.component_path / "config_flow.py"
         keys = {"config": {"step": {}, "error": {}, "abort": {}}}
@@ -182,7 +182,7 @@ class HALanguageManager:
             return keys
 
         try:
-            with open(config_flow_path, "r", encoding="utf-8") as f:
+            with open(config_flow_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Suche nach Step Definitionen
@@ -209,20 +209,20 @@ class HALanguageManager:
 
         return keys
 
-    def load_existing_translations(self, language: str) -> Dict[str, Any]:
+    def load_existing_translations(self, language: str) -> dict[str, Any]:
         """Lädt existierende Übersetzungen für eine Sprache"""
         lang_file = self.translations_path / f"{language}.json"
 
         if lang_file.exists():
             try:
-                with open(lang_file, "r", encoding="utf-8") as f:
+                with open(lang_file, encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Fehler beim Laden von {lang_file}: {e}")
 
         return {}
 
-    def save_translations(self, language: str, translations: Dict[str, Any]):
+    def save_translations(self, language: str, translations: dict[str, Any]):
         """Speichert Übersetzungen in eine Datei"""
         lang_file = self.translations_path / f"{language}.json"
 
@@ -234,11 +234,11 @@ class HALanguageManager:
             logger.error(f"Fehler beim Speichern von {lang_file}: {e}")
 
     def merge_translations(
-        self, existing: Dict[str, Any], new: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, existing: dict[str, Any], new: dict[str, Any]
+    ) -> dict[str, Any]:
         """Mergt neue Keys in existierende Übersetzungen"""
 
-        def deep_merge(base: Dict, update: Dict) -> Dict:
+        def deep_merge(base: dict, update: dict) -> dict:
             result = base.copy()
             for key, value in update.items():
                 if (
@@ -253,7 +253,7 @@ class HALanguageManager:
 
         return deep_merge(existing, new)
 
-    def create_language_files(self, languages: Optional[List[str]] = None):
+    def create_language_files(self, languages: list[str] | None = None):
         """Erstellt oder aktualisiert Language Files"""
         if languages is None:
             languages = self.default_languages
@@ -290,7 +290,7 @@ class HALanguageManager:
             merged = self.merge_translations(existing, base_structure)
             self.save_translations(lang, merged)
 
-    def check_missing_keys(self) -> Dict[str, List[str]]:
+    def check_missing_keys(self) -> dict[str, list[str]]:
         """Prüft auf fehlende Keys zwischen verschiedenen Sprachen"""
         missing_keys = {}
         lang_files = list(self.translations_path.glob("*.json"))

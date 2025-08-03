@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 
-from .const import DOMAIN, PLATFORMS, CONF_ENTRY_TYPE, CONF_WINDOW_NAME
+from .const import CONF_ENTRY_TYPE, CONF_WINDOW_NAME, DOMAIN, PLATFORMS
 from .coordinator import SolarWindowDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)

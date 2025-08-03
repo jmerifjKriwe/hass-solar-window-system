@@ -1,8 +1,8 @@
 # /config/custom_components/solar_window_system/calculator.py
 
 import logging
-from datetime import datetime
 import math
+from datetime import datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class SolarWindowCalculator:
         self.global_config = global_config
         _LOGGER.info("Calculator initialized with global configuration.")
 
-    def get_safe_state(self, entity_id: str, default: str | int | float = 0):
+    def get_safe_state(self, entity_id: str, default: str | float = 0):
         """
         Safely get the state of an entity, returning a default if it is
         unavailable, unknown, or not found.
@@ -32,9 +32,7 @@ class SolarWindowCalculator:
 
         return state.state
 
-    def get_safe_attr(
-        self, entity_id: str, attr: str, default: str | int | float = 0
-    ):
+    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0):
         """Safely get an attribute of an entity, returning a default if unavailable."""
         if not entity_id:
             return default
@@ -63,19 +61,30 @@ class SolarWindowCalculator:
                 effective_config["thresholds"][key] = value
             elif key in ["indoor_base", "outdoor_base"]:
                 effective_config["temperatures"][key] = value
-            elif key in ["scenario_b_temp_indoor_threshold", "scenario_b_temp_outdoor_threshold"]:
+            elif key in [
+                "scenario_b_temp_indoor_threshold",
+                "scenario_b_temp_outdoor_threshold",
+            ]:
                 effective_config["scenario_b"][key] = value
-            elif key in ["scenario_c_temp_forecast_threshold", "scenario_c_temp_indoor_threshold", "scenario_c_temp_outdoor_threshold", "scenario_c_start_hour"]:
+            elif key in [
+                "scenario_c_temp_forecast_threshold",
+                "scenario_c_temp_indoor_threshold",
+                "scenario_c_temp_outdoor_threshold",
+                "scenario_c_start_hour",
+            ]:
                 effective_config["scenario_c"][key] = value
             elif key == "min_sun_elevation":
                 effective_config["calculation"][key] = value
 
         # Calculate and add azimuth and elevation ranges (these should probably be part of window_config directly)
         window_config["azimuth_range"] = window_config.get("azimuth_range", (-90, 90))
-        window_config["elevation_range"] = window_config.get("elevation_range", (
-            effective_config.get("calculation", {}).get("min_sun_elevation", 10),
-            90,
-        ))
+        window_config["elevation_range"] = window_config.get(
+            "elevation_range",
+            (
+                effective_config.get("calculation", {}).get("min_sun_elevation", 10),
+                90,
+            ),
+        )
 
         return effective_config, window_config
 

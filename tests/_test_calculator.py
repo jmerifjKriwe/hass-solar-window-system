@@ -1,10 +1,9 @@
 """Test the calculator logic of the solar_window_system component."""
-import pytest
-from homeassistant.core import HomeAssistant
-from homeassistant.const import STATE_ON, STATE_OFF
 
-from .conftest import setup_integration
-from tests.mocks import MOCK_WINDOW_INPUT
+import pytest
+from homeassistant.const import STATE_OFF, STATE_ON
+from homeassistant.core import HomeAssistant
+
 from tests.mocks import MOCK_WINDOW_INPUT
 
 
@@ -44,7 +43,9 @@ async def test_shading_calculation(
     # This assumes calculate_all_windows is called by the coordinator's refresh
     # and that the coordinator now manages fetching all window configs.
     # For this test, we'll simulate the coordinator having the window config.
-    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
+    coordinator.calculator.calculate_all_windows(
+        {"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options
+    )
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -52,7 +53,9 @@ async def test_shading_calculation(
     state = hass.states.get(entity_id)
 
     assert state is not None, f"Shading sensor '{entity_id}' was not created."
-    assert state.state == expected_state, f"Expected state '{expected_state}', but got '{state.state}'."
+    assert state.state == expected_state, (
+        f"Expected state '{expected_state}', but got '{state.state}'."
+    )
 
     calculated_power = state.attributes.get("power_total_w")
     assert calculated_power == pytest.approx(expected_power, rel=0.01)
@@ -82,7 +85,9 @@ async def test_sun_elevation(
     expected_state: str,
 ):
     """Test the sun elevation logic."""
-    hass.states.async_set("sun.sun", "above_horizon", {"azimuth": 170, "elevation": elevation})
+    hass.states.async_set(
+        "sun.sun", "above_horizon", {"azimuth": 170, "elevation": elevation}
+    )
     hass.states.async_set("sensor.dummy_solar_radiation", "800")
     await hass.async_block_till_done()
 
@@ -92,7 +97,9 @@ async def test_sun_elevation(
     # This assumes calculate_all_windows is called by the coordinator's refresh
     # and that the coordinator now manages fetching all window configs.
     # For this test, we'll simulate the coordinator having the window config.
-    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
+    coordinator.calculator.calculate_all_windows(
+        {"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options
+    )
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -100,7 +107,9 @@ async def test_sun_elevation(
     state = hass.states.get(entity_id)
 
     assert state is not None, f"Shading sensor '{entity_id}' was not created."
-    assert state.state == expected_state, f"Expected state '{expected_state}', but got '{state.state}'."
+    assert state.state == expected_state, (
+        f"Expected state '{expected_state}', but got '{state.state}'."
+    )
 
 
 @pytest.mark.parametrize(
@@ -117,7 +126,9 @@ async def test_sun_azimuth(
     expected_state: str,
 ):
     """Test the sun azimuth logic."""
-    hass.states.async_set("sun.sun", "above_horizon", {"azimuth": azimuth, "elevation": 45})
+    hass.states.async_set(
+        "sun.sun", "above_horizon", {"azimuth": azimuth, "elevation": 45}
+    )
     hass.states.async_set("sensor.dummy_solar_radiation", "800")
     await hass.async_block_till_done()
 
@@ -127,7 +138,9 @@ async def test_sun_azimuth(
     # This assumes calculate_all_windows is called by the coordinator's refresh
     # and that the coordinator now manages fetching all window configs.
     # For this test, we'll simulate the coordinator having the window config.
-    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
+    coordinator.calculator.calculate_all_windows(
+        {"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options
+    )
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -135,7 +148,9 @@ async def test_sun_azimuth(
     state = hass.states.get(entity_id)
 
     assert state is not None, f"Shading sensor '{entity_id}' was not created."
-    assert state.state == expected_state, f"Expected state '{expected_state}', but got '{state.state}'."
+    assert state.state == expected_state, (
+        f"Expected state '{expected_state}', but got '{state.state}'."
+    )
 
 
 @pytest.mark.parametrize(
@@ -163,7 +178,9 @@ async def test_weather_warning(
     # This assumes calculate_all_windows is called by the coordinator's refresh
     # and that the coordinator now manages fetching all window configs.
     # For this test, we'll simulate the coordinator having the window config.
-    coordinator.calculator.calculate_all_windows({"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options)
+    coordinator.calculator.calculate_all_windows(
+        {"test_window_south": MOCK_WINDOW_INPUT}, coordinator.config_entry.options
+    )
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
@@ -171,4 +188,6 @@ async def test_weather_warning(
     state = hass.states.get(entity_id)
 
     assert state is not None, f"Shading sensor '{entity_id}' was not created."
-    assert state.state == expected_state, f"Expected state '{expected_state}', but got '{state.state}'."
+    assert state.state == expected_state, (
+        f"Expected state '{expected_state}', but got '{state.state}'."
+    )

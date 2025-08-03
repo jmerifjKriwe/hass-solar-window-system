@@ -37,6 +37,8 @@ default_config:
 # zeroconf:
 # zone:
 
+api:
+
 # https://www.home-assistant.io/integrations/homeassistant/
 homeassistant:
   debug: true

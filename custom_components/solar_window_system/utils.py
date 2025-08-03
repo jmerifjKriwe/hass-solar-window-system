@@ -1,7 +1,7 @@
 # /config/custom_components/solar_window_system/utils.py
 
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 
 async def update_config_option(

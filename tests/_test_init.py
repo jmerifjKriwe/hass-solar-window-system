@@ -1,9 +1,7 @@
 """Test the initialization of the solar_window_system component."""
+
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_registry import async_get
-
-from .conftest import setup_integration
 
 
 async def test_async_setup_entry(hass: HomeAssistant, setup_integration):
