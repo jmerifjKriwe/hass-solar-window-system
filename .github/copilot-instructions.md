@@ -5,7 +5,7 @@ applyTo: '**'
 
 ## General Guidelines
 - Use Context7 to fetch up-to-date documentation for libraries and frameworks rather than relying on training data.
-- Use English for all code, comments, documentation, and commit messages
+- Using English for all code, comments, documentation, and commit messages is mandatory.
 - Write code that is easy to read and understand
 - Follow the principle of least surprise; code should behave in a way that is expected
 - Use descriptive names for variables, functions, and classes
@@ -14,6 +14,21 @@ applyTo: '**'
 - Keep functions small and focused on a single task.
 - Use comments to explain why something is done, not how
 - Use version control (Git) for all code changes
+
+## Commit Messages
+- Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+- This is required for the automated release process to work correctly.
+- Use the following prefixes:
+  - `feat`: A new feature
+  - `fix`: A bug fix
+  - `docs`: Documentation only changes
+  - `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+  - `refactor`: A code change that neither fixes a bug nor adds a feature
+  - `perf`: A code change that improves performance
+  - `test`: Adding missing tests or correcting existing tests
+  - `chore`: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- A scope may be provided to a commit’s type, to provide additional contextual information and is contained within parenthesis, e.g., `feat(parser): add ability to parse arrays`.
+- For breaking changes, add `BREAKING CHANGE:` to the footer of the commit message.
 - Use consistent indentation and formatting throughout the codebase.
 - Fix all ESLint issues before committing (JavaScript/TypeScript linting & formatting).
 - Fix all Ruff issues before committing (Python linting & formatting).

@@ -2,228 +2,34 @@
     "config": {
         "step": {
             "user": {
-                "title": "Solar Window System Setup",
-                "description": "Choose the type of configuration you want to set up.",
-                "data": {
-                    "entry_type": "Configuration Type",
-                    "global": "Global Configuration",
-                    "window": "Window Configuration",
-                    "group": "Group Configuration"
-                }
-            },
-            "global_init": {
                 "title": "Solar Window System",
-                "description": "Set up the basic parameters for the Solar Window System. All settings can be changed later.",
-                "data": {
-                    "solar_radiation_sensor": "Solar radiation sensor",
-                    "outdoor_temperature_sensor": "Outdoor temperature sensor",
-                    "update_interval": "Update interval (minutes)",
-                    "min_solar_radiation": "Minimum solar radiation",
-                    "min_sun_elevation": "Minimum sun elevation",
-                    "weather_warning_sensor": "Weather warning sensor (Optional)",
-                    "forecast_temperature_sensor": "Forecast temperature sensor (Optional)"
-                },
-                "data_description": {
-                    "min_solar_radiation": "Minimum radiation (in W/m²) for the calculation to be active.",
-                    "min_sun_elevation": "Minimum sun elevation (in degrees) for the calculation to be active.",
-                    "weather_warning_sensor": "A binary sensor that indicates a weather warning (e.g., storm). If 'on', the blinds will close.",
-                    "forecast_temperature_sensor": "A sensor that provides the temperature forecast for the day. Used for advanced scenarios."
-                }
-            },
-            "global_thresholds": {
-                "title": "Default Thresholds and Physical Properties",
-                "description": "Configure the default thresholds for solar radiation and the physical properties of the windows. These values are used when they are not set on a window or group.",
-                "data": {
-                    "g_value": "g-Value (Energy Transmittance)",
-                    "frame_width": "Frame Width",
-                    "tilt": "Window Tilt",
-                    "diffuse_factor": "Diffuse Factor",
-                    "threshold_direct": "Direct Radiation Threshold",
-                    "threshold_diffuse": "Diffuse Radiation Threshold",
-                    "indoor_base": "Base Indoor Temperature",
-                    "outdoor_base": "Base Outdoor Temperature"
-                }
-            },
-            "global_scenarios": {
-                "title": "Default Scenario Parameters",
-                "description": "Configure the default parameters for the shading scenarios. These values are used when they are not set on a window or group.",
-                "data": {
-                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
-                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
-                    "scenario_c_start_hour": "Scenario C: Start Hour"
-                }
-            },
-            "window_init": {
-                "title": "Add a new Window",
-                "description": "Set up the basic parameters for your new window. The values for tilt, g-value and frame-width are taken from the global configuration, but can be overwritten here.",
-                "data": {
-                    "name": "Name",
-                    "azimuth": "Azimuth",
-                    "azimuth_min": "Min. Azimuth",
-                    "azimuth_max": "Max. Azimuth",
-                    "elevation_min": "Min. Elevation",
-                    "elevation_max": "Max. Elevation",
-                    "width": "Width",
-                    "height": "Height",
-                    "shadow_depth": "Shadow Depth",
-                    "shadow_offset": "Shadow Offset",
-                    "room_temp_entity": "Room Temperature Sensor",
-                    "tilt": "Window Tilt (default: {tilt})",
-                    "g_value": "g-Value (default: {g_value})",
-                    "frame_width": "Frame Width (default: {frame_width})",
-                    "no_group": "No group assigned"
-                }
-            },
-            "window_overrides": {
-                "title": "Window Specific Overrides",
-                "description": "Here you can define specific overrides for the global values. If a value is not set, the global default is used.",
-                "data": {
-                    "diffuse_factor": "Diffuse Factor",
-                    "threshold_direct": "Direct Radiation Threshold",
-                    "threshold_diffuse": "Diffuse Radiation Threshold",
-                    "indoor_base": "Base Indoor Temperature",
-                    "outdoor_base": "Base Outdoor Temperature",
-                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
-                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
-                    "scenario_c_start_hour": "Scenario C: Start Hour"
-                }
-            },
-            "group_init": {
-                "title": "Add a new Group",
-                "description": "Set up a new group for your windows. You can override global settings here.",
-                "data": {
-                    "name": "Group Name",
-                    "threshold_direct": "Direct Radiation Threshold",
-                    "threshold_diffuse": "Diffuse Radiation Threshold",
-                    "diffuse_factor": "Diffuse Factor",
-                    "indoor_base": "Base Indoor Temperature",
-                    "outdoor_base": "Base Outdoor Temperature",
-                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
-                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
-                    "scenario_c_start_hour": "Scenario C: Start Hour"
-                }
+                "description": "Set up Solar Window System to provide window shading recommendations based on solar calculations."
             }
         },
         "abort": {
-            "already_configured": "An entry for the Solar Window System has already been configured. You can manage the settings under Integrations."
+            "already_configured": "Solar Window System is already configured."
+        }
+    },
+    "config_subentry": {
+        "window": {
+            "title": "Add Window",
+            "button": "Add Window",
+            "step": {
+                "user": {
+                    "title": "Window Configuration",
+                    "description": "Configure a window for shading recommendations",
+                    "data": {
+                        "name": "Window Name"
+                    }
+                }
+            }
         }
     },
     "options": {
         "step": {
-            "global_init": {
-                "title": "Solar Window System Configuration",
-                "description": "Set up the basic parameters for the Solar Window System. All settings can be changed later.",
-                "data": {
-                    "solar_radiation_sensor": "Solar radiation sensor",
-                    "outdoor_temperature_sensor": "Outdoor temperature sensor",
-                    "update_interval": "Update interval (minutes)",
-                    "min_solar_radiation": "Minimum solar radiation",
-                    "min_sun_elevation": "Minimum sun elevation",
-                    "weather_warning_sensor": "Weather warning sensor (Optional)",
-                    "forecast_temperature_sensor": "Forecast temperature sensor (Optional)",
-                    "delete_weather_warning_sensor": "Clear weather warning sensor",
-                    "delete_forecast_temperature_sensor": "Clear forecast temperature sensor"
-                },
-                "data_description": {
-                    "min_solar_radiation": "Minimum radiation (in W/m²) for the calculation to be active.",
-                    "min_sun_elevation": "Minimum sun elevation (in degrees) for the calculation to be active.",
-                    "weather_warning_sensor": "A binary sensor that indicates a weather warning (e.g., storm). If 'on', the blinds will close.",
-                    "forecast_temperature_sensor": "A sensor that provides the temperature forecast for the day. Used for advanced scenarios.",
-                    "delete_weather_warning_sensor": "Select this to remove the weather warning sensor.",
-                    "delete_forecast_temperature_sensor": "Select this to remove the forecast temperature sensor."
-                }
-            },
-            "global_thresholds": {
-                "title": "Default Thresholds and Physical Properties",
-                "description": "Configure the default thresholds for solar radiation and the physical properties of the windows. These values are used when they are not set on a window or group.",
-                "data": {
-                    "g_value": "g-Value (Energy Transmittance)",
-                    "frame_width": "Frame Width",
-                    "tilt": "Window Tilt",
-                    "diffuse_factor": "Diffuse Factor",
-                    "threshold_direct": "Direct Radiation Threshold",
-                    "diffuse_threshold": "Diffuse Radiation Threshold",
-                    "indoor_base": "Base Indoor Temperature",
-                    "outdoor_base": "Base Outdoor Temperature"
-                }
-            },
-            "global_scenarios": {
-                "title": "Default Scenario Parameters",
-                "description": "Configure the default parameters for the shading scenarios. These values are used when they are not set on a window or group.",
-                "data": {
-                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
-                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
-                    "scenario_c_start_hour": "Scenario C: Start Hour"
-                }
-            },
-            "window_init": {
-                "title": "Window Configuration for '{name}'",
-                "description": "Adjust the basic parameters for your window. The values for tilt, g-value and frame-width are taken from the global configuration, but can be overwritten here.",
-                "data": {
-                    "name": "Name",
-                    "azimuth": "Azimuth",
-                    "azimuth_min": "Min. Azimuth",
-                    "azimuth_max": "Max. Azimuth",
-                    "elevation_min": "Min. Elevation",
-                    "elevation_max": "Max. Elevation",
-                    "width": "Width",
-                    "height": "Height",
-                    "shadow_depth": "Shadow Depth",
-                    "shadow_offset": "Shadow Offset",
-                    "room_temp_entity": "Room Temperature Sensor",
-                    "tilt": "Window Tilt (default: {tilt})",
-                    "g_value": "g-Value (default: {g_value})",
-                    "frame_width": "Frame Width (default: {frame_width})",
-                    "group": "Group",
-                    "no_group": "No group assigned"
-                }
-            },
-            "window_overrides": {
-                "title": "Window Specific Overrides for '{name}'",
-                "description": "Here you can define specific overrides for the global values. If a value is not set, the global default is used.",
-                "data": {
-                    "diffuse_factor": "Diffuse Factor",
-                    "threshold_direct": "Direct Radiation Threshold",
-                    "threshold_diffuse": "Diffuse Radiation Threshold",
-                    "indoor_base": "Base Indoor Temperature",
-                    "outdoor_base": "Base Outdoor Temperature",
-                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
-                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
-                    "scenario_c_start_hour": "Scenario C: Start Hour"
-                }
-            },
-            "group_init": {
-                "title": "Group Configuration for '{name}'",
-                "description": "Adjust the settings for your group. You can override global settings here.",
-                "data": {
-                    "name": "Group Name",
-                    "threshold_direct": "Direct Radiation Threshold",
-                    "threshold_diffuse": "Diffuse Radiation Threshold",
-                    "diffuse_factor": "Diffuse Factor",
-                    "indoor_base": "Base Indoor Temperature",
-                    "outdoor_base": "Base Outdoor Temperature",
-                    "scenario_b_temp_indoor_threshold": "Scenario B: Indoor Temperature Threshold",
-                    "scenario_b_temp_outdoor_threshold": "Scenario B: Outdoor Temperature Threshold",
-                    "scenario_c_temp_forecast_threshold": "Scenario C: Forecast Temperature Threshold",
-                    "scenario_c_temp_indoor_threshold": "Scenario C: Indoor Temperature Threshold",
-                    "scenario_c_temp_outdoor_threshold": "Scenario C: Outdoor Temperature Threshold",
-                    "scenario_c_start_hour": "Scenario C: Start Hour"
-                }
+            "init": {
+                "title": "Solar Window System Options",
+                "description": "Configure options for the Solar Window System."
             }
         }
     }

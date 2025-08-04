@@ -1,4 +1,0 @@
-update_now:
-  name: Update Now
-  description: Forces an immediate data update for all solar window sensors
-  fields: {}
