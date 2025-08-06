@@ -1,36 +1,69 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "title": "Solar Window System",
-                "description": "Set up Solar Window System to provide window shading recommendations based on solar calculations."
-            }
-        },
-        "abort": {
-            "already_configured": "Solar Window System is already configured."
-        }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Solar Window System",
+        "description": "This will create the main configuration entries for your solar window system."
+      }
     },
-    "config_subentry": {
-        "window": {
-            "title": "Add Window",
-            "button": "Add Window",
-            "step": {
-                "user": {
-                    "title": "Window Configuration",
-                    "description": "Configure a window for shading recommendations",
-                    "data": {
-                        "name": "Window Name"
-                    }
-                }
-            }
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "title": "Solar Window System Options",
-                "description": "Configure options for the Solar Window System."
-            }
-        }
+    "abort": {
+      "no_more_entries": "Only one configuration entry is allowed",
+      "missing_data": "Missing configuration data",
+      "unknown_entry_type": "Unknown entry type"
     }
+  },
+  "config_subentries": {
+    "group": {
+      "initiate_flow": {
+        "user": "Add group",
+        "reconfigure": "Reconfigure group configuration"
+      },
+      "entry_type": "Group configuration",
+      "step": {
+        "user": {
+          "title": "Add group",
+          "description": "Configure a new window group",
+          "data": {
+            "name": "Group name"
+          }
+        },
+        "reconfigure": {
+          "title": "Update group",
+          "description": "Update the group configuration",
+          "data": {
+            "name": "Group name"
+          }
+        }
+      },
+      "add": "Add subentry",
+      "error": {},
+      "abort": {}
+    },
+    "window": {
+      "initiate_flow": {
+        "user": "Add window ",
+        "reconfigure": "Reconfigure window configuration"
+      },
+      "entry_type": "Window configuration",
+      "step": {
+        "user": {
+          "title": "Add window",
+          "description": "Configure a new window",
+          "data": {
+            "name": "Window name"
+          }
+        },
+        "reconfigure": {
+          "title": "Update window",
+          "description": "Update the window configuration",
+          "data": {
+            "name": "Window name"
+          }
+        }
+      },
+      "add": "Add subentry",
+      "error": {},
+      "abort": {}
+    }
+  }
 }
