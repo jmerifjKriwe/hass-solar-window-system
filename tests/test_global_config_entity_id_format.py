@@ -15,6 +15,7 @@ from custom_components.solar_window_system.select import GlobalConfigSelectEntit
 from custom_components.solar_window_system.text import GlobalConfigTextEntity
 from custom_components.solar_window_system.switch import GlobalConfigSwitchEntity
 
+
 @pytest.mark.asyncio
 async def test_global_config_entity_id_and_unique_id_format(hass: HomeAssistant):
     """Test that all global config entities have correct entity_id and unique_id format."""

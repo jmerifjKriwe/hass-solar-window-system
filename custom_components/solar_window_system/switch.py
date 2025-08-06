@@ -86,7 +86,7 @@ class GlobalConfigSwitchEntity(SwitchEntity):
         self._attr_has_entity_name = False
         # Store the original name for later restoration
         self._original_name = config["name"]
-        
+
         _LOGGER.warning(
             "🔧 Switch %s: unique_id=%s, temp_name=%s",
             entity_key,

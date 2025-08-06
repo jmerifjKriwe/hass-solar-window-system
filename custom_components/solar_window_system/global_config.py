@@ -153,7 +153,7 @@ async def _create_input_select_via_service(
 ) -> None:
     """Create an input_select entity via service call."""
     service_data = {
-        "name": f"{ENTITY_PREFIX}_{entity_key}",
+        "name": f"{ENTITY_PREFIX_GLOBAL}_{entity_key}",
         "options": config["options"],
         "icon": config.get("icon"),
     }
@@ -165,7 +165,7 @@ async def _create_input_select_via_service(
 
     # Associate with device
     await _associate_entity_with_device(
-        hass, f"input_select.{ENTITY_PREFIX}_{entity_key}", device
+        hass, f"input_select.{ENTITY_PREFIX_GLOBAL}_{entity_key}", device
     )
 
 
@@ -174,7 +174,7 @@ async def _create_template_sensor_via_service(
 ) -> None:
     """Create a template sensor entity."""
     # Create a simple sensor entity that will be managed by this integration
-    entity_id = f"sensor.{ENTITY_PREFIX}_{entity_key}"
+    entity_id = f"sensor.{ENTITY_PREFIX_GLOBAL}_{entity_key}"
 
     # We'll add this sensor through the sensor platform instead
     # This is a placeholder - sensors will be created through platform setup
@@ -260,15 +260,22 @@ class GlobalConfigSensor(Entity):
         self._entity_key = entity_key
         self._config = config
         self._device = device
-        # Set both name and unique_id, and override entity_id to get clean format
-        self._attr_name = config["name"]
-        self._attr_unique_id = f"{ENTITY_PREFIX}_{entity_key}"
-        # Override entity_id to enforce sws_ prefix and remove _global_
-        self._attr_entity_id = f"sensor.{ENTITY_PREFIX}_{entity_key}"
+        # Set name, unique_id, and suggested_object_id for proper entity ID generation
+        # WORKAROUND: Use prefixed name initially to get correct entity_id generation
+        self._attr_name = f"{ENTITY_PREFIX_GLOBAL.upper()} {config['name']}"
+        self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
+        # Use suggested_object_id instead of entity_id to preserve prefix with unique_id
+        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
+        # Disable has_entity_name to ensure our suggested_object_id is used
+        self._attr_has_entity_name = False
+        # Store the original name for later restoration
+        self._original_name = config["name"]
+
         _LOGGER.warning(
-            "🔧 Sensor entity %s created with unique_id: %s",
+            "🔧 Sensor %s: unique_id=%s, temp_name=%s",
             entity_key,
             self._attr_unique_id,
+            self._attr_name,
         )
         self._attr_device_info = {
             "identifiers": device.identifiers,
@@ -279,6 +286,17 @@ class GlobalConfigSensor(Entity):
         self._attr_unit_of_measurement = config.get("unit")
         self._attr_icon = config.get("icon")
         self._state = config["default"]
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # Restore the original name after entity ID has been generated
+        self._attr_name = self._original_name
+        _LOGGER.warning(
+            "🔧 Sensor %s registered, restoring name to: %s",
+            self._entity_key,
+            self._attr_name,
+        )
 
     @property
     def state(self) -> Any:

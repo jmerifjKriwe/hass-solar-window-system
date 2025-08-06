@@ -28,7 +28,7 @@ class TestEntityIDIntegration:
             domain=DOMAIN,
             title="Solar Window System",
             data={"entry_type": "global"},
-            entry_id="test_global_entry"
+            entry_id="test_global_entry",
         )
         config_entry.add_to_hass(hass)
 
@@ -99,7 +99,7 @@ class TestEntityIDIntegration:
             domain=DOMAIN,
             title="Solar Window System",
             data={"entry_type": "global"},
-            entry_id="test_global_entry"
+            entry_id="test_global_entry",
         )
         config_entry.add_to_hass(hass)
 
