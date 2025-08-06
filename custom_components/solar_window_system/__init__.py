@@ -30,6 +30,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             model="GlobalConfig",
         )
 
+        # Set up all platforms for this entry
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["sensor", "number", "text", "select", "switch"]
+        )
+
     # Handle group configurations entry (subentry parent)
     elif entry.data.get("entry_type") == "group_configs":
         _LOGGER.warning(
@@ -159,7 +164,14 @@ async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> N
         _LOGGER.warning("🔧 No subentries found in entry")
 
 
-async def async_unload_entry(_hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.warning("🔧 async_unload_entry called for: %s", entry.title)
+
+    # Unload platforms if this is the global config entry
+    if entry.title == "Solar Window System":
+        return await hass.config_entries.async_unload_platforms(
+            entry, ["sensor", "number", "text", "select", "switch"]
+        )
+
     return True

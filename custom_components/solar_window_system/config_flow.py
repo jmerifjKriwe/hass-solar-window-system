@@ -10,14 +10,11 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 
 from .const import DOMAIN
-
-# Define constants here temporarily
-ENTRY_TYPE_GROUPS = "group_configs"
-ENTRY_TYPE_WINDOWS = "window_configs"
+from .options_flow import SolarWindowSystemOptionsFlow
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.config_entries import ConfigFlowResult as FlowResult
+    from homeassistant.data_entry_flow import FlowResult
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,24 +80,13 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         cls, config_entry: ConfigEntry
     ) -> dict[str, type[config_entries.ConfigSubentryFlow]]:
         """Return subentries supported by this integration."""
-        # Debug: Log the config entry data
-        _LOGGER.warning("🔍 Config entry data: %s", config_entry.data)
-        _LOGGER.warning("🔍 Config entry title: %s", config_entry.title)
-        
         # Return only the subentry type relevant for this specific config entry
-        # Check by entry_type first, then fallback to title
-        entry_type = config_entry.data.get("entry_type")
-        if (entry_type == ENTRY_TYPE_GROUPS or 
-            config_entry.title == "Group configurations"):
-            _LOGGER.warning("🔍 Returning GROUP subentry type")
+        if config_entry.data.get("entry_type") == ENTRY_TYPE_GROUPS:
             return {"group": GroupSubentryFlowHandler}
-        if (entry_type == ENTRY_TYPE_WINDOWS or
-            config_entry.title == "Window configurations"):
-            _LOGGER.warning("🔍 Returning WINDOW subentry type")
+        if config_entry.data.get("entry_type") == ENTRY_TYPE_WINDOWS:
             return {"window": WindowSubentryFlowHandler}
-        
-        _LOGGER.warning("🔍 No matching entry type, returning empty dict")
-        return {}
+        # Fallback: return all types if entry type is unclear
+        return {"group": GroupSubentryFlowHandler, "window": WindowSubentryFlowHandler}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -159,3 +145,11 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             context={"source": "internal"},
             data={"entry_type": ENTRY_TYPE_WINDOWS},
         )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> SolarWindowSystemOptionsFlow:
+        """Return the options flow handler."""
+        return SolarWindowSystemOptionsFlow(config_entry)

@@ -7,6 +7,9 @@
   ],
   "dependencies": [
     "input_number",
+    "input_text",
+    "input_boolean",
+    "input_select",
     "template",
     "sun"
   ],

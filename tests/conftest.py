@@ -1,0 +1,197 @@
+"""Global fixtures for Solar Window System integration tests."""
+
+from __future__ import annotations
+
+import pytest
+from typing import TYPE_CHECKING, Any
+from unittest.mock import Mock
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
+from custom_components.solar_window_system.const import (
+    CONF_GROUP,
+    CONF_GROUP_NAME,
+    DOMAIN,
+    GLOBAL_CONFIG_ENTITIES,
+)
+
+
+@pytest.fixture
+def mock_config_entry() -> Mock:
+    """Return a mock config entry for global configuration."""
+    return Mock(spec=ConfigEntry)
+
+
+@pytest.fixture
+def valid_global_input() -> dict[str, str]:
+    """Return valid input for global configuration flow."""
+    return {
+        "entry_type": "global",
+        "name": "Solar Window System",
+    }
+
+
+@pytest.fixture
+def valid_window_input() -> dict[str, str | float | int]:
+    """Return valid input for window configuration flow."""
+    return {
+        "window_id": "living_room_1",
+        "name": "Living Room Window 1",
+        "g_value": 0.75,
+        "area": 2.5,
+        "orientation": "south",
+        "tilt_angle": 90,
+    }
+
+
+@pytest.fixture
+def valid_group_input() -> dict[str, str]:
+    """Return valid input for group configuration flow."""
+    return {
+        "entry_type": "group",
+        CONF_GROUP: "test_group",
+        CONF_GROUP_NAME: "Test Group",
+    }
+
+
+@pytest.fixture
+def global_config_entry() -> Mock:
+    """Return a mock global config entry."""
+    entry = Mock(spec=ConfigEntry)
+    entry.entry_id = "global_config_entry_id"
+    entry.title = "Solar Window System"
+    entry.data = {"entry_type": "global"}
+    entry.options = {}
+    return entry
+
+
+@pytest.fixture
+def window_config_entry() -> Mock:
+    """Return a mock window config entry."""
+    entry = Mock(spec=ConfigEntry)
+    entry.entry_id = "window_config_entry_id"
+    entry.title = "Living Room Window 1"
+    entry.data = {
+        "window_id": "living_room_1",
+        "name": "Living Room Window 1",
+        "g_value": 0.75,
+        "area": 2.5,
+        "orientation": "south",
+        "tilt_angle": 90,
+    }
+    entry.options = {}
+    return entry
+
+
+@pytest.fixture
+def mock_device_registry() -> Mock:
+    """Return a mock device registry."""
+    registry = Mock(spec=dr.DeviceRegistry)
+
+    # Mock global config device
+    global_device = Mock(spec=dr.DeviceEntry)
+    global_device.id = "global_device_id"
+    global_device.identifiers = {(DOMAIN, "global_config")}
+    global_device.name = "Solar Window System Global Configuration"
+    global_device.manufacturer = "Solar Window System"
+    global_device.model = "Global Configuration"
+    global_device.config_entries = {"global_config_entry_id"}
+
+    registry.devices = {"global_device_id": global_device}
+    return registry
+
+
+@pytest.fixture
+def mock_entity_registry() -> Mock:
+    """Return a mock entity registry."""
+    registry = Mock(spec=er.EntityRegistry)
+    registry.entities = {}
+    return registry
+
+
+@pytest.fixture
+async def setup_global_config_device(
+    hass: HomeAssistant, global_config_entry: Mock
+) -> dr.DeviceEntry:
+    """Set up a global configuration device in the device registry."""
+    device_registry = dr.async_get(hass)
+
+    return device_registry.async_get_or_create(
+        config_entry_id=global_config_entry.entry_id,
+        identifiers={(DOMAIN, "global_config")},
+        name="Solar Window System Global Configuration",
+        manufacturer="Solar Window System",
+        model="Global Configuration",
+    )
+
+
+@pytest.fixture
+def expected_entity_ids() -> dict[str, str]:
+    """Return expected entity IDs for global configuration entities."""
+    expected = {}
+    for entity_key, config in GLOBAL_CONFIG_ENTITIES.items():
+        platform = config["platform"]
+        if platform == "input_number":
+            platform = "number"
+        elif platform == "input_text":
+            platform = "text"
+        elif platform == "input_select":
+            platform = "select"
+        elif platform == "input_boolean":
+            platform = "switch"
+
+        # Expected entity_id based on Home Assistant's automatic generation
+        expected[entity_key] = f"{platform}.sws_global_{entity_key}"
+
+    return expected
+
+
+@pytest.fixture
+def expected_entity_unique_ids() -> dict[str, str]:
+    """Return expected unique IDs for global configuration entities."""
+    expected = {}
+    for entity_key in GLOBAL_CONFIG_ENTITIES:
+        expected[entity_key] = f"sws_global_{entity_key}"
+
+    return expected
+
+
+@pytest.fixture
+def entity_configs_by_platform() -> dict[str, list[tuple[str, dict[str, Any]]]]:
+    """Return entity configurations grouped by platform."""
+    platforms: dict[str, list[tuple[str, dict[str, Any]]]] = {
+        "number": [],
+        "text": [],
+        "select": [],
+        "switch": [],
+        "sensor": [],
+    }
+
+    for entity_key, config in GLOBAL_CONFIG_ENTITIES.items():
+        platform = config["platform"]
+        if platform == "input_number":
+            platforms["number"].append((entity_key, config))
+        elif platform == "input_text":
+            platforms["text"].append((entity_key, config))
+        elif platform == "input_select":
+            platforms["select"].append((entity_key, config))
+        elif platform == "input_boolean":
+            platforms["switch"].append((entity_key, config))
+        elif platform == "sensor":
+            platforms["sensor"].append((entity_key, config))
+
+    return platforms
+
+
+@pytest.fixture
+def debug_entities() -> list[str]:
+    """Return list of entity keys that should be diagnostic entities."""
+    debug_entities = []
+    for entity_key, config in GLOBAL_CONFIG_ENTITIES.items():
+        if config.get("category") == "debug":
+            debug_entities.append(entity_key)
+    return debug_entities
