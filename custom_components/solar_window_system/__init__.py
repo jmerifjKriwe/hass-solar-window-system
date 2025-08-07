@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, "global_config")},
-            name="SWS Global",
+            name="Solar Window System",
             manufacturer="SolarWindowSystem",
             model="GlobalConfig",
         )
@@ -43,6 +43,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
+
+        # Set up platforms for group configurations
+        await hass.config_entries.async_forward_entry_setups(entry, ["select"])
 
         # Add update listener to handle new subentries
         entry.add_update_listener(_handle_config_entry_update)
@@ -88,6 +91,14 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
     _LOGGER.warning("🔧 Config entry update detected for: %s", entry.title)
     if entry.data.get("entry_type") in ["group_configs", "window_configs"]:
         await _create_subentry_devices(hass, entry)
+
+        # Reload select platform to pick up new entities for new subentries
+        _LOGGER.warning(
+            "🔧 Reloading select platform for updated entry: %s", entry.title
+        )
+        if entry.data.get("entry_type") == "group_configs":
+            await hass.config_entries.async_unload_platforms(entry, ["select"])
+            await hass.config_entries.async_forward_entry_setups(entry, ["select"])
 
 
 async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:

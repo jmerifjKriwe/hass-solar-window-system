@@ -23,10 +23,18 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up select entities for Solar Window System."""
-    # Only handle Global Configuration
-    if entry.title != "Solar Window System":
-        return
+    # Handle Global Configuration
+    if entry.title == "Solar Window System":
+        await _setup_global_config_selects(hass, entry, async_add_entities)
+    # Handle Group Configuration subentries
+    elif entry.data.get("entry_type") == "group_configs":
+        await _setup_group_config_selects(hass, entry, async_add_entities)
 
+
+async def _setup_global_config_selects(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
+    """Set up Global Configuration select entities."""
     _LOGGER.info("Setting up Global Configuration select entities")
 
     device_registry = dr.async_get(hass)
@@ -69,6 +77,91 @@ async def async_setup_entry(
             )
     else:
         _LOGGER.warning("Global Configuration device not found")
+
+
+async def _setup_group_config_selects(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
+    """Set up Group Configuration select entities."""
+    _LOGGER.info("Setting up Group Configuration select entities")
+
+    device_registry = dr.async_get(hass)
+
+    if not entry.subentries:
+        _LOGGER.warning("No group subentries found")
+        return
+
+    select_entities = []
+
+    # Process each group subentry
+    for subentry_id, subentry in entry.subentries.items():
+        if subentry.subentry_type == "group":
+            group_name = subentry.title
+            _LOGGER.info("Setting up select entities for group: %s", group_name)
+
+            # Find the device for this group
+            group_device = None
+            for device in device_registry.devices.values():
+                # Check if device belongs to this entry and subentry
+                device_has_entry = (
+                    device.config_entries and entry.entry_id in device.config_entries
+                )
+                subentries = device.config_entries_subentries
+                device_has_subentry = (
+                    subentries
+                    and entry.entry_id in subentries
+                    and subentry_id in subentries[entry.entry_id]
+                )
+
+                if device_has_entry and device_has_subentry:
+                    for identifier in device.identifiers:
+                        if (
+                            identifier[0] == DOMAIN
+                            and identifier[1] == f"group_{subentry_id}"
+                        ):
+                            group_device = device
+                            break
+                    if group_device:
+                        break
+
+            if group_device:
+                # Create scenario enable select entities for this group
+                select_entities.extend(
+                    [
+                        GroupConfigSelectEntity(
+                            "scenario_b_enable",
+                            {
+                                "name": "Enable Scenario B",
+                                "options": ["disable", "enable", "inherit"],
+                                "default": "inherit",
+                                "icon": "mdi:toggle-switch",
+                            },
+                            group_device,
+                            group_name,
+                            subentry_id,
+                        ),
+                        GroupConfigSelectEntity(
+                            "scenario_c_enable",
+                            {
+                                "name": "Enable Scenario C",
+                                "options": ["disable", "enable", "inherit"],
+                                "default": "inherit",
+                                "icon": "mdi:toggle-switch",
+                            },
+                            group_device,
+                            group_name,
+                            subentry_id,
+                        ),
+                    ]
+                )
+            else:
+                _LOGGER.warning("Group device not found for: %s", group_name)
+
+    if select_entities:
+        async_add_entities(select_entities)
+        _LOGGER.info(
+            "Added %d Group Configuration select entities", len(select_entities)
+        )
 
 
 async def _get_binary_sensor_entities(hass: HomeAssistant) -> list[str]:
@@ -165,6 +258,71 @@ class GlobalConfigSelectEntity(SelectEntity):
             "🔧 Select %s registered with name: %s",
             self._entity_key,
             self._attr_name,
+        )
+
+    async def async_select_option(self, option: str) -> None:
+        """Update the current selection."""
+        self._attr_current_option = option
+        self.async_write_ha_state()
+
+
+class GroupConfigSelectEntity(SelectEntity):
+    """Select entity for group configuration scenario enables."""
+
+    def __init__(
+        self,
+        entity_key: str,
+        config: dict,
+        device: dr.DeviceEntry,
+        group_name: str,
+        subentry_id: str,
+    ) -> None:
+        """Initialize the group select entity."""
+        self._entity_key = entity_key
+        self._config = config
+        self._device = device
+        self._group_name = group_name
+        self._subentry_id = subentry_id
+
+        # Use modern entity naming with has_entity_name = True
+        self._attr_name = config["name"]
+        # Create unique_id with group prefix: sws_group_<group_name>_<entity_key>
+        group_slug = group_name.lower().replace(" ", "_").replace("-", "_")
+        self._attr_unique_id = f"sws_group_{group_slug}_{entity_key}"
+        self._attr_has_entity_name = True
+
+        _LOGGER.warning(
+            "🔧 Group Select %s: unique_id=%s, name=%s, group=%s",
+            entity_key,
+            self._attr_unique_id,
+            self._attr_name,
+            group_name,
+        )
+
+        self._attr_device_info = {
+            "identifiers": device.identifiers,
+            "name": device.name,
+            "manufacturer": device.manufacturer,
+            "model": device.model,
+        }
+        self._attr_options = config["options"]
+        self._attr_icon = config.get("icon")
+        # Set current option to default if it's in the options list
+        if config["default"] and config["default"] in config["options"]:
+            self._attr_current_option = config["default"]
+        else:
+            self._attr_current_option = (
+                config["options"][0] if config["options"] else None
+            )
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        _LOGGER.warning(
+            "🔧 Group Select %s registered with name: %s for group: %s",
+            self._entity_key,
+            self._attr_name,
+            self._group_name,
         )
 
     async def async_select_option(self, option: str) -> None:
