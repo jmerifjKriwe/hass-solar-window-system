@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, "global_config")},
-            name="Global configuration",
+            name="SWS Global",
             manufacturer="SolarWindowSystem",
             model="GlobalConfig",
         )

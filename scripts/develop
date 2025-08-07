@@ -10,6 +10,9 @@ if [[ ! -d "${PWD}/config" ]]; then
     hass --config "${PWD}/config" --script ensure_config
 fi
 
+# Remove __pycache__ directories
+find ./custom_components -type d -name "__pycache__" -exec rm -r {} +
+
 # Set the path to custom_components
 ## This let's us have the structure we want <root>/custom_components/solar_window_system
 ## while at the same time have Home Assistant configuration inside <root>/config

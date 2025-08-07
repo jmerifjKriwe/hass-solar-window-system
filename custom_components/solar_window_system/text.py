@@ -73,19 +73,13 @@ class GlobalConfigTextEntity(TextEntity):
         self._entity_key = entity_key
         self._config = config
         self._device = device
-        # Set name, unique_id, and suggested_object_id for proper entity ID generation
-        # WORKAROUND: Use prefixed name initially to get correct entity_id generation
-        self._attr_name = f"{ENTITY_PREFIX_GLOBAL.upper()} {config['name']}"
+        # Use modern entity naming with has_entity_name = True
+        self._attr_name = config["name"]
         self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        # Use suggested_object_id instead of entity_id to preserve prefix with unique_id
-        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        # Disable has_entity_name to ensure our suggested_object_id is used
-        self._attr_has_entity_name = False
-        # Store the original name for later restoration
-        self._original_name = config["name"]
+        self._attr_has_entity_name = True
 
         _LOGGER.warning(
-            "🔧 Text %s: unique_id=%s, temp_name=%s",
+            "🔧 Text %s: unique_id=%s, name=%s",
             entity_key,
             self._attr_unique_id,
             self._attr_name,
@@ -107,10 +101,8 @@ class GlobalConfigTextEntity(TextEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        # Restore the original name after entity ID has been generated
-        self._attr_name = self._original_name
         _LOGGER.warning(
-            "🔧 Text %s registered, restoring name to: %s",
+            "🔧 Text %s registered with name: %s",
             self._entity_key,
             self._attr_name,
         )
