@@ -265,20 +265,22 @@ class GlobalConfigSelectEntity(SelectEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        # Set friendly_name attribute for UI
-        entity_id = self.entity_id
-        if self.hass is not None:
-            entity_registry = er.async_get(self.hass)
-            entry = entity_registry.async_get(entity_id)
-            if entry:
-                entity_registry.async_update_entity(entity_id, name=self._config["name"])
-        self._attr_name = self._config["name"]
-        self.async_write_ha_state()
         _LOGGER.warning(
             "🔧 Select %s registered with name: %s",
             self._entity_key,
             self._attr_name,
         )
+        # Set friendly name to config['name'] (e.g. 'Weather Warning Sensor')
+        from homeassistant.helpers import entity_registry as er
+
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection."""
@@ -287,7 +289,14 @@ class GlobalConfigSelectEntity(SelectEntity):
 
 
 class GroupConfigSelectEntity(SelectEntity):
-    """Select entity for group configuration scenario enables."""
+    """
+    Select entity for group configuration scenario enables.
+
+    Attributes
+    ----------
+
+    _entity_key, _config, _device, _group_name, _subentry_id: Entity configuration and context
+    """
 
     def __init__(
         self,
@@ -307,7 +316,7 @@ class GroupConfigSelectEntity(SelectEntity):
         group_slug = group_name.lower().replace(" ", "_").replace("-", "_")
         self._attr_unique_id = f"sws_group_{group_slug}_{entity_key}"
         self._attr_suggested_object_id = f"sws_group_{group_slug}_{entity_key}"
-        self._attr_name = f"SWS_GROUP {group_name} {config['name']}"  # Initial, wird nach Anlegen angepasst
+        self._attr_name = f"SWS_GROUP {group_name} {config['name']}"
         self._attr_has_entity_name = False
 
         _LOGGER.warning(
@@ -337,21 +346,22 @@ class GroupConfigSelectEntity(SelectEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        # Set friendly_name attribute for UI
-        entity_id = self.entity_id
-        if self.hass is not None:
-            entity_registry = er.async_get(self.hass)
-            entry = entity_registry.async_get(entity_id)
-            if entry:
-                entity_registry.async_update_entity(entity_id, name=self._config["name"])
-        self._attr_name = self._config["name"]
-        self.async_write_ha_state()
         _LOGGER.warning(
             "🔧 Group Select %s registered with name: %s for group: %s",
             self._entity_key,
             self._attr_name,
             self._group_name,
         )
+
+        # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection."""
@@ -444,6 +454,41 @@ async def _setup_window_config_selects(
 
 
 class WindowConfigSelectEntity(SelectEntity):
+    """
+    Select entity for window configuration scenario enables.
+
+    Attributes
+    ----------
+
+    _entity_key, _config, _device, _window_name, _subentry_id: Entity configuration and context
+    """
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
+
     """Select entity for window configuration scenario enables."""
 
     def __init__(
@@ -465,7 +510,7 @@ class WindowConfigSelectEntity(SelectEntity):
         window_slug = window_name.lower().replace(" ", "_").replace("-", "_")
         self._attr_unique_id = f"sws_window_{window_slug}_{entity_key}"
         self._attr_suggested_object_id = f"sws_window_{window_slug}_{entity_key}"
-        self._attr_name = f"SWS_WINDOW {window_name} {config['name']}"  # Initial, wird nach Anlegen angepasst
+        self._attr_name = f"SWS_WINDOW {window_name} {config['name']}"
         self._attr_has_entity_name = False
 
         self._attr_device_info = {
@@ -483,19 +528,6 @@ class WindowConfigSelectEntity(SelectEntity):
             self._attr_current_option = (
                 config["options"][0] if config["options"] else None
             )
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
-        await super().async_added_to_hass()
-        # Set friendly_name attribute for UI
-        entity_id = self.entity_id
-        if self.hass is not None:
-            entity_registry = er.async_get(self.hass)
-            entry = entity_registry.async_get(entity_id)
-            if entry:
-                entity_registry.async_update_entity(entity_id, name=self._config["name"])
-        self._attr_name = self._config["name"]
-        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection."""

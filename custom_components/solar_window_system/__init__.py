@@ -5,9 +5,8 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
-from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,9 +34,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hass.config_entries.async_forward_entry_setups(
             entry, ["sensor", "number", "text", "select", "switch"]
         )
-        # Ensure entities register before attempting migrations
-        await hass.async_block_till_done()
-        await _migrate_entity_ids(hass, entry)
 
     # Handle group configurations entry (subentry parent)
     elif entry.data.get("entry_type") == "group_configs":
@@ -50,8 +46,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Set up platforms for group configurations
         await hass.config_entries.async_forward_entry_setups(entry, ["select"])
-        await hass.async_block_till_done()
-        await _migrate_entity_ids(hass, entry)
 
         # Add update listener to handle new subentries
         entry.add_update_listener(_handle_config_entry_update)
@@ -84,15 +78,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
 
-        # Set up platforms for window configurations
-        await hass.config_entries.async_forward_entry_setups(entry, ["select"])
-        await hass.async_block_till_done()
-        await _migrate_entity_ids(hass, entry)
+    # Set up platforms for window configurations
+    await hass.config_entries.async_forward_entry_setups(entry, ["select"])
 
-        # Add update listener to handle new subentries
-        entry.add_update_listener(_handle_config_entry_update)
-
-        # (select setup for window_configs is handled inside that branch above)
+    # Add update listener to handle new subentries
+    entry.add_update_listener(_handle_config_entry_update)
 
     _LOGGER.warning("🔧 async_setup_entry completed for: %s", entry.title)
     return True
@@ -112,8 +102,6 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
         if entry.data.get("entry_type") in ("group_configs", "window_configs"):
             await hass.config_entries.async_unload_platforms(entry, ["select"])
             await hass.config_entries.async_forward_entry_setups(entry, ["select"])
-            await hass.async_block_till_done()
-            await _migrate_entity_ids(hass, entry)
 
 
 async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -188,94 +176,6 @@ async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> N
                 )
     else:
         _LOGGER.warning("🔧 No subentries found in entry")
-
-
-async def _migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Migrate entity_ids to the sws_* patterns if they don't match yet."""
-    entity_registry = er.async_get(hass)
-    if entry.title == "Solar Window System":
-        await _migrate_global_entity_ids(entity_registry)
-    else:
-        await _migrate_subentry_select_ids(hass, entry, entity_registry)
-
-
-async def _migrate_global_entity_ids(entity_registry: er.EntityRegistry) -> None:
-    """Rename global entities to domain.sws_global_<key>."""
-    platform_to_domain = {
-        "input_number": "number",
-        "input_text": "text",
-        "input_boolean": "switch",
-        "input_select": "select",
-        "sensor": "sensor",
-    }
-
-    for key, cfg in GLOBAL_CONFIG_ENTITIES.items():
-        domain = platform_to_domain.get(cfg["platform"])  # type: ignore[index]
-        if not domain:
-            continue
-        unique_id = f"{ENTITY_PREFIX_GLOBAL}_{key}"
-        current_eid = entity_registry.async_get_entity_id(domain, DOMAIN, unique_id)
-        desired_eid = f"{domain}.{unique_id}"
-        if (
-            current_eid
-            and current_eid != desired_eid
-            and not entity_registry.async_get(desired_eid)
-        ):
-            entity_registry.async_update_entity(
-                current_eid,
-                new_entity_id=desired_eid,
-            )
-
-
-async def _migrate_subentry_select_ids(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    entity_registry: er.EntityRegistry,
-) -> None:
-    """Rename group/window select entities to select.sws_group|window_<slug>_<key>."""
-    device_registry = dr.async_get(hass)
-    eligible_devices: set[str] = set()
-    for device in device_registry.devices.values():
-        if device.config_entries and entry.entry_id in device.config_entries:
-            eligible_devices.add(device.id)
-
-    def _slug(text: str) -> str:
-        return text.lower().replace(" ", "_").replace("-", "_")
-
-    for ent in list(entity_registry.entities.values()):
-        if ent.platform != DOMAIN or not ent.entity_id.startswith("select."):
-            continue
-        if ent.device_id not in eligible_devices:
-            continue
-
-        # If entity already has sws_* object id, align entity_id to it
-        uid = ent.unique_id or ""
-        if uid.startswith(("sws_group_", "sws_window_")):
-            desired = f"select.{uid}"
-            if ent.entity_id != desired and not entity_registry.async_get(desired):
-                entity_registry.async_update_entity(
-                    ent.entity_id, new_entity_id=desired
-                )
-            continue
-
-        # Handle old IDs like select.enable_scenario_b / select.enable_scenario_c
-        object_id = ent.entity_id.split(".", 1)[1]
-        if object_id not in {"enable_scenario_b", "enable_scenario_c"}:
-            continue
-
-        device = device_registry.async_get(ent.device_id) if ent.device_id else None
-        if not device or not device.name:
-            continue
-        slug = _slug(device.name)
-        prefix = (
-            "sws_group"
-            if entry.data.get("entry_type") == "group_configs"
-            else "sws_window"
-        )
-        desired_object_id = f"{prefix}_{slug}_{object_id}"
-        desired = f"select.{desired_object_id}"
-        if ent.entity_id != desired and not entity_registry.async_get(desired):
-            entity_registry.async_update_entity(ent.entity_id, new_entity_id=desired)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
