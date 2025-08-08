@@ -237,7 +237,7 @@ class GlobalConfigSelectEntity(SelectEntity):
         # Stable ID and desired entity_id pattern: select.sws_global_*
         self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
         self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        self._attr_name = config["name"]
+        self._attr_name = f"SWS_GLOBAL {config['name']}"
         self._attr_has_entity_name = False
 
         _LOGGER.warning(
@@ -265,6 +265,15 @@ class GlobalConfigSelectEntity(SelectEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
+        # Set friendly_name attribute for UI
+        entity_id = self.entity_id
+        if self.hass is not None:
+            entity_registry = er.async_get(self.hass)
+            entry = entity_registry.async_get(entity_id)
+            if entry:
+                entity_registry.async_update_entity(entity_id, name=self._config["name"])
+        self._attr_name = self._config["name"]
+        self.async_write_ha_state()
         _LOGGER.warning(
             "🔧 Select %s registered with name: %s",
             self._entity_key,
@@ -298,7 +307,7 @@ class GroupConfigSelectEntity(SelectEntity):
         group_slug = group_name.lower().replace(" ", "_").replace("-", "_")
         self._attr_unique_id = f"sws_group_{group_slug}_{entity_key}"
         self._attr_suggested_object_id = f"sws_group_{group_slug}_{entity_key}"
-        self._attr_name = config["name"]
+        self._attr_name = f"SWS_GROUP {group_name} {config['name']}"  # Initial, wird nach Anlegen angepasst
         self._attr_has_entity_name = False
 
         _LOGGER.warning(
@@ -328,6 +337,15 @@ class GroupConfigSelectEntity(SelectEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
+        # Set friendly_name attribute for UI
+        entity_id = self.entity_id
+        if self.hass is not None:
+            entity_registry = er.async_get(self.hass)
+            entry = entity_registry.async_get(entity_id)
+            if entry:
+                entity_registry.async_update_entity(entity_id, name=self._config["name"])
+        self._attr_name = self._config["name"]
+        self.async_write_ha_state()
         _LOGGER.warning(
             "🔧 Group Select %s registered with name: %s for group: %s",
             self._entity_key,
@@ -447,7 +465,7 @@ class WindowConfigSelectEntity(SelectEntity):
         window_slug = window_name.lower().replace(" ", "_").replace("-", "_")
         self._attr_unique_id = f"sws_window_{window_slug}_{entity_key}"
         self._attr_suggested_object_id = f"sws_window_{window_slug}_{entity_key}"
-        self._attr_name = config["name"]
+        self._attr_name = f"SWS_WINDOW {window_name} {config['name']}"  # Initial, wird nach Anlegen angepasst
         self._attr_has_entity_name = False
 
         self._attr_device_info = {
@@ -465,6 +483,19 @@ class WindowConfigSelectEntity(SelectEntity):
             self._attr_current_option = (
                 config["options"][0] if config["options"] else None
             )
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # Set friendly_name attribute for UI
+        entity_id = self.entity_id
+        if self.hass is not None:
+            entity_registry = er.async_get(self.hass)
+            entry = entity_registry.async_get(entity_id)
+            if entry:
+                entity_registry.async_update_entity(entity_id, name=self._config["name"])
+        self._attr_name = self._config["name"]
+        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection."""
