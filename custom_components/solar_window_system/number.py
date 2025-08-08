@@ -106,6 +106,17 @@ class GlobalConfigNumberEntity(NumberEntity):
             self._entity_key,
             self._attr_name,
         )
+        # Set friendly name to config['name']
+        from homeassistant.helpers import entity_registry as er
+
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""

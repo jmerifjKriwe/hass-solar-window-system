@@ -270,6 +270,17 @@ class GlobalConfigSelectEntity(SelectEntity):
             self._entity_key,
             self._attr_name,
         )
+        # Set friendly name to config['name'] (e.g. 'Weather Warning Sensor')
+        from homeassistant.helpers import entity_registry as er
+
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection."""
@@ -278,7 +289,14 @@ class GlobalConfigSelectEntity(SelectEntity):
 
 
 class GroupConfigSelectEntity(SelectEntity):
-    """Select entity for group configuration scenario enables."""
+    """
+    Select entity for group configuration scenario enables.
+
+    Attributes
+    ----------
+
+    _entity_key, _config, _device, _group_name, _subentry_id: Entity configuration and context
+    """
 
     def __init__(
         self,
@@ -334,6 +352,16 @@ class GroupConfigSelectEntity(SelectEntity):
             self._attr_name,
             self._group_name,
         )
+
+        # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection."""
@@ -426,6 +454,41 @@ async def _setup_window_config_selects(
 
 
 class WindowConfigSelectEntity(SelectEntity):
+    """
+    Select entity for window configuration scenario enables.
+
+    Attributes
+    ----------
+
+    _entity_key, _config, _device, _window_name, _subentry_id: Entity configuration and context
+    """
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass."""
+        await super().async_added_to_hass()
+        # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
+
     """Select entity for window configuration scenario enables."""
 
     def __init__(
