@@ -72,12 +72,13 @@ class GlobalConfigNumberEntity(NumberEntity):
         self._entity_key = entity_key
         self._config = config
         self._device = device
-        # Use modern entity naming with has_entity_name = True
-        # The entity name will be the clean name, entity ID will be auto-generated
-        self._attr_name = config["name"]
+        # Unique ID stays stable
         self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        # Enable modern entity naming - Home Assistant will generate entity IDs properly
-        self._attr_has_entity_name = True
+        # Suggest object id for desired entity_id: number.sws_global_<key>
+        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
+        # Use a readable name but don't combine with device name for entity_id
+        self._attr_name = f"SWS_GLOBAL {config['name']}"
+        self._attr_has_entity_name = False
         _LOGGER.warning(
             "🔧 Entity %s: unique_id=%s, name=%s",
             entity_key,

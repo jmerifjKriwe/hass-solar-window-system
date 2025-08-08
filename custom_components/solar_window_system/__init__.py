@@ -78,8 +78,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
 
-        # Add update listener to handle new subentries
-        entry.add_update_listener(_handle_config_entry_update)
+    # Set up platforms for window configurations
+    await hass.config_entries.async_forward_entry_setups(entry, ["select"])
+
+    # Add update listener to handle new subentries
+    entry.add_update_listener(_handle_config_entry_update)
 
     _LOGGER.warning("🔧 async_setup_entry completed for: %s", entry.title)
     return True
@@ -96,7 +99,7 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
         _LOGGER.warning(
             "🔧 Reloading select platform for updated entry: %s", entry.title
         )
-        if entry.data.get("entry_type") == "group_configs":
+        if entry.data.get("entry_type") in ("group_configs", "window_configs"):
             await hass.config_entries.async_unload_platforms(entry, ["select"])
             await hass.config_entries.async_forward_entry_setups(entry, ["select"])
 

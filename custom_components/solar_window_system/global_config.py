@@ -9,7 +9,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 
-from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
+from .const import ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -260,10 +260,11 @@ class GlobalConfigSensor(Entity):
         self._entity_key = entity_key
         self._config = config
         self._device = device
-        # Use modern entity naming with has_entity_name = True
-        self._attr_name = config["name"]
+        # Stable IDs to yield sensor.sws_global_* entity_ids
         self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        self._attr_has_entity_name = True
+        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
+        self._attr_name = f"SWS_GLOBAL {config['name']}"
+        self._attr_has_entity_name = False
 
         _LOGGER.warning(
             "🔧 Sensor %s: unique_id=%s, name=%s",
