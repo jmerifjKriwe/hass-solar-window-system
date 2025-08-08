@@ -76,8 +76,8 @@ class GlobalConfigTextEntity(TextEntity):
         # Stable unique ID + desired object id
         self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
         self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        # Readable name, but don't let device name influence entity_id
-        self._attr_name = f"SWS_GLOBAL {config['name']}"
+        # Readable name without prefix
+        self._attr_name = config["name"]
         self._attr_has_entity_name = False
 
         _LOGGER.warning(
