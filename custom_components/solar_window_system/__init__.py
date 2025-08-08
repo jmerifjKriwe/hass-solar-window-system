@@ -78,11 +78,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
 
-    # Set up platforms for window configurations
-    await hass.config_entries.async_forward_entry_setups(entry, ["select"])
+        # Set up platforms for window configurations
+        await hass.config_entries.async_forward_entry_setups(entry, ["select"])
 
-    # Add update listener to handle new subentries
-    entry.add_update_listener(_handle_config_entry_update)
+        # Add update listener to handle new subentries
+        entry.add_update_listener(_handle_config_entry_update)
 
     _LOGGER.warning("🔧 async_setup_entry completed for: %s", entry.title)
     return True
