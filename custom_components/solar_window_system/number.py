@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
@@ -27,7 +28,7 @@ async def async_setup_entry(
     if entry.title != "Solar Window System":
         return
 
-    _LOGGER.info("Setting up Global Configuration number entities")
+    _LOGGER.debug("Setting up Global Configuration number entities")
 
     device_registry = dr.async_get(hass)
     global_device = None
@@ -52,7 +53,7 @@ async def async_setup_entry(
 
         if number_entities:
             async_add_entities(number_entities)
-            _LOGGER.info(
+            _LOGGER.debug(
                 "Added %d Global Configuration number entities", len(number_entities)
             )
     else:
@@ -79,9 +80,9 @@ class GlobalConfigNumberEntity(NumberEntity):
         # Use a readable name but don't combine with device name for entity_id
         self._attr_name = f"SWS_GLOBAL {config['name']}"
         self._attr_has_entity_name = False
-        _LOGGER.warning(
-            "🔧 Entity %s: unique_id=%s, name=%s",
-            entity_key,
+        _LOGGER.debug(
+            "Number %s: unique_id=%s, name=%s",
+            self._entity_key,
             self._attr_unique_id,
             self._attr_name,
         )
@@ -101,14 +102,8 @@ class GlobalConfigNumberEntity(NumberEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        _LOGGER.warning(
-            "🔧 Entity %s registered with name: %s",
-            self._entity_key,
-            self._attr_name,
-        )
+        _LOGGER.debug("Number %s registered as %s", self._entity_key, self._attr_name)
         # Set friendly name to config['name']
-        from homeassistant.helpers import entity_registry as er
-
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
             ent_reg_entry = entity_registry.entities[self.entity_id]
