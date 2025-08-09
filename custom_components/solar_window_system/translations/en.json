@@ -8,6 +8,8 @@
     },
     "abort": {
       "no_more_entries": "Only one configuration entry is allowed",
+      "already_configured": "All configuration entries already exist",
+      "created_missing_entries": "Created missing configuration entries",
       "missing_data": "Missing configuration data",
       "unknown_entry_type": "Unknown entry type"
     }
@@ -79,7 +81,9 @@
       },
       "add": "Add subentry",
       "error": {},
-      "abort": {}
+      "abort": {
+        "reconfigure_successful": "Changes saved"
+      }
     },
     "window": {
       "initiate_flow": {
@@ -189,7 +193,9 @@
       },
       "add": "Add subentry",
       "error": {},
-      "abort": {}
+      "abort": {
+        "reconfigure_successful": "Changes saved"
+      }
     }
   },
   "labels": {

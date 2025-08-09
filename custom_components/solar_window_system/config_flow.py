@@ -681,21 +681,45 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return {"group": GroupSubentryFlowHandler}
         if config_entry.data.get("entry_type") == ENTRY_TYPE_WINDOWS:
             return {"window": WindowSubentryFlowHandler}
-        # Fallback: return all types if entry type is unclear
-        return {"group": GroupSubentryFlowHandler, "window": WindowSubentryFlowHandler}
+        # No subentries for the global/root entry
+        return {}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
-        """Handle the initial step."""
-        if self._created or self._already_configured():
-            return self.async_abort(reason="no_more_entries")
+    async def async_step_user(self, _user_input: dict[str, Any] | None = None) -> Any:
+        """Handle Add entry button and bootstrap missing parents as needed."""
+        # Inspect current entries for this domain
+        existing = list(self._async_current_entries())
+        has_main = any(e.title == "Solar Window System" for e in existing)
+        has_group_parent = any(
+            e.data.get("entry_type") == ENTRY_TYPE_GROUPS for e in existing
+        )
+        has_window_parent = any(
+            e.data.get("entry_type") == ENTRY_TYPE_WINDOWS for e in existing
+        )
 
-        if user_input is not None:
-            # Create three entries
+        # First-time setup from Integrations → Add: create all three
+        if not has_main and not has_group_parent and not has_window_parent:
             await self._create_entries()
             self._created = True
             return self.async_create_entry(title="Solar Window System", data={})
 
-        return self.async_show_form(step_id="user", description_placeholders={})
+        # If both parents exist already, inform user it's configured
+        if has_group_parent and has_window_parent:
+            return self.async_abort(reason="already_configured")
+
+        # Create any missing parent entries, then inform user
+        if not has_group_parent:
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "internal"},
+                data={"entry_type": ENTRY_TYPE_GROUPS},
+            )
+        if not has_window_parent:
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "internal"},
+                data={"entry_type": ENTRY_TYPE_WINDOWS},
+            )
+        return self.async_abort(reason="created_missing_entries")
 
     async def async_step_internal(
         self, user_input: dict[str, Any] | None = None

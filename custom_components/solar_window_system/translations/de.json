@@ -66,7 +66,9 @@
             },
             "add": "Untereintrag hinzufügen",
             "error": {},
-            "abort": {}
+            "abort": {
+                "reconfigure_successful": "Änderungen gespeichert"
+            }
         },
         "window": {
             "initiate_flow": {
@@ -176,12 +178,16 @@
             },
             "add": "Untereintrag hinzufügen",
             "error": {},
-            "abort": {}
+            "abort": {
+                "reconfigure_successful": "Änderungen gespeichert"
+            }
         }
     },
     "config": {
         "abort": {
             "no_more_entries": "Nur ein Konfigurationseintrag ist erlaubt",
+            "already_configured": "Alle Konfigurationseinträge sind bereits vorhanden",
+            "created_missing_entries": "Fehlende Konfigurationseinträge wurden erstellt",
             "missing_data": "Fehlende Konfigurationsdaten",
             "unknown_entry_type": "Unbekannter Eintragstyp"
         }
