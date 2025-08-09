@@ -1,10 +1,12 @@
 """Test that global config entities have correct entity_id and unique_id format."""
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from homeassistant.config_entries import ConfigEntry
+
 from custom_components.solar_window_system.const import (
     ENTITY_PREFIX_GLOBAL,
     GLOBAL_CONFIG_ENTITIES,
@@ -12,8 +14,8 @@ from custom_components.solar_window_system.const import (
 from custom_components.solar_window_system.global_config import GlobalConfigSensor
 from custom_components.solar_window_system.number import GlobalConfigNumberEntity
 from custom_components.solar_window_system.select import GlobalConfigSelectEntity
-from custom_components.solar_window_system.text import GlobalConfigTextEntity
 from custom_components.solar_window_system.switch import GlobalConfigSwitchEntity
+from custom_components.solar_window_system.text import GlobalConfigTextEntity
 
 
 @pytest.mark.asyncio

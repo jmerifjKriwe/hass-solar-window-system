@@ -23,6 +23,56 @@ ENTRY_TYPE_GLOBAL = "global_config"
 ENTRY_TYPE_GROUPS = "group_configs"
 ENTRY_TYPE_WINDOWS = "window_configs"
 
+# Common UI labels
+NONE_LABEL = "(none)"
+
+
+# ----- Shared validators that allow clearing values (empty string) -----
+def allow_empty_float(min_v: float | None = None, max_v: float | None = None) -> Any:
+    """
+    Return a validator that coerces to float and allows empty strings.
+
+    When the provided value is "" or None, the validator returns "".
+    Otherwise, it coerces to float and enforces optional min/max bounds.
+    """
+
+    def _validator(v: Any) -> Any:
+        if v in ("", None):
+            return ""
+        fv = float(v)
+        if min_v is not None and fv < min_v:
+            msg = "value below minimum"
+            raise vol.Invalid(msg)
+        if max_v is not None and fv > max_v:
+            msg = "value above maximum"
+            raise vol.Invalid(msg)
+        return fv
+
+    return _validator
+
+
+def allow_empty_int(min_v: int | None = None, max_v: int | None = None) -> Any:
+    """
+    Return a validator that coerces to int and allows empty strings.
+
+    When the provided value is "" or None, the validator returns "".
+    Otherwise, it coerces to int and enforces optional min/max bounds.
+    """
+
+    def _validator(v: Any) -> Any:
+        if v in ("", None):
+            return ""
+        iv = int(v)
+        if min_v is not None and iv < min_v:
+            msg = "value below minimum"
+            raise vol.Invalid(msg)
+        if max_v is not None and iv > max_v:
+            msg = "value above maximum"
+            raise vol.Invalid(msg)
+        return iv
+
+    return _validator
+
 
 class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
     """
@@ -46,11 +96,12 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         # Defaults for basic page
         defaults: dict[str, Any] = {
             "name": getattr(getattr(self, "subentry", None), "title", ""),
-            "diffuse_factor": 0.15,
-            "threshold_direct": 200,
-            "threshold_diffuse": 150,
-            "temperature_indoor_base": 23.0,
-            "temperature_outdoor_base": 19.5,
+            # All numeric fields can be empty -> use "" as default to allow clearing
+            "diffuse_factor": "",
+            "threshold_direct": "",
+            "threshold_diffuse": "",
+            "temperature_indoor_base": "",
+            "temperature_outdoor_base": "",
         }
 
         # If reconfiguring, prefill from current subentry title and data
@@ -67,29 +118,39 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         schema = vol.Schema(
             {
                 vol.Required("name", default=defaults["name"]): str,
-                vol.Required(
-                    "diffuse_factor", default=defaults["diffuse_factor"]
-                ): vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.5)),
-                vol.Required(
+                vol.Optional("diffuse_factor", default=defaults["diffuse_factor"]): str,
+                vol.Optional(
                     "threshold_direct", default=defaults["threshold_direct"]
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "threshold_diffuse", default=defaults["threshold_diffuse"]
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "temperature_indoor_base",
                     default=defaults["temperature_indoor_base"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "temperature_outdoor_base",
                     default=defaults["temperature_outdoor_base"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
+                ): str,
             }
         )
 
         if user_input is None:
             return self.async_show_form(step_id="user", data_schema=schema)
 
+        # Coerce numeric strings while allowing "" to clear
+        if user_input is not None:
+            coerce_map = {
+                "diffuse_factor": allow_empty_float(0.05, 0.5),
+                "threshold_direct": allow_empty_int(0, 1000),
+                "threshold_diffuse": allow_empty_int(0, 1000),
+                "temperature_indoor_base": allow_empty_float(10, 30),
+                "temperature_outdoor_base": allow_empty_float(10, 30),
+            }
+            for k, conv in coerce_map.items():
+                if k in user_input:
+                    user_input[k] = conv(user_input[k])
         # Store and continue to enhanced page
         self._basic = user_input
         return await self.async_step_enhanced()
@@ -102,14 +163,15 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         _LOGGER.debug("GroupSubentryFlowHandler.enhanced: input=%s", user_input)
 
         enhanced_defaults: dict[str, Any] = {
-            "scenario_b_enable": "inherit",
-            "scenario_b_temp_indoor": 23.5,
-            "scenario_b_temp_outdoor": 25.5,
-            "scenario_c_enable": "inherit",
-            "scenario_c_temp_indoor": 21.5,
-            "scenario_c_temp_outdoor": 24.0,
-            "scenario_c_temp_forecast": 28.5,
-            "scenario_c_start_hour": 9,
+            # Allow empty for all fields on this page
+            "scenario_b_enable": "",
+            "scenario_b_temp_indoor": "",
+            "scenario_b_temp_outdoor": "",
+            "scenario_c_enable": "",
+            "scenario_c_temp_indoor": "",
+            "scenario_c_temp_outdoor": "",
+            "scenario_c_temp_forecast": "",
+            "scenario_c_start_hour": "",
         }
 
         # On reconfigure, prefill from existing subentry data
@@ -119,45 +181,75 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if key in sub.data:
                     enhanced_defaults[key] = sub.data[key]
 
+        # Only three choices are needed; 'inherit' will be stored as empty
         enable_options = ["disable", "enable", "inherit"]
 
         schema = vol.Schema(
             {
-                vol.Required(
-                    "scenario_b_enable", default=enhanced_defaults["scenario_b_enable"]
+                vol.Optional(
+                    "scenario_b_enable",
+                    default=(
+                        enhanced_defaults["scenario_b_enable"]
+                        if enhanced_defaults["scenario_b_enable"]
+                        else "inherit"
+                    ),
                 ): vol.In(enable_options),
-                vol.Required(
+                vol.Optional(
                     "scenario_b_temp_indoor",
                     default=enhanced_defaults["scenario_b_temp_indoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_b_temp_outdoor",
                     default=enhanced_defaults["scenario_b_temp_outdoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
-                    "scenario_c_enable", default=enhanced_defaults["scenario_c_enable"]
+                ): str,
+                vol.Optional(
+                    "scenario_c_enable",
+                    default=(
+                        enhanced_defaults["scenario_c_enable"]
+                        if enhanced_defaults["scenario_c_enable"]
+                        else "inherit"
+                    ),
                 ): vol.In(enable_options),
-                vol.Required(
+                vol.Optional(
                     "scenario_c_temp_indoor",
                     default=enhanced_defaults["scenario_c_temp_indoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_c_temp_outdoor",
                     default=enhanced_defaults["scenario_c_temp_outdoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_c_temp_forecast",
                     default=enhanced_defaults["scenario_c_temp_forecast"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=15, max=40)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_c_start_hour",
                     default=enhanced_defaults["scenario_c_start_hour"],
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+                ): str,
             }
         )
 
         if user_input is None:
             return self.async_show_form(step_id="enhanced", data_schema=schema)
+
+        # Coerce numeric strings while allowing "" to clear
+        if user_input is not None:
+            coerce_map = {
+                "scenario_b_temp_indoor": allow_empty_float(10, 30),
+                "scenario_b_temp_outdoor": allow_empty_float(10, 30),
+                "scenario_c_temp_indoor": allow_empty_float(10, 30),
+                "scenario_c_temp_outdoor": allow_empty_float(10, 30),
+                "scenario_c_temp_forecast": allow_empty_float(15, 40),
+                "scenario_c_start_hour": allow_empty_int(0, 23),
+            }
+            for k, conv in coerce_map.items():
+                if k in user_input:
+                    user_input[k] = conv(user_input[k])
+
+        # Map 'inherit' back to empty for storage
+        for k in ("scenario_b_enable", "scenario_c_enable"):
+            if user_input.get(k) == "inherit":
+                user_input[k] = ""
 
         # Merge pages and create/update entry (keep name in data to preserve behavior)
         data = {**self._basic, **user_input, "entry_type": "group"}
@@ -192,21 +284,15 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         self._page1 = {}
         self._page2 = {}
 
-    # ----- Page 1: Basic window configuration -----
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
-        """Render basic window configuration (page 1)."""
-        _LOGGER.debug("WindowSubentryFlowHandler.user: input=%s", user_input)
-
-        # Prepare temperature sensor options
-        temp_sensor_options = await self._get_temperature_sensor_entities()
-
-        # Defaults for page 1
+    # ----- Helpers for Page 1 (basic) -----
+    def _page1_defaults(
+        self, group_options_map: list[tuple[str, str]]
+    ) -> dict[str, Any]:
+        """Build defaults for page 1, prefilling and resolving group name."""
         defaults: dict[str, Any] = {
             "name": getattr(getattr(self, "subentry", None), "title", ""),
-            # Numeric fields: no defaults per spec
         }
 
-        # Prefill from current subentry on reconfigure
         is_reconfigure = self.source == config_entries.SOURCE_RECONFIGURE
         if is_reconfigure:
             sub = self._get_reconfigure_subentry()
@@ -223,31 +309,44 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 "shadow_depth",
                 "shadow_offset",
                 "room_temp_entity",
+                "linked_group",
             ):
                 if k in sub.data:
                     defaults[k] = sub.data[k]
+            # Resolve previously stored linked_group_id to display name
+            if not defaults.get("linked_group"):
+                gid = sub.data.get("linked_group_id")
+                if gid:
+                    for group_id, group_name in group_options_map:
+                        if group_id == gid:
+                            defaults["linked_group"] = group_name
+                            break
+            if not defaults.get("linked_group"):
+                defaults["linked_group"] = NONE_LABEL
+        return defaults
 
-        # Build schema dynamically so we only set defaults during reconfigure
+    def _page1_schema(
+        self,
+        defaults: dict[str, Any],
+        temp_sensor_options: list[str],
+        group_display_options: list[str],
+    ) -> vol.Schema:
+        """Build the serializable schema for page 1."""
         schema_dict: dict[Any, Any] = {}
-        # name always has a default (empty string if creating)
         schema_dict[vol.Required("name", default=defaults.get("name", ""))] = str
-
-        def _req_float(key: str, min_v: float, max_v: float) -> None:
-            validator = vol.All(vol.Coerce(float), vol.Range(min=min_v, max=max_v))
-            if is_reconfigure and key in defaults:
-                schema_dict[vol.Required(key, default=defaults[key])] = validator
-            else:
-                schema_dict[vol.Required(key)] = validator
-
-        _req_float("azimuth", 0, 360)
-        _req_float("azimuth_min", -90, 0)
-        _req_float("azimuth_max", 0, 90)
-        _req_float("elevation_min", 0, 90)
-        _req_float("elevation_max", 0, 90)
-        _req_float("window_width", 0.1, 10)
-        _req_float("window_height", 0.1, 10)
-        _req_float("shadow_depth", 0, 5)
-        _req_float("shadow_offset", 0, 5)
+        # All numeric fields entered as text; coerced after submit
+        for key in (
+            "azimuth",
+            "azimuth_min",
+            "azimuth_max",
+            "elevation_min",
+            "elevation_max",
+            "window_width",
+            "window_height",
+            "shadow_depth",
+            "shadow_offset",
+        ):
+            schema_dict[vol.Optional(key, default=defaults.get(key, ""))] = str
 
         schema_dict[
             vol.Optional(
@@ -255,12 +354,69 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             )
         ] = vol.In(["", *temp_sensor_options])
 
-        schema = vol.Schema(schema_dict)
+        schema_dict[
+            vol.Optional(
+                "linked_group", default=defaults.get("linked_group", NONE_LABEL)
+            )
+        ] = vol.In(group_display_options)
+
+        return vol.Schema(schema_dict)
+
+    def _page1_process_submit(
+        self, user_input: dict[str, Any], group_options_map: list[tuple[str, str]]
+    ) -> dict[str, Any]:
+        """Coerce numeric fields and map linked group name to id, allowing clearing."""
+        coerce_map = {
+            "azimuth": allow_empty_float(0, 360),
+            "azimuth_min": allow_empty_float(-90, 0),
+            "azimuth_max": allow_empty_float(0, 90),
+            "elevation_min": allow_empty_float(0, 90),
+            "elevation_max": allow_empty_float(0, 90),
+            "window_width": allow_empty_float(0.1, 10),
+            "window_height": allow_empty_float(0.1, 10),
+            "shadow_depth": allow_empty_float(0, 5),
+            "shadow_offset": allow_empty_float(0, 5),
+        }
+        for k, conv in coerce_map.items():
+            if k in user_input:
+                user_input[k] = conv(user_input[k])
+
+        selected_group_name = user_input.get("linked_group", NONE_LABEL)
+        if selected_group_name and selected_group_name != NONE_LABEL:
+            for gid, gname in group_options_map:
+                if gname == selected_group_name:
+                    user_input["linked_group_id"] = gid
+                    break
+        else:
+            # Explicitly clear any previously stored link
+            user_input["linked_group"] = ""
+            user_input["linked_group_id"] = ""
+        return user_input
+
+    # ----- Page 1: Basic window configuration -----
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
+        """Render basic window configuration (page 1)."""
+        _LOGGER.debug("WindowSubentryFlowHandler.user: input=%s", user_input)
+
+        # Prepare temperature sensor options
+        temp_sensor_options = await self._get_temperature_sensor_entities()
+        # Prepare group options (from Group configurations entry)
+        group_options_map = await self._get_group_subentries()
+        # Show an explicit '(none)' option instead of an empty line
+        group_display_options = [NONE_LABEL] + [name for _, name in group_options_map]
+        defaults = self._page1_defaults(group_options_map)
+        schema = self._page1_schema(
+            defaults, temp_sensor_options, group_display_options
+        )
 
         if user_input is None:
             return self.async_show_form(step_id="user", data_schema=schema)
 
-        self._page1 = user_input
+        # Coerce numerics and map linked_group display name to internal id
+        if user_input is None:
+            self._page1 = {}
+        else:
+            self._page1 = self._page1_process_submit(user_input, group_options_map)
         return await self.async_step_overrides()
 
     # ----- Page 2: Window overrides -----
@@ -271,11 +427,15 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         _LOGGER.debug("WindowSubentryFlowHandler.overrides: input=%s", user_input)
 
         defaults: dict[str, Any] = {
-            "diffuse_factor": 0.15,
-            "threshold_direct": 200,
-            "threshold_diffuse": 150,
-            "temperature_indoor_base": 23.0,
-            "temperature_outdoor_base": 19.5,
+            # All fields on this page can be empty
+            "g_value": "",
+            "frame_width": "",
+            "tilt": "",
+            "diffuse_factor": "",
+            "threshold_direct": "",
+            "threshold_diffuse": "",
+            "temperature_indoor_base": "",
+            "temperature_outdoor_base": "",
         }
 
         # Prefill from current subentry on reconfigure
@@ -295,50 +455,56 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                     defaults[k] = sub.data[k]
 
         schema_overrides: dict[Any, Any] = {}
-        # Only provide defaults for optional floats if present
-        if "g_value" in defaults:
-            schema_overrides[vol.Optional("g_value", default=defaults["g_value"])] = (
-                vol.Coerce(float)
-            )
-        else:
-            schema_overrides[vol.Optional("g_value")] = vol.Coerce(float)
-        if "frame_width" in defaults:
-            schema_overrides[
-                vol.Optional("frame_width", default=defaults["frame_width"])
-            ] = vol.Coerce(float)
-        else:
-            schema_overrides[vol.Optional("frame_width")] = vol.Coerce(float)
-        if "tilt" in defaults:
-            schema_overrides[vol.Optional("tilt", default=defaults["tilt"])] = (
-                vol.Coerce(float)
-            )
-        else:
-            schema_overrides[vol.Optional("tilt")] = vol.Coerce(float)
+
+        # All inputs as strings for UI; we'll coerce after submit
+        schema_overrides[vol.Optional("g_value", default=defaults["g_value"])] = str
+        schema_overrides[
+            vol.Optional("frame_width", default=defaults["frame_width"])
+        ] = str
+        schema_overrides[vol.Optional("tilt", default=defaults["tilt"])] = str
 
         schema_overrides[
-            vol.Required("diffuse_factor", default=defaults["diffuse_factor"])
-        ] = vol.All(vol.Coerce(float), vol.Range(min=0.05, max=0.5))
+            vol.Optional("diffuse_factor", default=defaults["diffuse_factor"])
+        ] = str
         schema_overrides[
-            vol.Required("threshold_direct", default=defaults["threshold_direct"])
-        ] = vol.All(vol.Coerce(int), vol.Range(min=0, max=1000))
+            vol.Optional("threshold_direct", default=defaults["threshold_direct"])
+        ] = str
         schema_overrides[
-            vol.Required("threshold_diffuse", default=defaults["threshold_diffuse"])
-        ] = vol.All(vol.Coerce(int), vol.Range(min=0, max=1000))
+            vol.Optional("threshold_diffuse", default=defaults["threshold_diffuse"])
+        ] = str
         schema_overrides[
-            vol.Required(
-                "temperature_indoor_base", default=defaults["temperature_indoor_base"]
+            vol.Optional(
+                "temperature_indoor_base",
+                default=defaults["temperature_indoor_base"],
             )
-        ] = vol.All(vol.Coerce(float), vol.Range(min=10, max=30))
+        ] = str
         schema_overrides[
-            vol.Required(
-                "temperature_outdoor_base", default=defaults["temperature_outdoor_base"]
+            vol.Optional(
+                "temperature_outdoor_base",
+                default=defaults["temperature_outdoor_base"],
             )
-        ] = vol.All(vol.Coerce(float), vol.Range(min=10, max=30))
+        ] = str
 
         schema = vol.Schema(schema_overrides)
 
         if user_input is None:
             return self.async_show_form(step_id="overrides", data_schema=schema)
+
+        # Coerce numeric strings while allowing "" to clear
+        if user_input is not None:
+            coerce_map = {
+                "g_value": allow_empty_float(),
+                "frame_width": allow_empty_float(),
+                "tilt": allow_empty_float(),
+                "diffuse_factor": allow_empty_float(0.05, 0.5),
+                "threshold_direct": allow_empty_int(0, 1000),
+                "threshold_diffuse": allow_empty_int(0, 1000),
+                "temperature_indoor_base": allow_empty_float(10, 30),
+                "temperature_outdoor_base": allow_empty_float(10, 30),
+            }
+            for k, conv in coerce_map.items():
+                if k in user_input:
+                    user_input[k] = conv(user_input[k])
 
         self._page2 = user_input
         return await self.async_step_scenarios()
@@ -351,61 +517,91 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         _LOGGER.debug("WindowSubentryFlowHandler.scenarios: input=%s", user_input)
 
         defaults: dict[str, Any] = {
-            "scenario_b_enable": "inherit",
-            "scenario_b_temp_indoor": 23.5,
-            "scenario_b_temp_outdoor": 25.5,
-            "scenario_c_enable": "inherit",
-            "scenario_c_temp_indoor": 21.5,
-            "scenario_c_temp_outdoor": 24.0,
-            "scenario_c_temp_forecast": 28.5,
-            "scenario_c_start_hour": 9,
+            # All fields clearable
+            "scenario_b_enable": "",
+            "scenario_b_temp_indoor": "",
+            "scenario_b_temp_outdoor": "",
+            "scenario_c_enable": "",
+            "scenario_c_temp_indoor": "",
+            "scenario_c_temp_outdoor": "",
+            "scenario_c_temp_forecast": "",
+            "scenario_c_start_hour": "",
         }
 
+        # Prefill from current subentry on reconfigure
         if self.source == config_entries.SOURCE_RECONFIGURE:
             sub = self._get_reconfigure_subentry()
             for k in list(defaults.keys()):
                 if k in sub.data:
                     defaults[k] = sub.data[k]
 
+        # Only three choices are needed; 'inherit' represents the empty value
         enable_options = ["disable", "enable", "inherit"]
 
         schema = vol.Schema(
             {
-                vol.Required(
-                    "scenario_b_enable", default=defaults["scenario_b_enable"]
+                vol.Optional(
+                    "scenario_b_enable",
+                    default=(
+                        defaults["scenario_b_enable"]
+                        if defaults["scenario_b_enable"]
+                        else "inherit"
+                    ),
                 ): vol.In(enable_options),
-                vol.Required(
+                vol.Optional(
                     "scenario_b_temp_indoor",
                     default=defaults["scenario_b_temp_indoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_b_temp_outdoor",
                     default=defaults["scenario_b_temp_outdoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
-                    "scenario_c_enable", default=defaults["scenario_c_enable"]
+                ): str,
+                vol.Optional(
+                    "scenario_c_enable",
+                    default=(
+                        defaults["scenario_c_enable"]
+                        if defaults["scenario_c_enable"]
+                        else "inherit"
+                    ),
                 ): vol.In(enable_options),
-                vol.Required(
+                vol.Optional(
                     "scenario_c_temp_indoor",
                     default=defaults["scenario_c_temp_indoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_c_temp_outdoor",
                     default=defaults["scenario_c_temp_outdoor"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=10, max=30)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_c_temp_forecast",
                     default=defaults["scenario_c_temp_forecast"],
-                ): vol.All(vol.Coerce(float), vol.Range(min=15, max=40)),
-                vol.Required(
+                ): str,
+                vol.Optional(
                     "scenario_c_start_hour",
                     default=defaults["scenario_c_start_hour"],
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
+                ): str,
             }
         )
 
         if user_input is None:
             return self.async_show_form(step_id="scenarios", data_schema=schema)
+
+        # Coerce numeric strings while allowing "" to clear
+        coerce_map = {
+            "scenario_b_temp_indoor": allow_empty_float(10, 30),
+            "scenario_b_temp_outdoor": allow_empty_float(10, 30),
+            "scenario_c_temp_indoor": allow_empty_float(10, 30),
+            "scenario_c_temp_outdoor": allow_empty_float(10, 30),
+            "scenario_c_temp_forecast": allow_empty_float(15, 40),
+            "scenario_c_start_hour": allow_empty_int(0, 23),
+        }
+        for k, conv in coerce_map.items():
+            if k in user_input:
+                user_input[k] = conv(user_input[k])
+        # Map 'inherit' back to empty for storage
+        for k in ("scenario_b_enable", "scenario_c_enable"):
+            if user_input.get(k) == "inherit":
+                user_input[k] = ""
 
         # Merge all page data
         data = {
@@ -453,6 +649,19 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 ):
                     temperature_entities.append(ent.entity_id)
         return temperature_entities
+
+    async def _get_group_subentries(self) -> list[tuple[str, str]]:
+        """Return list of (subentry_id, title) for existing group subentries."""
+        result: list[tuple[str, str]] = []
+        # Iterate current entries to find the Group configurations parent
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get("entry_type") == ENTRY_TYPE_GROUPS:
+                if entry.subentries:
+                    for sub_id, sub in entry.subentries.items():
+                        if sub.subentry_type == "group":
+                            result.append((sub_id, sub.title or f"Group {sub_id}"))
+                break
+        return result
 
 
 class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

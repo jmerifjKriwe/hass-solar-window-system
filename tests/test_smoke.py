@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
-from homeassistant.helpers import device_registry as dr
 from unittest.mock import AsyncMock
+
+import pytest
+from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 import custom_components.solar_window_system as integration

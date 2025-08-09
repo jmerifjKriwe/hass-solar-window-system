@@ -24,14 +24,56 @@
           "title": "Add group",
           "description": "Configure a new window group",
           "data": {
-            "name": "Group name"
+            "name": "Group name",
+            "diffuse_factor": "Diffuse factor",
+            "threshold_direct": "Direct threshold (W/m²)",
+            "threshold_diffuse": "Diffuse threshold (W/m²)",
+            "temperature_indoor_base": "Base indoor temperature (°C)",
+            "temperature_outdoor_base": "Base outdoor temperature (°C)"
+          },
+          "data_description": {
+            "name": "Required. A friendly name for the group.",
+            "diffuse_factor": "0.05–0.50. Leave empty to use Global value.",
+            "threshold_direct": "0–1000 W/m². Leave empty to use Global value.",
+            "threshold_diffuse": "0–1000 W/m². Leave empty to use Global value.",
+            "temperature_indoor_base": "10–30 °C. Leave empty to use Global value.",
+            "temperature_outdoor_base": "10–30 °C. Leave empty to use Global value."
+          }
+        },
+        "enhanced": {
+          "title": "Advanced settings",
+          "description": "Enable scenarios and thresholds",
+          "data": {
+            "scenario_b_enable": "Scenario B",
+            "scenario_b_temp_indoor": "Scenario B indoor temp (°C)",
+            "scenario_b_temp_outdoor": "Scenario B outdoor temp (°C)",
+            "scenario_c_enable": "Scenario C",
+            "scenario_c_temp_indoor": "Scenario C indoor temp (°C)",
+            "scenario_c_temp_outdoor": "Scenario C outdoor temp (°C)",
+            "scenario_c_temp_forecast": "Scenario C forecast temp (°C)",
+            "scenario_c_start_hour": "Scenario C start hour"
+          },
+          "data_description": {
+            "scenario_b_enable": "Choose Enable/Disable, or Inherit to use Global.",
+            "scenario_b_temp_indoor": "10–30 °C. Leave empty to use Global.",
+            "scenario_b_temp_outdoor": "10–30 °C. Leave empty to use Global.",
+            "scenario_c_enable": "Choose Enable/Disable, or Inherit to use Global.",
+            "scenario_c_temp_indoor": "10–30 °C. Leave empty to use Global.",
+            "scenario_c_temp_outdoor": "10–30 °C. Leave empty to use Global.",
+            "scenario_c_temp_forecast": "15–40 °C. Leave empty to use Global.",
+            "scenario_c_start_hour": "0–23. Leave empty to use Global."
           }
         },
         "reconfigure": {
           "title": "Update group",
           "description": "Update the group configuration",
           "data": {
-            "name": "Group name"
+            "name": "Group name",
+            "diffuse_factor": "Diffuse factor",
+            "threshold_direct": "Direct threshold (W/m²)",
+            "threshold_diffuse": "Diffuse threshold (W/m²)",
+            "temperature_indoor_base": "Base indoor temperature (°C)",
+            "temperature_outdoor_base": "Base outdoor temperature (°C)"
           }
         }
       },
@@ -50,20 +92,127 @@
           "title": "Add window",
           "description": "Configure a new window",
           "data": {
-            "name": "Window name"
+            "name": "Window name",
+            "azimuth": "Azimuth (°)",
+            "azimuth_min": "Min azimuth (°)",
+            "azimuth_max": "Max azimuth (°)",
+            "elevation_min": "Min elevation (°)",
+            "elevation_max": "Max elevation (°)",
+            "window_width": "Window width (m)",
+            "window_height": "Window height (m)",
+            "shadow_depth": "Shadow depth (m)",
+            "shadow_offset": "Shadow offset (m)",
+            "linked_group": "Linked to group",
+            "room_temp_entity": "Room temperature sensor"
+          },
+          "data_description": {
+            "name": "Required. A friendly name for the window.",
+            "azimuth": "0–360°. Optional; leave empty if unknown.",
+            "azimuth_min": "−90–0°. Optional; leave empty if not used.",
+            "azimuth_max": "0–90°. Optional; leave empty if not used.",
+            "elevation_min": "0–90°. Optional; leave empty if not used.",
+            "elevation_max": "0–90°. Optional; leave empty if not used.",
+            "window_width": "0.10–10.00 m. Optional; leave empty to set later.",
+            "window_height": "0.10–10.00 m. Optional; leave empty to set later.",
+            "shadow_depth": "0–5 m. Optional; leave empty if not used.",
+            "shadow_offset": "0–5 m. Optional; leave empty if not used.",
+            "linked_group": "Select a group or choose ‘(none)’ to keep independent.",
+            "room_temp_entity": "Optional. A temperature sensor entity (°C/°F)."
+          }
+        },
+        "overrides": {
+          "title": "Overrides",
+          "description": "Optional window-specific parameters",
+          "data": {
+            "g_value": "G-value",
+            "frame_width": "Frame width (m)",
+            "tilt": "Tilt (°)",
+            "diffuse_factor": "Diffuse factor",
+            "threshold_direct": "Direct threshold (W/m²)",
+            "threshold_diffuse": "Diffuse threshold (W/m²)",
+            "temperature_indoor_base": "Base indoor temperature (°C)",
+            "temperature_outdoor_base": "Base outdoor temperature (°C)"
+          },
+          "data_description": {
+            "g_value": "Optional. Leave empty to inherit Group or Global.",
+            "frame_width": "Optional. Leave empty to inherit Group or Global.",
+            "tilt": "Optional. Leave empty to inherit Group or Global.",
+            "diffuse_factor": "0.05–0.50. Leave empty to inherit Group or Global.",
+            "threshold_direct": "0–1000 W/m². Leave empty to inherit Group or Global.",
+            "threshold_diffuse": "0–1000 W/m². Leave empty to inherit Group or Global.",
+            "temperature_indoor_base": "10–30 °C. Leave empty to inherit Group or Global.",
+            "temperature_outdoor_base": "10–30 °C. Leave empty to inherit Group or Global."
+          }
+        },
+        "scenarios": {
+          "title": "Scenarios",
+          "description": "Scenario thresholds",
+          "data": {
+            "scenario_b_enable": "Scenario B",
+            "scenario_b_temp_indoor": "Scenario B indoor temp (°C)",
+            "scenario_b_temp_outdoor": "Scenario B outdoor temp (°C)",
+            "scenario_c_enable": "Scenario C",
+            "scenario_c_temp_indoor": "Scenario C indoor temp (°C)",
+            "scenario_c_temp_outdoor": "Scenario C outdoor temp (°C)",
+            "scenario_c_temp_forecast": "Scenario C forecast temp (°C)",
+            "scenario_c_start_hour": "Scenario C start hour"
+          },
+          "data_description": {
+            "scenario_b_enable": "Enable/Disable, or Inherit to use Group or Global.",
+            "scenario_b_temp_indoor": "10–30 °C. Leave empty to inherit Group/Global.",
+            "scenario_b_temp_outdoor": "10–30 °C. Leave empty to inherit Group/Global.",
+            "scenario_c_enable": "Enable/Disable, or Inherit to use Group or Global.",
+            "scenario_c_temp_indoor": "10–30 °C. Leave empty to inherit Group/Global.",
+            "scenario_c_temp_outdoor": "10–30 °C. Leave empty to inherit Group/Global.",
+            "scenario_c_temp_forecast": "15–40 °C. Leave empty to inherit Group/Global.",
+            "scenario_c_start_hour": "0–23. Leave empty to inherit Group/Global."
           }
         },
         "reconfigure": {
           "title": "Update window",
           "description": "Update the window configuration",
           "data": {
-            "name": "Window name"
+            "name": "Window name",
+            "azimuth": "Azimuth (°)",
+            "azimuth_min": "Min azimuth (°)",
+            "azimuth_max": "Max azimuth (°)",
+            "elevation_min": "Min elevation (°)",
+            "elevation_max": "Max elevation (°)",
+            "window_width": "Window width (m)",
+            "window_height": "Window height (m)",
+            "shadow_depth": "Shadow depth (m)",
+            "shadow_offset": "Shadow offset (m)",
+            "linked_group": "Linked to group",
+            "room_temp_entity": "Room temperature sensor"
           }
         }
       },
       "add": "Add subentry",
       "error": {},
       "abort": {}
+    }
+  },
+  "labels": {
+    "none": "(none)",
+    "overrides": {
+      "g_value": "G-value",
+      "frame_width": "Frame width (m)",
+      "tilt": "Tilt (°)",
+      "diffuse_factor": "Diffuse factor",
+      "threshold_direct": "Direct threshold (W/m²)",
+      "threshold_diffuse": "Diffuse threshold (W/m²)",
+      "temperature_indoor_base": "Base indoor temperature (°C)",
+      "temperature_outdoor_base": "Base outdoor temperature (°C)"
+    },
+    "scenarios": {
+      "scenario_b_enable": "Scenario B",
+      "scenario_b_temp_indoor": "Scenario B indoor temp (°C)",
+      "scenario_b_temp_outdoor": "Scenario B outdoor temp (°C)",
+      "scenario_c_enable": "Scenario C",
+      "scenario_c_temp_indoor": "Scenario C indoor temp (°C)",
+      "scenario_c_temp_outdoor": "Scenario C outdoor temp (°C)",
+      "scenario_c_temp_forecast": "Scenario C forecast temp (°C)",
+      "scenario_c_start_hour": "Scenario C start hour"
     }
   }
 }

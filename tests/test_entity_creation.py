@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+import pytest
 from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from custom_components.solar_window_system.const import (
     DOMAIN,

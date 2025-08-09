@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     DOMAIN,
@@ -106,8 +107,6 @@ class GlobalConfigSwitchEntity(SwitchEntity):
             self._attr_name,
         )
         # Set friendly name to config['name']
-        from homeassistant.helpers import entity_registry as er
-
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
             ent_reg_entry = entity_registry.entities[self.entity_id]

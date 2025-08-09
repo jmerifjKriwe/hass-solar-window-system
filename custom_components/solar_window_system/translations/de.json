@@ -1,1 +1,212 @@
-{}
+{
+    "config_subentries": {
+        "group": {
+            "initiate_flow": {
+                "user": "Gruppe hinzufügen",
+                "reconfigure": "Gruppenkonfiguration bearbeiten"
+            },
+            "entry_type": "Gruppenkonfiguration",
+            "step": {
+                "user": {
+                    "title": "Gruppe hinzufügen",
+                    "description": "Neue Fenstergruppe konfigurieren",
+                    "data": {
+                        "name": "Gruppenname",
+                        "diffuse_factor": "Diffusionsfaktor",
+                        "threshold_direct": "Schwelle Direktstrahlung (W/m²)",
+                        "threshold_diffuse": "Schwelle Diffusstrahlung (W/m²)",
+                        "temperature_indoor_base": "Basisraumtemperatur (°C)",
+                        "temperature_outdoor_base": "Basisaußentemperatur (°C)"
+                    },
+                    "data_description": {
+                        "name": "Erforderlich. Anzeigename der Gruppe.",
+                        "diffuse_factor": "0,05–0,50. Leer lassen, um Global zu verwenden.",
+                        "threshold_direct": "0–1000 W/m². Leer lassen, um Global zu verwenden.",
+                        "threshold_diffuse": "0–1000 W/m². Leer lassen, um Global zu verwenden.",
+                        "temperature_indoor_base": "10–30 °C. Leer lassen, um Global zu verwenden.",
+                        "temperature_outdoor_base": "10–30 °C. Leer lassen, um Global zu verwenden."
+                    }
+                },
+                "enhanced": {
+                    "title": "Erweiterte Einstellungen",
+                    "description": "Szenarien und Schwellenwerte",
+                    "data": {
+                        "scenario_b_enable": "Szenario B",
+                        "scenario_b_temp_indoor": "Szenario B Raumtemperatur (°C)",
+                        "scenario_b_temp_outdoor": "Szenario B Außentemperatur (°C)",
+                        "scenario_c_enable": "Szenario C",
+                        "scenario_c_temp_indoor": "Szenario C Raumtemperatur (°C)",
+                        "scenario_c_temp_outdoor": "Szenario C Außentemperatur (°C)",
+                        "scenario_c_temp_forecast": "Szenario C Vorhersagetemperatur (°C)",
+                        "scenario_c_start_hour": "Szenario C Startstunde"
+                    },
+                    "data_description": {
+                        "scenario_b_enable": "Aktivieren/Deaktivieren oder Vererben, um Global zu nutzen.",
+                        "scenario_b_temp_indoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_b_temp_outdoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_c_enable": "Aktivieren/Deaktivieren oder Vererben, um Global zu nutzen.",
+                        "scenario_c_temp_indoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_c_temp_outdoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_c_temp_forecast": "15–40 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_c_start_hour": "0–23. Leer lassen, um Global zu verwenden."
+                    }
+                },
+                "reconfigure": {
+                    "title": "Gruppe aktualisieren",
+                    "description": "Gruppenkonfiguration aktualisieren",
+                    "data": {
+                        "name": "Gruppenname",
+                        "diffuse_factor": "Diffusionsfaktor",
+                        "threshold_direct": "Schwelle Direktstrahlung (W/m²)",
+                        "threshold_diffuse": "Schwelle Diffusstrahlung (W/m²)",
+                        "temperature_indoor_base": "Basisraumtemperatur (°C)",
+                        "temperature_outdoor_base": "Basisaußentemperatur (°C)"
+                    }
+                }
+            },
+            "add": "Untereintrag hinzufügen",
+            "error": {},
+            "abort": {}
+        },
+        "window": {
+            "initiate_flow": {
+                "user": "Fenster hinzufügen",
+                "reconfigure": "Fensterkonfiguration bearbeiten"
+            },
+            "entry_type": "Fensterkonfiguration",
+            "step": {
+                "user": {
+                    "title": "Fenster hinzufügen",
+                    "description": "Neues Fenster konfigurieren",
+                    "data": {
+                        "name": "Fenstername",
+                        "azimuth": "Azimut (°)",
+                        "azimuth_min": "Azimut min (°)",
+                        "azimuth_max": "Azimut max (°)",
+                        "elevation_min": "Elevation min (°)",
+                        "elevation_max": "Elevation max (°)",
+                        "window_width": "Fensterbreite (m)",
+                        "window_height": "Fensterhöhe (m)",
+                        "shadow_depth": "Schattentiefe (m)",
+                        "shadow_offset": "Schattenversatz (m)",
+                        "linked_group": "Verknüpft mit Gruppe",
+                        "room_temp_entity": "Raumtemperatursensor"
+                    },
+                    "data_description": {
+                        "name": "Erforderlich. Anzeigename des Fensters.",
+                        "azimuth": "0–360°. Optional; leer lassen, wenn unbekannt.",
+                        "azimuth_min": "−90–0°. Optional; leer lassen, wenn ungenutzt.",
+                        "azimuth_max": "0–90°. Optional; leer lassen, wenn ungenutzt.",
+                        "elevation_min": "0–90°. Optional; leer lassen, wenn ungenutzt.",
+                        "elevation_max": "0–90°. Optional; leer lassen, wenn ungenutzt.",
+                        "window_width": "0,10–10,00 m. Optional; leer lassen für später.",
+                        "window_height": "0,10–10,00 m. Optional; leer lassen für später.",
+                        "shadow_depth": "0–5 m. Optional; leer lassen, wenn ungenutzt.",
+                        "shadow_offset": "0–5 m. Optional; leer lassen, wenn ungenutzt.",
+                        "linked_group": "Gruppe wählen oder ‚(keine)‘ für unabhängig.",
+                        "room_temp_entity": "Optional. Ein Temperatursensor (°C/°F)."
+                    }
+                },
+                "overrides": {
+                    "title": "Überschreibungen",
+                    "description": "Optionale fensterspezifische Parameter",
+                    "data": {
+                        "g_value": "g-Wert",
+                        "frame_width": "Rahmenbreite (m)",
+                        "tilt": "Neigung (°)",
+                        "diffuse_factor": "Diffusionsfaktor",
+                        "threshold_direct": "Schwelle Direktstrahlung (W/m²)",
+                        "threshold_diffuse": "Schwelle Diffusstrahlung (W/m²)",
+                        "temperature_indoor_base": "Basisraumtemperatur (°C)",
+                        "temperature_outdoor_base": "Basisaußentemperatur (°C)"
+                    },
+                    "data_description": {
+                        "g_value": "Optional. Leer lassen, um von Gruppe/Global zu erben.",
+                        "frame_width": "Optional. Leer lassen, um von Gruppe/Global zu erben.",
+                        "tilt": "Optional. Leer lassen, um von Gruppe/Global zu erben.",
+                        "diffuse_factor": "0,05–0,50. Leer lassen, um von Gruppe/Global zu erben.",
+                        "threshold_direct": "0–1000 W/m². Leer lassen, um von Gruppe/Global zu erben.",
+                        "threshold_diffuse": "0–1000 W/m². Leer lassen, um von Gruppe/Global zu erben.",
+                        "temperature_indoor_base": "10–30 °C. Leer lassen, um von Gruppe/Global zu erben.",
+                        "temperature_outdoor_base": "10–30 °C. Leer lassen, um von Gruppe/Global zu erben."
+                    }
+                },
+                "scenarios": {
+                    "title": "Szenarien",
+                    "description": "Schwellenwerte für Szenarien",
+                    "data": {
+                        "scenario_b_enable": "Szenario B",
+                        "scenario_b_temp_indoor": "Szenario B Raumtemperatur (°C)",
+                        "scenario_b_temp_outdoor": "Szenario B Außentemperatur (°C)",
+                        "scenario_c_enable": "Szenario C",
+                        "scenario_c_temp_indoor": "Szenario C Raumtemperatur (°C)",
+                        "scenario_c_temp_outdoor": "Szenario C Außentemperatur (°C)",
+                        "scenario_c_temp_forecast": "Szenario C Vorhersagetemperatur (°C)",
+                        "scenario_c_start_hour": "Szenario C Startstunde"
+                    },
+                    "data_description": {
+                        "scenario_b_enable": "Aktivieren/Deaktivieren oder Vererben, um Gruppe/Global zu nutzen.",
+                        "scenario_b_temp_indoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
+                        "scenario_b_temp_outdoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
+                        "scenario_c_enable": "Aktivieren/Deaktivieren oder Vererben, um Gruppe/Global zu nutzen.",
+                        "scenario_c_temp_indoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
+                        "scenario_c_temp_outdoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
+                        "scenario_c_temp_forecast": "15–40 °C. Leer lassen, um Gruppe/Global zu verwenden.",
+                        "scenario_c_start_hour": "0–23. Leer lassen, um Gruppe/Global zu verwenden."
+                    }
+                },
+                "reconfigure": {
+                    "title": "Fenster aktualisieren",
+                    "description": "Fensterkonfiguration aktualisieren",
+                    "data": {
+                        "name": "Fenstername",
+                        "azimuth": "Azimut (°)",
+                        "azimuth_min": "Azimut min (°)",
+                        "azimuth_max": "Azimut max (°)",
+                        "elevation_min": "Elevation min (°)",
+                        "elevation_max": "Elevation max (°)",
+                        "window_width": "Fensterbreite (m)",
+                        "window_height": "Fensterhöhe (m)",
+                        "shadow_depth": "Schattentiefe (m)",
+                        "shadow_offset": "Schattenversatz (m)",
+                        "linked_group": "Verknüpft mit Gruppe",
+                        "room_temp_entity": "Raumtemperatursensor"
+                    }
+                }
+            },
+            "add": "Untereintrag hinzufügen",
+            "error": {},
+            "abort": {}
+        }
+    },
+    "config": {
+        "abort": {
+            "no_more_entries": "Nur ein Konfigurationseintrag ist erlaubt",
+            "missing_data": "Fehlende Konfigurationsdaten",
+            "unknown_entry_type": "Unbekannter Eintragstyp"
+        }
+    },
+    "labels": {
+        "none": "(keine)",
+        "overrides": {
+            "g_value": "g-Wert",
+            "frame_width": "Rahmenbreite (m)",
+            "tilt": "Neigung (°)",
+            "diffuse_factor": "Diffusionsfaktor",
+            "threshold_direct": "Schwelle Direktstrahlung (W/m²)",
+            "threshold_diffuse": "Schwelle Diffusstrahlung (W/m²)",
+            "temperature_indoor_base": "Basisraumtemperatur (°C)",
+            "temperature_outdoor_base": "Basisaußentemperatur (°C)"
+        },
+        "scenarios": {
+            "scenario_b_enable": "Szenario B",
+            "scenario_b_temp_indoor": "Szenario B Raumtemperatur (°C)",
+            "scenario_b_temp_outdoor": "Szenario B Außentemperatur (°C)",
+            "scenario_c_enable": "Szenario C",
+            "scenario_c_temp_indoor": "Szenario C Raumtemperatur (°C)",
+            "scenario_c_temp_outdoor": "Szenario C Außentemperatur (°C)",
+            "scenario_c_temp_forecast": "Szenario C Vorhersagetemperatur (°C)",
+            "scenario_c_start_hour": "Szenario C Stundestart"
+        }
+    }
+}

@@ -1,8 +1,10 @@
 """Global Configuration Registry Entity ID Tests."""
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 from homeassistant.helpers import device_registry as dr
+
 from custom_components.solar_window_system.number import GlobalConfigNumberEntity
 
 

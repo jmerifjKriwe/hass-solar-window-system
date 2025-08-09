@@ -1,7 +1,5 @@
 """Simple test to verify entity ID generation works correctly."""
 
-import pytest
-
 from custom_components.solar_window_system.const import ENTITY_PREFIX
 from custom_components.solar_window_system.number import GlobalConfigNumberEntity
 

@@ -1,7 +1,5 @@
 """Tests for entity ID generation and prefix application."""
 
-import pytest
-
 from custom_components.solar_window_system.const import (
     ENTITY_PREFIX,
     GLOBAL_CONFIG_ENTITIES,
@@ -23,7 +21,7 @@ class TestEntityIdGeneration:
     def test_entity_prefix_constant(self) -> None:
         """Test that entity prefix constant is correctly defined."""
         expected_prefix = "sws"
-        if ENTITY_PREFIX != expected_prefix:
+        if expected_prefix != ENTITY_PREFIX:
             msg = f"Entity prefix should be '{expected_prefix}', got '{ENTITY_PREFIX}'"
             raise AssertionError(msg)
 
