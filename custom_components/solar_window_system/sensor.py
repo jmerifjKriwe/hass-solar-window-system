@@ -1,46 +1,43 @@
+"""
+Sensor platform for Solar Window System.
+
+Creates:
+- Global configuration sensors from GLOBAL_CONFIG_ENTITIES
+- Group/window per-subentry sensors: total_power, total_power_direct,
+  total_power_diffuse
+"""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 
-from .const import (
-    CONF_GROUP,
-    CONF_GROUP_NAME,
-    DOMAIN,
-    ENTITY_PREFIX_GLOBAL,
-    ENTRY_TYPE_GROUP,
-    GLOBAL_CONFIG_ENTITIES,
-)
+from .const import DOMAIN, GLOBAL_CONFIG_ENTITIES
 from .global_config import GlobalConfigSensor
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-import logging
+    from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up sensors for Solar Window System."""
-    # Handle group sensors (existing code)
-    if entry.data.get("entry_type") == ENTRY_TYPE_GROUP:
-        group_id = entry.data.get(CONF_GROUP, entry.entry_id)
-        group_name = entry.data.get(CONF_GROUP_NAME, "Group")
-
-        _LOGGER.debug(
-            "[SolarWindowSystem] Adding dummy sensor entity for group: %s (%s)",
-            group_name,
-            group_id,
-        )
-
-        async_add_entities([SolarWindowSystemGroupDummySensor(group_id, group_name)])
+    if entry.data.get("entry_type") == "group_configs":
+        await _setup_group_power_sensors(hass, entry, async_add_entities)
+        return
+    if entry.data.get("entry_type") == "window_configs":
+        await _setup_window_power_sensors(hass, entry, async_add_entities)
         return
 
     # Handle Global Configuration sensors
@@ -61,15 +58,13 @@ async def async_setup_entry(
                     break
 
         if global_device:
-            sensors = []
-            for entity_key, config in GLOBAL_CONFIG_ENTITIES.items():
-                if config["platform"] == "sensor":
-                    sensors.append(
-                        GlobalConfigSensor(entity_key, config, global_device)
-                    )
-
+            sensors = [
+                GlobalConfigSensor(entity_key, config, global_device)
+                for entity_key, config in GLOBAL_CONFIG_ENTITIES.items()
+                if config["platform"] == "sensor"
+            ]
             if sensors:
-                async_add_entities(sensors)
+                async_add_entities(sensors)  # type: ignore[arg-type]
                 _LOGGER.info("Added %d Global Configuration sensors", len(sensors))
         else:
             _LOGGER.warning("Global Configuration device not found")
@@ -94,3 +89,168 @@ class SolarWindowSystemGroupDummySensor(Entity):
     def state(self) -> int:
         """Return the state of the sensor."""
         return 42
+
+
+async def _setup_group_power_sensors(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Attach total power sensors to each group subentry device."""
+    device_registry = dr.async_get(hass)
+    if not entry.subentries:
+        _LOGGER.warning("No group subentries found")
+        return
+    for subentry_id, subentry in entry.subentries.items():
+        if subentry.subentry_type != "group":
+            continue
+        group_name = subentry.title
+        group_device = None
+        for device in device_registry.devices.values():
+            if device.config_entries and entry.entry_id in device.config_entries:
+                subentries = device.config_entries_subentries
+                if (
+                    subentries
+                    and entry.entry_id in subentries
+                    and subentry_id in subentries[entry.entry_id]
+                ):
+                    for identifier in device.identifiers:
+                        if (
+                            identifier[0] == DOMAIN
+                            and identifier[1] == f"group_{subentry_id}"
+                        ):
+                            group_device = device
+                            break
+                    if group_device:
+                        break
+        if not group_device:
+            _LOGGER.warning("Group device not found for: %s", group_name)
+            continue
+
+        entities: list[Entity] = []
+        for key, label in (
+            ("total_power", "Total Power"),
+            ("total_power_direct", "Total Power Direct"),
+            ("total_power_diffuse", "Total Power Diffuse"),
+        ):
+            entities.append(
+                GroupWindowPowerSensor(
+                    kind="group",
+                    object_name=group_name,
+                    device=group_device,
+                    key=key,
+                    label=label,
+                )
+            )
+        if entities:
+            async_add_entities(entities, config_subentry_id=subentry_id)
+
+
+async def _setup_window_power_sensors(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Attach total power sensors to each window subentry device."""
+    device_registry = dr.async_get(hass)
+    if not entry.subentries:
+        _LOGGER.warning("No window subentries found")
+        return
+    for subentry_id, subentry in entry.subentries.items():
+        if subentry.subentry_type != "window":
+            continue
+        window_name = subentry.title
+        window_device = None
+        for device in device_registry.devices.values():
+            if device.config_entries and entry.entry_id in device.config_entries:
+                subentries = device.config_entries_subentries
+                if (
+                    subentries
+                    and entry.entry_id in subentries
+                    and subentry_id in subentries[entry.entry_id]
+                ):
+                    for identifier in device.identifiers:
+                        if (
+                            identifier[0] == DOMAIN
+                            and identifier[1] == f"window_{subentry_id}"
+                        ):
+                            window_device = device
+                            break
+                    if window_device:
+                        break
+        if not window_device:
+            _LOGGER.warning("Window device not found for: %s", window_name)
+            continue
+
+        entities: list[Entity] = []
+        for key, label in (
+            ("total_power", "Total Power"),
+            ("total_power_direct", "Total Power Direct"),
+            ("total_power_diffuse", "Total Power Diffuse"),
+        ):
+            entities.append(
+                GroupWindowPowerSensor(
+                    kind="window",
+                    object_name=window_name,
+                    device=window_device,
+                    key=key,
+                    label=label,
+                )
+            )
+        if entities:
+            async_add_entities(entities, config_subentry_id=subentry_id)
+
+
+class GroupWindowPowerSensor(Entity):
+    """Sensor for group/window total power metrics with predictable IDs."""
+
+    def __init__(
+        self,
+        *,
+        kind: str,  # "group" | "window"
+        object_name: str,
+        device: dr.DeviceEntry,
+        key: str,  # total_power | total_power_direct | total_power_diffuse
+        label: str,
+    ) -> None:
+        """Initialize power sensor bound to a group/window device."""
+        self._kind = kind
+        self._key = key
+        self._label = label
+        slug = object_name.lower().replace(" ", "_").replace("-", "_")
+        self._attr_unique_id = f"sws_{kind}_{slug}_{key}"
+        self._attr_suggested_object_id = f"sws_{kind}_{slug}_{key}"
+        prefix = "SWS_GROUP" if kind == "group" else "SWS_WINDOW"
+        self._attr_name = f"{prefix} {object_name} {label}"
+        self._attr_has_entity_name = False
+        self._attr_device_info = {
+            "identifiers": device.identifiers,
+            "name": device.name,
+            "manufacturer": device.manufacturer,
+            "model": device.model,
+        }
+        self._attr_unit_of_measurement = "W"
+        if key == "total_power":
+            self._attr_icon = "mdi:lightning-bolt"
+        elif key == "total_power_direct":
+            self._attr_icon = "mdi:weather-sunny"
+        else:
+            self._attr_icon = "mdi:weather-partly-cloudy"
+        self._state = 0
+
+    @property
+    def state(self) -> Any:
+        """Return current value."""
+        return self._state
+
+    async def async_added_to_hass(self) -> None:
+        """Set a clean friendly name without prefixes (like the Selects)."""
+        await super().async_added_to_hass()
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._label
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )

@@ -45,7 +45,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _create_subentry_devices(hass, entry)
 
         # Set up platforms for group configurations
-        await hass.config_entries.async_forward_entry_setups(entry, ["select"])
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["select", "sensor"]
+        )
 
         # Add update listener to handle new subentries
         entry.add_update_listener(_handle_config_entry_update)
@@ -79,7 +81,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _create_subentry_devices(hass, entry)
 
         # Set up platforms for window configurations
-        await hass.config_entries.async_forward_entry_setups(entry, ["select"])
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["select", "sensor", "binary_sensor"]
+        )
 
         # Add update listener to handle new subentries
         entry.add_update_listener(_handle_config_entry_update)
@@ -100,8 +104,12 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
             "🔧 Reloading select platform for updated entry: %s", entry.title
         )
         if entry.data.get("entry_type") in ("group_configs", "window_configs"):
-            await hass.config_entries.async_unload_platforms(entry, ["select"])
-            await hass.config_entries.async_forward_entry_setups(entry, ["select"])
+            # Reload platforms to pick up entities for new subentries
+            platforms = ["select", "sensor"]
+            if entry.data.get("entry_type") == "window_configs":
+                platforms.append("binary_sensor")
+            await hass.config_entries.async_unload_platforms(entry, platforms)
+            await hass.config_entries.async_forward_entry_setups(entry, platforms)
 
 
 async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
