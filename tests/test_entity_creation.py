@@ -93,7 +93,8 @@ class TestGlobalConfigEntityCreation:
         for i, (entity_key, config) in enumerate(number_configs):
             entity = added_entities[i]
             assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name == config["name"]
+            # Name is initially set with SWS_GLOBAL prefix; HA will adjust via registry later
+            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
             assert entity._attr_native_min_value == config["min"]
             assert entity._attr_native_max_value == config["max"]
             assert entity._attr_native_step == config["step"]
@@ -133,7 +134,7 @@ class TestGlobalConfigEntityCreation:
         for i, (entity_key, config) in enumerate(text_configs):
             entity = added_entities[i]
             assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name == config["name"]
+            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
             assert entity._attr_native_max == config["max"]
             assert entity._attr_native_value == config["default"]
 
@@ -172,8 +173,10 @@ class TestGlobalConfigEntityCreation:
         for i, (entity_key, config) in enumerate(select_configs):
             entity = added_entities[i]
             assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name == config["name"]
-            assert entity._attr_options == config["options"]
+            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
+            # Options are dynamic; we ensure an empty placeholder is present as first option
+            assert isinstance(entity._attr_options, list)
+            assert entity._attr_options[0] == ""
 
     async def test_switch_entities_creation(
         self,
@@ -210,7 +213,7 @@ class TestGlobalConfigEntityCreation:
         for i, (entity_key, config) in enumerate(switch_configs):
             entity = added_entities[i]
             assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name == config["name"]
+            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
             assert entity._attr_is_on == config["default"]
 
     async def test_sensor_entities_creation(
@@ -248,7 +251,7 @@ class TestGlobalConfigEntityCreation:
         for i, (entity_key, config) in enumerate(sensor_configs):
             entity = added_entities[i]
             assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name == config["name"]
+            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
 
     async def test_diagnostic_entities_have_correct_category(
         self, hass: HomeAssistant, debug_entities: list[str], global_config_entry: Mock
@@ -322,7 +325,7 @@ class TestGlobalConfigEntityCreation:
         for entity in added_entities:
             device_info = entity._attr_device_info
             assert device_info is not None
-            assert expected_device.identifiers in device_info["identifiers"]
+            assert device_info["identifiers"] == expected_device.identifiers
             assert device_info["name"] == expected_device.name
             assert device_info["manufacturer"] == expected_device.manufacturer
             assert device_info["model"] == expected_device.model

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock
 
+import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -59,31 +60,35 @@ def valid_group_input() -> dict[str, str]:
 
 
 @pytest.fixture
-def global_config_entry() -> Mock:
-    """Return a mock global config entry."""
-    entry = Mock(spec=ConfigEntry)
-    entry.entry_id = "global_config_entry_id"
-    entry.title = "Solar Window System"
-    entry.data = {"entry_type": "global"}
-    entry.options = {}
+def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Return a registered global config entry."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Solar Window System",
+        data={"entry_type": "global"},
+        entry_id="global_config_entry_id",
+    )
+    entry.add_to_hass(hass)
     return entry
 
 
 @pytest.fixture
-def window_config_entry() -> Mock:
-    """Return a mock window config entry."""
-    entry = Mock(spec=ConfigEntry)
-    entry.entry_id = "window_config_entry_id"
-    entry.title = "Living Room Window 1"
-    entry.data = {
-        "window_id": "living_room_1",
-        "name": "Living Room Window 1",
-        "g_value": 0.75,
-        "area": 2.5,
-        "orientation": "south",
-        "tilt_angle": 90,
-    }
-    entry.options = {}
+def window_config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Return a registered window config entry."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Living Room Window 1",
+        data={
+            "window_id": "living_room_1",
+            "name": "Living Room Window 1",
+            "g_value": 0.75,
+            "area": 2.5,
+            "orientation": "south",
+            "tilt_angle": 90,
+        },
+        entry_id="window_config_entry_id",
+    )
+    entry.add_to_hass(hass)
     return entry
 
 
