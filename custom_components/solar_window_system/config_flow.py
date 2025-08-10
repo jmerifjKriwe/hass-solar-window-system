@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
 from .const import DOMAIN
@@ -27,6 +27,20 @@ ENTRY_TYPE_WINDOWS = "window_configs"
 
 # Common UI labels
 NONE_LABEL = "(none)"
+
+
+def _get_global_data_merged(hass: Any) -> dict[str, Any]:
+    """Return Global Configuration data merged with options (options take precedence)."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.data.get("entry_type") == ENTRY_TYPE_GLOBAL:
+            merged: dict[str, Any] = dict(entry.data)
+            # Options reflect the latest saved values; prefer them where present
+            if getattr(entry, "options", None):
+                # Defensive: options may be a mapping proxy; ignore if not mutable
+                with contextlib.suppress(Exception):
+                    merged.update(entry.options or {})
+            return merged
+    return {}
 
 
 # ----- Shared validators that allow clearing values (empty string) -----
@@ -132,6 +146,9 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             "temperature_outdoor_base": "",
         }
 
+        # Inherit suggestions from Global Configuration for numeric fields
+        global_data = _get_global_data_merged(self.hass)
+
         # If reconfiguring, prefill from current subentry title and data
         if self.source == config_entries.SOURCE_RECONFIGURE:
             sub = self._get_reconfigure_subentry()
@@ -143,35 +160,33 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if key in sub.data:
                     defaults[key] = sub.data[key]
 
-        schema = vol.Schema(
-            {
-                vol.Required("name", default=defaults["name"]): str,
-                vol.Required(
-                    "room_temp_entity",
-                    description={"suggested_value": defaults["room_temp_entity"]},
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=temp_sensor_options,
-                        custom_value=True,
-                    )
-                ),
-                vol.Optional("diffuse_factor", default=defaults["diffuse_factor"]): str,
-                vol.Optional(
-                    "threshold_direct", default=defaults["threshold_direct"]
-                ): str,
-                vol.Optional(
-                    "threshold_diffuse", default=defaults["threshold_diffuse"]
-                ): str,
-                vol.Optional(
-                    "temperature_indoor_base",
-                    default=defaults["temperature_indoor_base"],
-                ): str,
-                vol.Optional(
-                    "temperature_outdoor_base",
-                    default=defaults["temperature_outdoor_base"],
-                ): str,
-            }
-        )
+        schema_dict: dict[Any, Any] = {
+            vol.Required("name", default=defaults["name"]): str,
+            vol.Required(
+                "room_temp_entity",
+                description={"suggested_value": defaults["room_temp_entity"]},
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=temp_sensor_options,
+                    custom_value=True,
+                )
+            ),
+        }
+
+        # For inheritable numerics: show suggestion from Global, keep default empty
+        for key in (
+            "diffuse_factor",
+            "threshold_direct",
+            "threshold_diffuse",
+            "temperature_indoor_base",
+            "temperature_outdoor_base",
+        ):
+            sv = global_data.get(key, "")
+            if sv not in ("", None):
+                sv = str(sv)
+            schema_dict[vol.Optional(key, description={"suggested_value": sv})] = str
+
+        schema = vol.Schema(schema_dict)
 
         if user_input is None:
             return self.async_show_form(step_id="user", data_schema=schema)
@@ -199,8 +214,10 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         """Render enhanced group configuration (page 2)."""
         _LOGGER.debug("GroupSubentryFlowHandler.enhanced: input=%s", user_input)
 
+        global_data = _get_global_data_merged(self.hass)
+
         enhanced_defaults: dict[str, Any] = {
-            # Allow empty for all fields on this page
+            # All fields on this page can be empty
             # Note: scenario enable moved to entities; temps remain here
             "scenario_b_temp_indoor": "",
             "scenario_b_temp_outdoor": "",
@@ -217,31 +234,66 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if key in sub.data:
                     enhanced_defaults[key] = sub.data[key]
 
+        # Build schema with suggestions from Global if current default is empty
+        def _sv(key: str) -> str:
+            v = global_data.get(key, "")
+            return str(v) if v not in ("", None) else ""
+
         schema = vol.Schema(
             {
                 vol.Optional(
                     "scenario_b_temp_indoor",
                     default=enhanced_defaults["scenario_b_temp_indoor"],
+                    description={
+                        "suggested_value": _sv("scenario_b_temp_indoor")
+                        if enhanced_defaults["scenario_b_temp_indoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_b_temp_outdoor",
                     default=enhanced_defaults["scenario_b_temp_outdoor"],
+                    description={
+                        "suggested_value": _sv("scenario_b_temp_outdoor")
+                        if enhanced_defaults["scenario_b_temp_outdoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_indoor",
                     default=enhanced_defaults["scenario_c_temp_indoor"],
+                    description={
+                        "suggested_value": _sv("scenario_c_temp_indoor")
+                        if enhanced_defaults["scenario_c_temp_indoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_outdoor",
                     default=enhanced_defaults["scenario_c_temp_outdoor"],
+                    description={
+                        "suggested_value": _sv("scenario_c_temp_outdoor")
+                        if enhanced_defaults["scenario_c_temp_outdoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_forecast",
                     default=enhanced_defaults["scenario_c_temp_forecast"],
+                    description={
+                        "suggested_value": _sv("scenario_c_temp_forecast")
+                        if enhanced_defaults["scenario_c_temp_forecast"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_start_hour",
                     default=enhanced_defaults["scenario_c_start_hour"],
+                    description={
+                        "suggested_value": _sv("scenario_c_start_hour")
+                        if enhanced_defaults["scenario_c_start_hour"] in ("", None)
+                        else "",
+                    },
                 ): str,
             }
         )
@@ -517,36 +569,47 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if k in sub.data:
                     defaults[k] = sub.data[k]
 
+        # Compute inheritance suggestions: Group (if linked) → Global
+        global_data = _get_global_data_merged(self.hass)
+        group_data: dict[str, Any] = {}
+        linked_group_id = self._page1.get("linked_group_id", "")
+        if linked_group_id:
+            for entry in self.hass.config_entries.async_entries(DOMAIN):
+                if (
+                    entry.data.get("entry_type") == ENTRY_TYPE_GROUPS
+                    and entry.subentries
+                ):
+                    sub = entry.subentries.get(linked_group_id)
+                    if sub:
+                        group_data = dict(sub.data or {})
+                    break
+
+        def _inherit(key: str) -> Any:
+            gv = group_data.get(key)
+            if gv not in ("", None):
+                return gv
+            return global_data.get(key, "")
+
         schema_overrides: dict[Any, Any] = {}
-
-        # All inputs as strings for UI; we'll coerce after submit
-        schema_overrides[vol.Optional("g_value", default=defaults["g_value"])] = str
-        schema_overrides[
-            vol.Optional("frame_width", default=defaults["frame_width"])
-        ] = str
-        schema_overrides[vol.Optional("tilt", default=defaults["tilt"])] = str
-
-        schema_overrides[
-            vol.Optional("diffuse_factor", default=defaults["diffuse_factor"])
-        ] = str
-        schema_overrides[
-            vol.Optional("threshold_direct", default=defaults["threshold_direct"])
-        ] = str
-        schema_overrides[
-            vol.Optional("threshold_diffuse", default=defaults["threshold_diffuse"])
-        ] = str
-        schema_overrides[
-            vol.Optional(
-                "temperature_indoor_base",
-                default=defaults["temperature_indoor_base"],
-            )
-        ] = str
-        schema_overrides[
-            vol.Optional(
-                "temperature_outdoor_base",
-                default=defaults["temperature_outdoor_base"],
-            )
-        ] = str
+        for key in (
+            "g_value",
+            "frame_width",
+            "tilt",
+            "diffuse_factor",
+            "threshold_direct",
+            "threshold_diffuse",
+            "temperature_indoor_base",
+            "temperature_outdoor_base",
+        ):
+            sv = _inherit(key)
+            if sv not in ("", None):
+                sv = str(sv)
+            schema_overrides[
+                vol.Optional(
+                    key,
+                    description={"suggested_value": sv},
+                )
+            ] = str
 
         schema = vol.Schema(schema_overrides)
 
@@ -596,31 +659,83 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if k in sub.data:
                     defaults[k] = sub.data[k]
 
+        # Inheritance suggestions: Group (if linked) → Global
+        global_data = _get_global_data_merged(self.hass)
+        group_data: dict[str, Any] = {}
+        linked_group_id = self._page1.get("linked_group_id", "")
+        if linked_group_id:
+            for entry in self.hass.config_entries.async_entries(DOMAIN):
+                if (
+                    entry.data.get("entry_type") == ENTRY_TYPE_GROUPS
+                    and entry.subentries
+                ):
+                    sub = entry.subentries.get(linked_group_id)
+                    if sub:
+                        group_data = dict(sub.data or {})
+                    break
+
+        def _inherit(key: str) -> str:
+            gv = group_data.get(key)
+            if gv not in ("", None):
+                return str(gv)
+            dv = global_data.get(key, "")
+            return str(dv) if dv not in ("", None) else ""
+
         schema = vol.Schema(
             {
                 vol.Optional(
                     "scenario_b_temp_indoor",
                     default=defaults["scenario_b_temp_indoor"],
+                    description={
+                        "suggested_value": _inherit("scenario_b_temp_indoor")
+                        if defaults["scenario_b_temp_indoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_b_temp_outdoor",
                     default=defaults["scenario_b_temp_outdoor"],
+                    description={
+                        "suggested_value": _inherit("scenario_b_temp_outdoor")
+                        if defaults["scenario_b_temp_outdoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_indoor",
                     default=defaults["scenario_c_temp_indoor"],
+                    description={
+                        "suggested_value": _inherit("scenario_c_temp_indoor")
+                        if defaults["scenario_c_temp_indoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_outdoor",
                     default=defaults["scenario_c_temp_outdoor"],
+                    description={
+                        "suggested_value": _inherit("scenario_c_temp_outdoor")
+                        if defaults["scenario_c_temp_outdoor"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_forecast",
                     default=defaults["scenario_c_temp_forecast"],
+                    description={
+                        "suggested_value": _inherit("scenario_c_temp_forecast")
+                        if defaults["scenario_c_temp_forecast"] in ("", None)
+                        else "",
+                    },
                 ): str,
                 vol.Optional(
                     "scenario_c_start_hour",
                     default=defaults["scenario_c_start_hour"],
+                    description={
+                        "suggested_value": _inherit("scenario_c_start_hour")
+                        if defaults["scenario_c_start_hour"] in ("", None)
+                        else "",
+                    },
                 ): str,
             }
         )
@@ -1168,6 +1283,17 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(
         _config_entry: config_entries.ConfigEntry,
-    ) -> SolarWindowSystemOptionsFlow:
-        """Return the options flow handler."""
-        return SolarWindowSystemOptionsFlow()
+    ) -> config_entries.OptionsFlow:
+        """Return the options flow handler only for Global entry; abort for others."""
+        if _config_entry.data.get("entry_type") == ENTRY_TYPE_GLOBAL:
+            return SolarWindowSystemOptionsFlow()
+        return _NoOpOptionsFlow()
+
+
+class _NoOpOptionsFlow(config_entries.OptionsFlow):
+    """Options flow that immediately aborts for unsupported entries."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        return self.async_abort(reason="not_supported")

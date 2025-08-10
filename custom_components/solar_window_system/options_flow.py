@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
+from dataclasses import dataclass
 from typing import Any
+from collections.abc import Mapping
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -12,9 +15,91 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from .helpers import get_temperature_sensor_entities
 
+# Lint-friendly messages
+MSG_BELOW_MIN = "value below minimum"
+MSG_ABOVE_MAX = "value above maximum"
+
+
+# Locale-aware parsing helpers (module-scoped to keep methods simpler)
+def _normalize_decimal_string(v: Any) -> str:
+    if isinstance(v, (int, float)):
+        return str(v)
+    if isinstance(v, str):
+        return v.strip().replace(",", ".")
+    return str(v)
+
+
+def _parse_float_locale(v: Any) -> float:
+    return float(_normalize_decimal_string(v))
+
+
+def _parse_int_locale(v: Any) -> int:
+    return int(float(_normalize_decimal_string(v)))
+
+
+def allow_empty_float(min_v: float | None = None, max_v: float | None = None) -> Any:
+    """Return validator that allows empty values and coerces floats with bounds."""
+
+    def _validator(v: Any) -> Any:
+        if v in ("", None):
+            return ""
+        fv = _parse_float_locale(v)
+        if min_v is not None and fv < min_v:
+            msg = MSG_BELOW_MIN
+            raise vol.Invalid(msg)
+        if max_v is not None and fv > max_v:
+            msg = MSG_ABOVE_MAX
+            raise vol.Invalid(msg)
+        return fv
+
+    return _validator
+
+
+def allow_empty_int(min_v: int | None = None, max_v: int | None = None) -> Any:
+    """Return validator that allows empty values and coerces ints with bounds."""
+
+    def _validator(v: Any) -> Any:
+        if v in ("", None):
+            return ""
+        iv = _parse_int_locale(v)
+        if min_v is not None and iv < min_v:
+            msg = MSG_BELOW_MIN
+            raise vol.Invalid(msg)
+        if max_v is not None and iv > max_v:
+            msg = MSG_ABOVE_MAX
+            raise vol.Invalid(msg)
+        return iv
+
+    return _validator
+
+
+# Keys used across flows
+_FIELDS_FLOAT = (
+    "diffuse_factor",
+    "temperature_indoor_base",
+    "temperature_outdoor_base",
+)
+_FIELDS_INT = (
+    "threshold_direct",
+    "threshold_diffuse",
+)
+_WINDOW_OVERRIDE_FLOAT = (
+    "g_value",
+    "frame_width",
+    "tilt",
+    "diffuse_factor",
+    "temperature_indoor_base",
+    "temperature_outdoor_base",
+)
+_WINDOW_OVERRIDE_INT = (
+    "threshold_direct",
+    "threshold_diffuse",
+)
+
 
 class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
-    """Options flow for Solar Window System integration.
+    """
+    Options flow for Solar Window System integration.
 
     Handles window and group options flows, including required and optional selectors.
     """
@@ -23,123 +108,270 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
     async def async_step_group_options(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Options flow for a single group: required room_temp_entity dropdown."""
+        """Options flow for a single group with inheritance from Global when empty."""
         opts = self.config_entry.options or {}
         data = self.config_entry.data or {}
 
-        def _g(key: str, fallback: Any = "") -> Any:
-            return opts.get(key, data.get(key, fallback))
-
-        # Use shared async helper for temperature sensors
+        global_data = self._get_global_data()
         temp_sensor_options = await get_temperature_sensor_entities(self.hass)
-        defaults = {
-            "name": _g("name", ""),
-            "room_temp_entity": _g("room_temp_entity", ""),
-        }
 
-        schema_dict = {}
-        schema_dict[vol.Required("name", default=defaults["name"])] = str
-        schema_dict[
-            vol.Required(
-                "room_temp_entity",
-                description={"suggested_value": defaults["room_temp_entity"]},
-            )
-        ] = selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=temp_sensor_options,
-                custom_value=True,
-            )
+        schema = self._build_group_options_schema(
+            temp_sensor_options, opts, data, global_data
         )
-
-        schema = vol.Schema(schema_dict)
 
         if user_input is None:
             return self.async_show_form(step_id="group_options", data_schema=schema)
 
-        # Save selected value (required)
-        result = {
+        result = self._parse_group_options_result(user_input)
+        return self.async_create_entry(title=result.get("name", ""), data=result)
+
+    def _get_global_data(self) -> dict[str, Any]:
+        """Return global configuration entry data if available."""
+        for entry in self.hass.config_entries.async_entries(self.config_entry.domain):
+            if entry.data.get("entry_type") == "global_config":
+                # Merge options over data (options are the current global values)
+                merged: dict[str, Any] = dict(entry.data)
+                # Defensive: options may be a mapping proxy; ignore if not mutable
+                with contextlib.suppress(Exception):
+                    merged.update(entry.options or {})
+                return merged
+        return {}
+
+    @staticmethod
+    def _prefer_options(
+        opts: Mapping[str, Any],
+        data: Mapping[str, Any],
+        key: str,
+        fallback: Any = "",
+    ) -> Any:
+        """Prefer an explicit value in options, else fallback to data."""
+        if key in opts:
+            return opts.get(key, fallback)
+        return data.get(key, fallback)
+
+    def _build_group_options_schema(
+        self,
+        temp_sensor_options: list[str],
+        opts: Mapping[str, Any],
+        data: Mapping[str, Any],
+        global_data: dict[str, Any],
+    ) -> vol.Schema:
+        """Construct the schema for group options with inheritance suggestions."""
+        schema_dict: dict[Any, Any] = {}
+        name_default = str(self._prefer_options(opts, data, "name", ""))
+        schema_dict[vol.Required("name", default=name_default)] = str
+
+        room_default = self._prefer_options(opts, data, "room_temp_entity", "")
+        schema_dict[
+            vol.Required(
+                "room_temp_entity",
+                description={"suggested_value": room_default},
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=temp_sensor_options, custom_value=True
+            )
+        )
+
+        # For numeric overrides: suggest from global only if current value empty
+        for key in (*_FIELDS_FLOAT, *_FIELDS_INT):
+            cur_val = self._prefer_options(opts, data, key, "")
+            desc: dict[str, Any] = {}
+            if cur_val in ("", None) and global_data:
+                desc = {"suggested_value": global_data.get(key, "")}
+            schema_dict[vol.Optional(key, description=desc)] = str
+
+        return vol.Schema(schema_dict)
+
+    @staticmethod
+    def _parse_group_options_result(user_input: dict[str, Any]) -> dict[str, Any]:
+        """Coerce group options inputs while keeping empties for inheritance."""
+        result: dict[str, Any] = {
             "name": user_input.get("name", ""),
             "room_temp_entity": user_input.get("room_temp_entity", ""),
         }
-        return self.async_create_entry(title=result["name"], data=result)
+
+        if "diffuse_factor" in user_input:
+            result["diffuse_factor"] = allow_empty_float(0.05, 0.5)(
+                user_input.get("diffuse_factor")
+            )
+        if "threshold_direct" in user_input:
+            result["threshold_direct"] = allow_empty_int(0, 1000)(
+                user_input.get("threshold_direct")
+            )
+        if "threshold_diffuse" in user_input:
+            result["threshold_diffuse"] = allow_empty_int(0, 1000)(
+                user_input.get("threshold_diffuse")
+            )
+        if "temperature_indoor_base" in user_input:
+            result["temperature_indoor_base"] = allow_empty_float(10, 30)(
+                user_input.get("temperature_indoor_base")
+            )
+        if "temperature_outdoor_base" in user_input:
+            result["temperature_outdoor_base"] = allow_empty_float(10, 30)(
+                user_input.get("temperature_outdoor_base")
+            )
+        return result
 
     # ----- Window options flow (per window) -----
     async def async_step_window_options(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """
-        Options flow for a single window: clearable dropdowns for group and room_temp_entity.
-        """
+        """Options for a window: manage linked group and overrides with inheritance."""
         opts = self.config_entry.options or {}
         data = self.config_entry.data or {}
 
-        # Helper to get value from options or data
-        def _g(key: str, fallback: Any = "") -> Any:
-            return opts.get(key, data.get(key, fallback))
+        group_options_map = self._get_group_options_map()
+        global_data = self._get_global_data()
 
-        # Fetch available temperature sensors and groups
-        temp_sensor_options = self._get_temperature_sensor_entities(self.hass)
-        # For group options, mimic config_flow: get all group subentries
-        group_options_map = []
-        for entry in self.hass.config_entries.async_entries(self.config_entry.domain):
-            if entry.data.get("entry_type") == "group_configs":
-                if entry.subentries:
-                    for sub_id, sub in entry.subentries.items():
-                        if sub.subentry_type == "group":
-                            group_options_map.append(
-                                (sub_id, sub.title or f"Group {sub_id}")
-                            )
-                break
-        group_display_options = [name for _, name in group_options_map]
+        linked_group_id = self._prefer_options(opts, data, "linked_group_id", "")
+        linked_group_name = self._resolve_group_name(linked_group_id, group_options_map)
+        if not linked_group_name:
+            linked_group_name = self._prefer_options(opts, data, "linked_group", "")
 
-        # If no group assigned, leave dropdown empty (no '(none)' label)
-        raw_group = _g("linked_group", "")
-        # Remove explicit '(none)' if present in options or value
-        group_display_options = [g for g in group_display_options if g != "(none)"]
-        defaults = {
-            "name": _g("name", ""),
-            "room_temp_entity": _g("room_temp_entity", ""),
-            "linked_group": raw_group if raw_group in group_display_options else "",
-        }
-
-        schema_dict = {}
-        schema_dict[vol.Required("name", default=defaults["name"])] = str
-        schema_dict[
-            vol.Optional(
-                "room_temp_entity",
-                description={"suggested_value": defaults["room_temp_entity"]},
-            )
-        ] = selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=temp_sensor_options,
-                custom_value=True,
-            )
+        ctx = self._WindowCtx(
+            group_options_map=group_options_map,
+            linked_group_id=linked_group_id,
+            linked_group_name=linked_group_name,
+            global_data=global_data,
         )
-        if group_display_options:
-            schema_dict[
-                vol.Optional(
-                    "linked_group",
-                    description={"suggested_value": defaults["linked_group"]},
-                )
-            ] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=group_display_options,
-                    custom_value=True,
-                )
-            )
-
-        schema = vol.Schema(schema_dict)
+        schema = self._build_window_options_schema(
+            opts,
+            data,
+            ctx,
+        )
 
         if user_input is None:
             return self.async_show_form(step_id="window_options", data_schema=schema)
 
-        # Save cleared/selected values
-        result = {
+        result = self._parse_window_options_result(user_input, group_options_map)
+        return self.async_create_entry(title=result.get("name", ""), data=result)
+
+    def _get_group_options_map(self) -> list[tuple[str, str]]:
+        """Return list of (group_id, group_title)."""
+        result: list[tuple[str, str]] = []
+        for entry in self.hass.config_entries.async_entries(self.config_entry.domain):
+            if entry.data.get("entry_type") == "group_configs" and entry.subentries:
+                for sub_id, sub in entry.subentries.items():
+                    if sub.subentry_type == "group":
+                        result.append((sub_id, sub.title or f"Group {sub_id}"))
+        return result
+
+    @staticmethod
+    def _resolve_group_name(
+        group_id: str, group_options_map: list[tuple[str, str]]
+    ) -> str:
+        if not group_id:
+            return ""
+        for gid, gname in group_options_map:
+            if gid == group_id:
+                return gname
+        return ""
+
+    def _inherit_from_group_or_global(
+        self,
+        key: str,
+        linked_group_id: str,
+        global_data: dict[str, Any],
+    ) -> Any:
+        # Try group subentry first
+        if linked_group_id:
+            for entry in self.hass.config_entries.async_entries(
+                self.config_entry.domain
+            ):
+                if entry.data.get("entry_type") == "group_configs" and entry.subentries:
+                    sub = entry.subentries.get(linked_group_id)
+                    if sub and sub.data.get(key) not in ("", None):
+                        return sub.data.get(key)
+                    break
+        # Fallback to global
+        return global_data.get(key, "")
+
+    @dataclass
+    class _WindowCtx:
+        group_options_map: list[tuple[str, str]]
+        linked_group_id: str
+        linked_group_name: str
+        global_data: dict[str, Any]
+
+    def _build_window_options_schema(
+        self,
+        opts: Mapping[str, Any],
+        data: Mapping[str, Any],
+        ctx: _WindowCtx,
+    ) -> vol.Schema:
+        schema_dict: dict[Any, Any] = {}
+        name_def = str(self._prefer_options(opts, data, "name", ""))
+        schema_dict[vol.Required("name", default=name_def)] = str
+
+        # room temp entity: suggest current value only
+        temp_sensor_options = self._get_temperature_sensor_entities(self.hass)
+        rte_def = self._prefer_options(opts, data, "room_temp_entity", "")
+        schema_dict[
+            vol.Optional(
+                "room_temp_entity",
+                description={"suggested_value": rte_def},
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=temp_sensor_options, custom_value=True
+            )
+        )
+
+        if ctx.group_options_map:
+            show_name = ctx.linked_group_name or ""
+            schema_dict[
+                vol.Optional("linked_group", description={"suggested_value": show_name})
+            ] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[name for _, name in ctx.group_options_map],
+                    custom_value=True,
+                )
+            )
+
+        # overrides: suggest from group or global only if current value is empty
+        for key in (*_WINDOW_OVERRIDE_FLOAT, *_WINDOW_OVERRIDE_INT):
+            cur_val = self._prefer_options(opts, data, key, "")
+            desc: dict[str, Any] = {}
+            if cur_val in ("", None):
+                desc = {
+                    "suggested_value": self._inherit_from_group_or_global(
+                        key, ctx.linked_group_id, ctx.global_data
+                    )
+                }
+            schema_dict[vol.Optional(key, description=desc)] = str
+
+        return vol.Schema(schema_dict)
+
+    @staticmethod
+    def _parse_window_options_result(
+        user_input: dict[str, Any],
+        group_options_map: list[tuple[str, str]],
+    ) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "name": user_input.get("name", ""),
             "room_temp_entity": user_input.get("room_temp_entity", ""),
-            "linked_group": user_input.get("linked_group", ""),
         }
-        return self.async_create_entry(title=result["name"], data=result)
+
+        # Resolve linked group name to id
+        sel_group_name = user_input.get("linked_group", "")
+        sel_group_id = ""
+        if sel_group_name:
+            for gid, gname in group_options_map:
+                if gname == sel_group_name:
+                    sel_group_id = gid
+                    break
+        result["linked_group"] = sel_group_name or ""
+        result["linked_group_id"] = sel_group_id
+
+        # Coerce overrides
+        for k in _WINDOW_OVERRIDE_FLOAT:
+            if k in user_input:
+                result[k] = allow_empty_float()(user_input.get(k))
+        for k in _WINDOW_OVERRIDE_INT:
+            if k in user_input:
+                result[k] = allow_empty_int()(user_input.get(k))
+        return result
 
     """Handle options flow for Solar Window System."""
 

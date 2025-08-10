@@ -9,6 +9,28 @@ ENTITY_PREFIX_GLOBAL = "sws_global"
 # Global Configuration Entity IDs
 GLOBAL_CONFIG_ENTITIES = {
     # Configuration entities retained as entities
+    "min_solar_radiation": {
+        "platform": "input_number",
+        "name": "Minimum Solar Radiation",
+        "min": 0,
+        "max": 1000,
+        "step": 1,
+        "default": 50,
+        "unit": "W/m²",
+        "icon": "mdi:white-balance-sunny",
+        "category": "configuration",
+    },
+    "min_sun_elevation": {
+        "platform": "input_number",
+        "name": "Minimum Sun Elevation",
+        "min": -20,
+        "max": 90,
+        "step": 1,
+        "default": 10,
+        "unit": "°",
+        "icon": "mdi:weather-sunset-up",
+        "category": "configuration",
+    },
     "scenario_b_enable": {
         "platform": "input_boolean",
         "name": "Scenario B Enable",
