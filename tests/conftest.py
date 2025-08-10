@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from custom_components.solar_window_system.const import (
-    CONF_GROUP,
-    CONF_GROUP_NAME,
     DOMAIN,
     GLOBAL_CONFIG_ENTITIES,
 )

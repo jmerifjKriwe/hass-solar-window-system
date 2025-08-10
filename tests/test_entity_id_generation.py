@@ -6,10 +6,10 @@ from custom_components.solar_window_system.const import (
 )
 
 # Constants for expected values
-EXPECTED_TOTAL_ENTITIES = 23
-EXPECTED_NUMBER_ENTITIES = 14  # input_number entities
+EXPECTED_TOTAL_ENTITIES = 7
+EXPECTED_NUMBER_ENTITIES = 0  # input_number entities
 EXPECTED_TEXT_ENTITIES = 1  # input_text entities
-EXPECTED_SELECT_ENTITIES = 2  # input_select entities
+EXPECTED_SELECT_ENTITIES = 0  # input_select entities
 EXPECTED_BOOLEAN_ENTITIES = 2  # input_boolean entities
 EXPECTED_SENSOR_ENTITIES = 4  # sensor entities
 EXPECTED_DEBUG_ENTITIES = 1
@@ -139,13 +139,19 @@ class TestEntityIdGeneration:
                 raise AssertionError(msg)
 
         if debug_entities != EXPECTED_DEBUG_ENTITIES:
-            msg = f"Expected {EXPECTED_DEBUG_ENTITIES} debug entities, got {debug_entities}"
+            msg = (
+                f"Expected {EXPECTED_DEBUG_ENTITIES} debug entities, got "
+                f"{debug_entities}"
+            )
             raise AssertionError(msg)
 
         # Verify total
         total_entities = sum(platform_counts.values())
         if total_entities != EXPECTED_TOTAL_ENTITIES:
-            msg = f"Total entities {total_entities} should equal {EXPECTED_TOTAL_ENTITIES}"
+            msg = (
+                f"Total entities {total_entities} should equal "
+                f"{EXPECTED_TOTAL_ENTITIES}"
+            )
             raise AssertionError(msg)
 
     def test_entity_unique_id_uniqueness(self) -> None:
@@ -172,7 +178,10 @@ class TestEntityIdGeneration:
 
         # Should have exactly one debug entity
         if len(debug_entities) != EXPECTED_DEBUG_ENTITIES:
-            msg = f"Expected {EXPECTED_DEBUG_ENTITIES} debug entity, got {len(debug_entities)}"
+            msg = (
+                f"Expected {EXPECTED_DEBUG_ENTITIES} debug entity, got "
+                f"{len(debug_entities)}"
+            )
             raise AssertionError(msg)
 
         if "debug" not in debug_entities:

@@ -1,4 +1,151 @@
 {
+    "config": {
+        "step": {
+            "global_basic": {
+                "title": "Globale Konfiguration",
+                "description": "Grundlegende Geometrie und Sensoren",
+                "data": {
+                    "window_width": "Standard Fensterbreite (m)",
+                    "window_height": "Standard Fensterhöhe (m)",
+                    "shadow_depth": "Standard Schattentiefe (m)",
+                    "shadow_offset": "Standard Schattenversatz (m)",
+                    "forecast_temperature_sensor": "Vorhersage-Temperatursensor",
+                    "weather_warning_sensor": "Quelle Wetterwarnung"
+                },
+                "data_description": {
+                    "window_width": "0,10–10,00 m. Erforderlich.",
+                    "window_height": "0,10–10,00 m. Erforderlich.",
+                    "shadow_depth": "0–5 m. Erforderlich.",
+                    "shadow_offset": "0–5 m. Erforderlich.",
+                    "forecast_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K).",
+                    "weather_warning_sensor": "Optional. Ein binary_sensor oder input_boolean für Warnungen."
+                }
+            },
+            "global_enhanced": {
+                "title": "Globale Standardwerte",
+                "description": "Erforderliche Standard-Schwellen und Parameter",
+                "data": {
+                    "g_value": "Standard g-Wert",
+                    "frame_width": "Standard Rahmenbreite (m)",
+                    "tilt": "Standard Neigung (°)",
+                    "diffuse_factor": "Standard Diffusionsfaktor",
+                    "threshold_direct": "Standard Schwelle Direkt (W/m²)",
+                    "threshold_diffuse": "Standard Schwelle Diffus (W/m²)",
+                    "temperature_indoor_base": "Standard Basisraumtemperatur (°C)",
+                    "temperature_outdoor_base": "Standard Basisaußentemperatur (°C)"
+                },
+                "data_description": {
+                    "g_value": "0,10–0,90. Erforderlich.",
+                    "frame_width": "0,05–0,30 m. Erforderlich.",
+                    "tilt": "0–90°. Erforderlich.",
+                    "diffuse_factor": "0,05–0,50. Erforderlich.",
+                    "threshold_direct": "0–1000 W/m². Erforderlich.",
+                    "threshold_diffuse": "0–1000 W/m². Erforderlich.",
+                    "temperature_indoor_base": "10–30 °C. Erforderlich.",
+                    "temperature_outdoor_base": "10–30 °C. Erforderlich."
+                }
+            },
+            "global_scenarios": {
+                "title": "Globale Szenarien",
+                "description": "Szenario-Schwellenwerte",
+                "data": {
+                    "scenario_b_temp_indoor": "Szenario B Raumtemperatur (°C)",
+                    "scenario_b_temp_outdoor": "Szenario B Außentemperatur (°C)",
+                    "scenario_c_temp_indoor": "Szenario C Raumtemperatur (°C)",
+                    "scenario_c_temp_outdoor": "Szenario C Außentemperatur (°C)",
+                    "scenario_c_temp_forecast": "Szenario C Vorhersagetemperatur (°C)",
+                    "scenario_c_start_hour": "Szenario C Startstunde"
+                },
+                "data_description": {
+                    "scenario_b_temp_indoor": "10–30 °C. Erforderlich.",
+                    "scenario_b_temp_outdoor": "10–30 °C. Erforderlich.",
+                    "scenario_c_temp_indoor": "10–30 °C. Erforderlich.",
+                    "scenario_c_temp_outdoor": "10–30 °C. Erforderlich.",
+                    "scenario_c_temp_forecast": "15–40 °C. Erforderlich.",
+                    "scenario_c_start_hour": "0–23. Erforderlich."
+                }
+            }
+        },
+        "abort": {
+            "no_more_entries": "Nur ein Konfigurationseintrag ist erlaubt",
+            "already_configured": "Alle Konfigurationseinträge sind bereits vorhanden",
+            "created_missing_entries": "Fehlende Konfigurationseinträge wurden erstellt",
+            "missing_data": "Fehlende Konfigurationsdaten",
+            "unknown_entry_type": "Unbekannter Eintragstyp"
+        }
+    },
+    "options": {
+        "step": {
+            "global_basic": {
+                "title": "Globale Konfiguration bearbeiten",
+                "description": "Grundlegende Geometrie und Sensoren",
+                "data": {
+                    "window_width": "Standard Fensterbreite (m)",
+                    "window_height": "Standard Fensterhöhe (m)",
+                    "shadow_depth": "Standard Schattentiefe (m)",
+                    "shadow_offset": "Standard Schattenversatz (m)",
+                    "forecast_temperature_sensor": "Vorhersage-Temperatursensor",
+                    "weather_warning_sensor": "Quelle Wetterwarnung"
+                },
+                "data_description": {
+                    "window_width": "0,10–10,00 m. Erforderlich.",
+                    "window_height": "0,10–10,00 m. Erforderlich.",
+                    "shadow_depth": "0–5 m. Erforderlich.",
+                    "shadow_offset": "0–5 m. Erforderlich.",
+                    "forecast_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K).",
+                    "weather_warning_sensor": "Optional. Ein binary_sensor oder input_boolean für Warnungen."
+                }
+            },
+            "global_enhanced": {
+                "title": "Globale Standardwerte bearbeiten",
+                "description": "Erforderliche Standard-Schwellen und Parameter",
+                "data": {
+                    "g_value": "Standard g-Wert",
+                    "frame_width": "Standard Rahmenbreite (m)",
+                    "tilt": "Standard Neigung (°)",
+                    "diffuse_factor": "Standard Diffusionsfaktor",
+                    "threshold_direct": "Standard Schwelle Direkt (W/m²)",
+                    "threshold_diffuse": "Standard Schwelle Diffus (W/m²)",
+                    "temperature_indoor_base": "Standard Basisraumtemperatur (°C)",
+                    "temperature_outdoor_base": "Standard Basisaußentemperatur (°C)"
+                },
+                "data_description": {
+                    "g_value": "0,10–0,90. Erforderlich.",
+                    "frame_width": "0,05–0,30 m. Erforderlich.",
+                    "tilt": "0–90°. Erforderlich.",
+                    "diffuse_factor": "0,05–0,50. Erforderlich.",
+                    "threshold_direct": "0–1000 W/m². Erforderlich.",
+                    "threshold_diffuse": "0–1000 W/m². Erforderlich.",
+                    "temperature_indoor_base": "10–30 °C. Erforderlich.",
+                    "temperature_outdoor_base": "10–30 °C. Erforderlich."
+                }
+            },
+            "global_scenarios": {
+                "title": "Globale Szenarien bearbeiten",
+                "description": "Szenario-Schwellenwerte",
+                "data": {
+                    "scenario_b_temp_indoor": "Szenario B Raumtemperatur (°C)",
+                    "scenario_b_temp_outdoor": "Szenario B Außentemperatur (°C)",
+                    "scenario_c_temp_indoor": "Szenario C Raumtemperatur (°C)",
+                    "scenario_c_temp_outdoor": "Szenario C Außentemperatur (°C)",
+                    "scenario_c_temp_forecast": "Szenario C Vorhersagetemperatur (°C)",
+                    "scenario_c_start_hour": "Szenario C Startstunde"
+                },
+                "data_description": {
+                    "scenario_b_temp_indoor": "10–30 °C. Erforderlich.",
+                    "scenario_b_temp_outdoor": "10–30 °C. Erforderlich.",
+                    "scenario_c_temp_indoor": "10–30 °C. Erforderlich.",
+                    "scenario_c_temp_outdoor": "10–30 °C. Erforderlich.",
+                    "scenario_c_temp_forecast": "15–40 °C. Erforderlich.",
+                    "scenario_c_start_hour": "0–23. Erforderlich."
+                }
+            }
+        }
+    },
+    "error": {
+        "invalid_number": "Bitte eine gültige Zahl eingeben.",
+        "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
+    },
     "config_subentries": {
         "group": {
             "initiate_flow": {
@@ -181,15 +328,6 @@
             "abort": {
                 "reconfigure_successful": "Änderungen gespeichert"
             }
-        }
-    },
-    "config": {
-        "abort": {
-            "no_more_entries": "Nur ein Konfigurationseintrag ist erlaubt",
-            "already_configured": "Alle Konfigurationseinträge sind bereits vorhanden",
-            "created_missing_entries": "Fehlende Konfigurationseinträge wurden erstellt",
-            "missing_data": "Fehlende Konfigurationsdaten",
-            "unknown_entry_type": "Unbekannter Eintragstyp"
         }
     },
     "labels": {

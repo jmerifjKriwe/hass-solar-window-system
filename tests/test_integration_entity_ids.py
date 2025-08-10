@@ -12,15 +12,16 @@ from custom_components.solar_window_system.const import (
     ENTITY_PREFIX,
     GLOBAL_CONFIG_ENTITIES,
 )
-from custom_components.solar_window_system.number import async_setup_entry
+
+# No longer using number setup for global numbers (pruned)
 
 
 class TestEntityIDIntegration:
     """Test actual entity ID generation in integration."""
 
     @pytest.mark.asyncio
-    async def test_number_entity_unique_id_format(self, hass):
-        """Test that number entities get correct unique_id format."""
+    async def test_sensor_entity_unique_id_format(self, hass):
+        """Test that sensor entities get correct unique_id format."""
         # Create a proper mock config entry for global configuration
         config_entry = MockConfigEntry(
             domain=DOMAIN,
@@ -43,24 +44,33 @@ class TestEntityIDIntegration:
         # Mock entity addition to capture entities
         added_entities = []
 
-        def mock_add_entities(new_entities):
-            added_entities.extend(new_entities)
+        def mock_add_entities(
+            new_entities,
+            update_before_add: bool = False,
+            *,
+            config_subentry_id=None,
+        ):
+            added_entities.extend(list(new_entities))
 
-        # Set up number entities
-        await async_setup_entry(hass, config_entry, mock_add_entities)
+        # Set up sensors for global entities
+        from custom_components.solar_window_system.sensor import (
+            async_setup_entry as sensor_setup,
+        )
+
+        await sensor_setup(hass, config_entry, mock_add_entities)
 
         # Verify entities were created
-        assert len(added_entities) > 0, "No number entities were created"
+        assert len(added_entities) > 0, "No sensor entities were created"
 
         # Check entity unique_id format
-        expected_number_entities = [
+        expected_sensor_entities = [
             key
             for key, config in GLOBAL_CONFIG_ENTITIES.items()
-            if config["platform"] == "input_number"
+            if config["platform"] == "sensor"
         ]
 
-        assert len(added_entities) == len(expected_number_entities), (
-            f"Expected {len(expected_number_entities)} number entities, "
+        assert len(added_entities) == len(expected_sensor_entities), (
+            f"Expected {len(expected_sensor_entities)} sensor entities, "
             f"got {len(added_entities)}"
         )
 
@@ -79,7 +89,7 @@ class TestEntityIDIntegration:
             entity._entity_key: entity._attr_unique_id for entity in added_entities
         }
 
-        for entity_key in expected_number_entities:
+        for entity_key in expected_sensor_entities:
             expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
             assert entity_key in entity_unique_ids, (
                 f"Entity {entity_key} not found in created entities"
@@ -115,17 +125,17 @@ class TestEntityIDIntegration:
         entity_registry = er.async_get(hass)
 
         # Test one specific entity
-        test_entity_key = "window_g_value"  # First input_number entity
+        test_entity_key = "total_power"  # Existing sensor entity key
         test_config = GLOBAL_CONFIG_ENTITIES[test_entity_key]
 
         unique_id = f"{ENTITY_PREFIX}_global_{test_entity_key}"
         # Home Assistant prefixes object_id with the integration platform
         # when creating via registry
-        entity_id = f"number.{DOMAIN}_{unique_id}"
+        entity_id = f"sensor.{DOMAIN}_{unique_id}"
 
         # Register entity
         entity_entry = entity_registry.async_get_or_create(
-            domain="number",
+            domain="sensor",
             platform=DOMAIN,
             unique_id=unique_id,
             config_entry=config_entry,

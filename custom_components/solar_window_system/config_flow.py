@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import selector
 
 from .const import DOMAIN
 from .options_flow import SolarWindowSystemOptionsFlow
@@ -28,6 +29,31 @@ NONE_LABEL = "(none)"
 
 
 # ----- Shared validators that allow clearing values (empty string) -----
+def _normalize_decimal_string(v: Any) -> str:
+    """
+    Normalize decimal separator for parsing.
+
+    Accept strings with comma as decimal separator by converting to dot.
+    Also handle numeric inputs by converting to string.
+    """
+    if isinstance(v, (int, float)):
+        return str(v)
+    if isinstance(v, str):
+        return v.strip().replace(",", ".")
+    # Let downstream converters raise the appropriate errors
+    return str(v)
+
+
+def _parse_float_locale(v: Any) -> float:
+    """Parse a float accepting decimal comma or dot."""
+    return float(_normalize_decimal_string(v))
+
+
+def _parse_int_locale(v: Any) -> int:
+    """Parse an int accepting decimal comma or dot (coerce via float)."""
+    return int(float(_normalize_decimal_string(v)))
+
+
 def allow_empty_float(min_v: float | None = None, max_v: float | None = None) -> Any:
     """
     Return a validator that coerces to float and allows empty strings.
@@ -39,7 +65,7 @@ def allow_empty_float(min_v: float | None = None, max_v: float | None = None) ->
     def _validator(v: Any) -> Any:
         if v in ("", None):
             return ""
-        fv = float(v)
+        fv = _parse_float_locale(v)
         if min_v is not None and fv < min_v:
             msg = "value below minimum"
             raise vol.Invalid(msg)
@@ -62,7 +88,7 @@ def allow_empty_int(min_v: int | None = None, max_v: int | None = None) -> Any:
     def _validator(v: Any) -> Any:
         if v in ("", None):
             return ""
-        iv = int(v)
+        iv = _parse_int_locale(v)
         if min_v is not None and iv < min_v:
             msg = "value below minimum"
             raise vol.Invalid(msg)
@@ -164,10 +190,9 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
 
         enhanced_defaults: dict[str, Any] = {
             # Allow empty for all fields on this page
-            "scenario_b_enable": "",
+            # Note: scenario enable moved to entities; temps remain here
             "scenario_b_temp_indoor": "",
             "scenario_b_temp_outdoor": "",
-            "scenario_c_enable": "",
             "scenario_c_temp_indoor": "",
             "scenario_c_temp_outdoor": "",
             "scenario_c_temp_forecast": "",
@@ -181,19 +206,8 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if key in sub.data:
                     enhanced_defaults[key] = sub.data[key]
 
-        # Only three choices are needed; 'inherit' will be stored as empty
-        enable_options = ["disable", "enable", "inherit"]
-
         schema = vol.Schema(
             {
-                vol.Optional(
-                    "scenario_b_enable",
-                    default=(
-                        enhanced_defaults["scenario_b_enable"]
-                        if enhanced_defaults["scenario_b_enable"]
-                        else "inherit"
-                    ),
-                ): vol.In(enable_options),
                 vol.Optional(
                     "scenario_b_temp_indoor",
                     default=enhanced_defaults["scenario_b_temp_indoor"],
@@ -202,14 +216,6 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                     "scenario_b_temp_outdoor",
                     default=enhanced_defaults["scenario_b_temp_outdoor"],
                 ): str,
-                vol.Optional(
-                    "scenario_c_enable",
-                    default=(
-                        enhanced_defaults["scenario_c_enable"]
-                        if enhanced_defaults["scenario_c_enable"]
-                        else "inherit"
-                    ),
-                ): vol.In(enable_options),
                 vol.Optional(
                     "scenario_c_temp_indoor",
                     default=enhanced_defaults["scenario_c_temp_indoor"],
@@ -245,11 +251,6 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             for k, conv in coerce_map.items():
                 if k in user_input:
                     user_input[k] = conv(user_input[k])
-
-        # Map 'inherit' back to empty for storage
-        for k in ("scenario_b_enable", "scenario_c_enable"):
-            if user_input.get(k) == "inherit":
-                user_input[k] = ""
 
         # Merge pages and create/update entry (keep name in data to preserve behavior)
         data = {**self._basic, **user_input, "entry_type": "group"}
@@ -517,11 +518,9 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         _LOGGER.debug("WindowSubentryFlowHandler.scenarios: input=%s", user_input)
 
         defaults: dict[str, Any] = {
-            # All fields clearable
-            "scenario_b_enable": "",
+            # All fields clearable; scenario enable moved to entities
             "scenario_b_temp_indoor": "",
             "scenario_b_temp_outdoor": "",
-            "scenario_c_enable": "",
             "scenario_c_temp_indoor": "",
             "scenario_c_temp_outdoor": "",
             "scenario_c_temp_forecast": "",
@@ -535,19 +534,8 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if k in sub.data:
                     defaults[k] = sub.data[k]
 
-        # Only three choices are needed; 'inherit' represents the empty value
-        enable_options = ["disable", "enable", "inherit"]
-
         schema = vol.Schema(
             {
-                vol.Optional(
-                    "scenario_b_enable",
-                    default=(
-                        defaults["scenario_b_enable"]
-                        if defaults["scenario_b_enable"]
-                        else "inherit"
-                    ),
-                ): vol.In(enable_options),
                 vol.Optional(
                     "scenario_b_temp_indoor",
                     default=defaults["scenario_b_temp_indoor"],
@@ -556,14 +544,6 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                     "scenario_b_temp_outdoor",
                     default=defaults["scenario_b_temp_outdoor"],
                 ): str,
-                vol.Optional(
-                    "scenario_c_enable",
-                    default=(
-                        defaults["scenario_c_enable"]
-                        if defaults["scenario_c_enable"]
-                        else "inherit"
-                    ),
-                ): vol.In(enable_options),
                 vol.Optional(
                     "scenario_c_temp_indoor",
                     default=defaults["scenario_c_temp_indoor"],
@@ -598,10 +578,7 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         for k, conv in coerce_map.items():
             if k in user_input:
                 user_input[k] = conv(user_input[k])
-        # Map 'inherit' back to empty for storage
-        for k in ("scenario_b_enable", "scenario_c_enable"):
-            if user_input.get(k) == "inherit":
-                user_input[k] = ""
+        # No scenario enable here; those are entities
 
         # Merge all page data
         data = {
@@ -669,6 +646,9 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     _created = False
+    # Storage for global flow pages
+    _global_p1: dict[str, Any] | None = None
+    _global_p2: dict[str, Any] | None = None
 
     @classmethod
     @callback
@@ -696,11 +676,12 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             e.data.get("entry_type") == ENTRY_TYPE_WINDOWS for e in existing
         )
 
-        # First-time setup from Integrations → Add: create all three
+        # First-time setup from Integrations → Add: collect Global config first
         if not has_main and not has_group_parent and not has_window_parent:
-            await self._create_entries()
-            self._created = True
-            return self.async_create_entry(title="Solar Window System", data={})
+            # Start multi-page global configuration flow
+            self._global_p1 = {}
+            self._global_p2 = {}
+            return await self.async_step_global_basic()
 
         # If both parents exist already, inform user it's configured
         if has_group_parent and has_window_parent:
@@ -744,6 +725,377 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_abort(reason="unknown_entry_type")
 
+    # ----- Global configuration multi-page flow -----
+    async def async_step_global_basic(
+        self, user_input: dict[str, Any] | None = None
+    ) -> Any:
+        """Global configuration - Page 1 (basic)."""
+        # Build selectors for sensors via HA entity selectors
+
+        defaults = {
+            "window_width": "",
+            "window_height": "",
+            "shadow_depth": "",
+            "shadow_offset": "",
+            "forecast_temperature_sensor": "",
+            "weather_warning_sensor": "",
+        }
+
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Required("window_width"): str,
+                    vol.Required("window_height"): str,
+                    vol.Required("shadow_depth"): str,
+                    vol.Required("shadow_offset"): str,
+                    vol.Optional(
+                        "forecast_temperature_sensor",
+                        default=defaults["forecast_temperature_sensor"],
+                    ): vol.Any(
+                        None,
+                        selector.EntitySelector(
+                            selector.EntitySelectorConfig(
+                                domain=["sensor"], device_class="temperature"
+                            )
+                        ),
+                    ),
+                    vol.Optional(
+                        "weather_warning_sensor",
+                        default=defaults["weather_warning_sensor"],
+                    ): vol.Any(
+                        None,
+                        selector.EntitySelector(
+                            selector.EntitySelectorConfig(
+                                domain=["binary_sensor", "input_boolean"]
+                            )
+                        ),
+                    ),
+                }
+            )
+            return self.async_show_form(step_id="global_basic", data_schema=schema)
+
+        # Validate/coerce required numbers with per-field errors (accept comma)
+        errors: dict[str, str] = {}
+        coerced: dict[str, Any] = {}
+
+        def _check_float(field: str, min_v: float, max_v: float) -> None:
+            raw = user_input.get(field)
+            try:
+                fv = _parse_float_locale(raw)
+            except (ValueError, TypeError):
+                errors[field] = "invalid_number"
+                return
+            if fv < min_v or fv > max_v:
+                errors[field] = "number_out_of_range"
+                return
+            coerced[field] = fv
+
+        _check_float("window_width", 0.1, 10)
+        _check_float("window_height", 0.1, 10)
+        _check_float("shadow_depth", 0, 5)
+        _check_float("shadow_offset", 0, 5)
+
+        coerced["forecast_temperature_sensor"] = (
+            user_input.get("forecast_temperature_sensor") or ""
+        )
+        coerced["weather_warning_sensor"] = (
+            user_input.get("weather_warning_sensor") or ""
+        )
+
+        if errors:
+            schema = vol.Schema(
+                {
+                    vol.Required(
+                        "window_width", default=user_input.get("window_width", "")
+                    ): str,
+                    vol.Required(
+                        "window_height", default=user_input.get("window_height", "")
+                    ): str,
+                    vol.Required(
+                        "shadow_depth", default=user_input.get("shadow_depth", "")
+                    ): str,
+                    vol.Required(
+                        "shadow_offset", default=user_input.get("shadow_offset", "")
+                    ): str,
+                    vol.Optional(
+                        "forecast_temperature_sensor",
+                        default=user_input.get("forecast_temperature_sensor", ""),
+                    ): vol.Any(
+                        None,
+                        selector.EntitySelector(
+                            selector.EntitySelectorConfig(
+                                domain=["sensor"], device_class="temperature"
+                            )
+                        ),
+                    ),
+                    vol.Optional(
+                        "weather_warning_sensor",
+                        default=user_input.get("weather_warning_sensor", ""),
+                    ): vol.Any(
+                        None,
+                        selector.EntitySelector(
+                            selector.EntitySelectorConfig(
+                                domain=["binary_sensor", "input_boolean"]
+                            )
+                        ),
+                    ),
+                }
+            )
+            return self.async_show_form(
+                step_id="global_basic",
+                data_schema=schema,
+                errors=errors,
+            )
+
+        self._global_p1 = coerced
+        return await self.async_step_global_enhanced()
+
+    async def async_step_global_enhanced(
+        self, user_input: dict[str, Any] | None = None
+    ) -> Any:
+        """Global configuration - Page 2 (defaults with required values)."""
+        defaults = {
+            "g_value": 0.5,
+            "frame_width": 0.125,
+            "tilt": 90,
+            "diffuse_factor": 0.15,
+            "threshold_direct": 200,
+            "threshold_diffuse": 150,
+            "temperature_indoor_base": 23.0,
+            "temperature_outdoor_base": 19.5,
+        }
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Required("g_value", default=str(defaults["g_value"])): str,
+                    vol.Required(
+                        "frame_width", default=str(defaults["frame_width"])
+                    ): str,
+                    vol.Required("tilt", default=str(defaults["tilt"])): str,
+                    vol.Required(
+                        "diffuse_factor", default=str(defaults["diffuse_factor"])
+                    ): str,
+                    vol.Required(
+                        "threshold_direct", default=str(defaults["threshold_direct"])
+                    ): str,
+                    vol.Required(
+                        "threshold_diffuse", default=str(defaults["threshold_diffuse"])
+                    ): str,
+                    vol.Required(
+                        "temperature_indoor_base",
+                        default=str(defaults["temperature_indoor_base"]),
+                    ): str,
+                    vol.Required(
+                        "temperature_outdoor_base",
+                        default=str(defaults["temperature_outdoor_base"]),
+                    ): str,
+                }
+            )
+            return self.async_show_form(step_id="global_enhanced", data_schema=schema)
+
+        # Validate with per-field errors and locale-aware parsing
+        errors2: dict[str, str] = {}
+        coerced2: dict[str, Any] = {}
+
+        def _check_float(field: str, min_v: float, max_v: float) -> None:
+            raw = user_input.get(field)
+            try:
+                fv = _parse_float_locale(raw)
+            except (ValueError, TypeError):
+                errors2[field] = "invalid_number"
+                return
+            if fv < min_v or fv > max_v:
+                errors2[field] = "number_out_of_range"
+                return
+            coerced2[field] = fv
+
+        def _check_int(field: str, min_v: int, max_v: int) -> None:
+            raw = user_input.get(field)
+            try:
+                iv = _parse_int_locale(raw)
+            except (ValueError, TypeError):
+                errors2[field] = "invalid_number"
+                return
+            if iv < min_v or iv > max_v:
+                errors2[field] = "number_out_of_range"
+                return
+            coerced2[field] = iv
+
+        _check_float("g_value", 0.1, 0.9)
+        _check_float("frame_width", 0.05, 0.3)
+        _check_int("tilt", 0, 90)
+        _check_float("diffuse_factor", 0.05, 0.5)
+        _check_int("threshold_direct", 0, 1000)
+        _check_int("threshold_diffuse", 0, 1000)
+        _check_float("temperature_indoor_base", 10, 30)
+        _check_float("temperature_outdoor_base", 10, 30)
+
+        if errors2:
+            schema = vol.Schema(
+                {
+                    vol.Required(
+                        "g_value", default=str(user_input.get("g_value", ""))
+                    ): str,
+                    vol.Required(
+                        "frame_width", default=str(user_input.get("frame_width", ""))
+                    ): str,
+                    vol.Required("tilt", default=str(user_input.get("tilt", ""))): str,
+                    vol.Required(
+                        "diffuse_factor",
+                        default=str(user_input.get("diffuse_factor", "")),
+                    ): str,
+                    vol.Required(
+                        "threshold_direct",
+                        default=str(user_input.get("threshold_direct", "")),
+                    ): str,
+                    vol.Required(
+                        "threshold_diffuse",
+                        default=str(user_input.get("threshold_diffuse", "")),
+                    ): str,
+                    vol.Required(
+                        "temperature_indoor_base",
+                        default=str(user_input.get("temperature_indoor_base", "")),
+                    ): str,
+                    vol.Required(
+                        "temperature_outdoor_base",
+                        default=str(user_input.get("temperature_outdoor_base", "")),
+                    ): str,
+                }
+            )
+            return self.async_show_form(
+                step_id="global_enhanced",
+                data_schema=schema,
+                errors=errors2,
+            )
+
+        self._global_p2 = coerced2
+        return await self.async_step_global_scenarios()
+
+    async def async_step_global_scenarios(
+        self, user_input: dict[str, Any] | None = None
+    ) -> Any:
+        """Global configuration - Page 3 (scenario thresholds)."""
+        defaults = {
+            "scenario_b_temp_indoor": 23.5,
+            "scenario_b_temp_outdoor": 25.5,
+            "scenario_c_temp_indoor": 21.5,
+            "scenario_c_temp_outdoor": 24.0,
+            "scenario_c_temp_forecast": 28.5,
+            "scenario_c_start_hour": 9,
+        }
+        if user_input is None:
+            schema = vol.Schema(
+                {
+                    vol.Required(
+                        "scenario_b_temp_indoor",
+                        default=str(defaults["scenario_b_temp_indoor"]),
+                    ): str,
+                    vol.Required(
+                        "scenario_b_temp_outdoor",
+                        default=str(defaults["scenario_b_temp_outdoor"]),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_temp_indoor",
+                        default=str(defaults["scenario_c_temp_indoor"]),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_temp_outdoor",
+                        default=str(defaults["scenario_c_temp_outdoor"]),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_temp_forecast",
+                        default=str(defaults["scenario_c_temp_forecast"]),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_start_hour",
+                        default=str(defaults["scenario_c_start_hour"]),
+                    ): str,
+                }
+            )
+            return self.async_show_form(step_id="global_scenarios", data_schema=schema)
+
+        # Validate with per-field errors and locale-aware parsing
+        errors3: dict[str, str] = {}
+        coerced3: dict[str, Any] = {}
+
+        def _check_float(field: str, min_v: float, max_v: float) -> None:
+            raw = user_input.get(field)
+            try:
+                fv = _parse_float_locale(raw)
+            except (ValueError, TypeError):
+                errors3[field] = "invalid_number"
+                return
+            if fv < min_v or fv > max_v:
+                errors3[field] = "number_out_of_range"
+                return
+            coerced3[field] = fv
+
+        def _check_int(field: str, min_v: int, max_v: int) -> None:
+            raw = user_input.get(field)
+            try:
+                iv = _parse_int_locale(raw)
+            except (ValueError, TypeError):
+                errors3[field] = "invalid_number"
+                return
+            if iv < min_v or iv > max_v:
+                errors3[field] = "number_out_of_range"
+                return
+            coerced3[field] = iv
+
+        _check_float("scenario_b_temp_indoor", 10, 30)
+        _check_float("scenario_b_temp_outdoor", 10, 30)
+        _check_float("scenario_c_temp_indoor", 10, 30)
+        _check_float("scenario_c_temp_outdoor", 10, 30)
+        _check_float("scenario_c_temp_forecast", 15, 40)
+        _check_int("scenario_c_start_hour", 0, 23)
+
+        if errors3:
+            schema = vol.Schema(
+                {
+                    vol.Required(
+                        "scenario_b_temp_indoor",
+                        default=str(user_input.get("scenario_b_temp_indoor", "")),
+                    ): str,
+                    vol.Required(
+                        "scenario_b_temp_outdoor",
+                        default=str(user_input.get("scenario_b_temp_outdoor", "")),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_temp_indoor",
+                        default=str(user_input.get("scenario_c_temp_indoor", "")),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_temp_outdoor",
+                        default=str(user_input.get("scenario_c_temp_outdoor", "")),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_temp_forecast",
+                        default=str(user_input.get("scenario_c_temp_forecast", "")),
+                    ): str,
+                    vol.Required(
+                        "scenario_c_start_hour",
+                        default=str(user_input.get("scenario_c_start_hour", "")),
+                    ): str,
+                }
+            )
+            return self.async_show_form(
+                step_id="global_scenarios",
+                data_schema=schema,
+                errors=errors3,
+            )
+
+        # Combine and create entries
+        data = {
+            **(self._global_p1 or {}),
+            **(self._global_p2 or {}),
+            **coerced3,
+            "entry_type": ENTRY_TYPE_GLOBAL,
+        }
+        # Create the subentry parent entries
+        await self._create_entries()
+        self._created = True
+        return self.async_create_entry(title="Solar Window System", data=data)
+
     def _already_configured(self) -> bool:
         """Check if the integration is already configured."""
         return any(entry.domain == DOMAIN for entry in self._async_current_entries())
@@ -767,7 +1119,7 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-        config_entry: ConfigEntry,
+        _config_entry: config_entries.ConfigEntry,
     ) -> SolarWindowSystemOptionsFlow:
         """Return the options flow handler."""
-        return SolarWindowSystemOptionsFlow(config_entry)
+        return SolarWindowSystemOptionsFlow()

@@ -4,6 +4,70 @@
       "user": {
         "title": "Set up Solar Window System",
         "description": "This will create the main configuration entries for your solar window system."
+      },
+      "global_basic": {
+        "title": "Global configuration",
+        "description": "Basic geometry and sensors",
+        "data": {
+          "window_width": "Default window width (m)",
+          "window_height": "Default window height (m)",
+          "shadow_depth": "Default shadow depth (m)",
+          "shadow_offset": "Default shadow offset (m)",
+          "forecast_temperature_sensor": "Forecast temperature sensor",
+          "weather_warning_sensor": "Weather warning source"
+        },
+        "data_description": {
+          "window_width": "0.10–10.00 m. Required.",
+          "window_height": "0.10–10.00 m. Required.",
+          "shadow_depth": "0–5 m. Required.",
+          "shadow_offset": "0–5 m. Required.",
+          "forecast_temperature_sensor": "Optional. A temperature sensor (°C/°F/K).",
+          "weather_warning_sensor": "Optional. A binary_sensor or input_boolean to signal warnings."
+        }
+      },
+      "global_enhanced": {
+        "title": "Global defaults",
+        "description": "Required default thresholds and parameters",
+        "data": {
+          "g_value": "Default G-value",
+          "frame_width": "Default frame width (m)",
+          "tilt": "Default tilt (°)",
+          "diffuse_factor": "Default diffuse factor",
+          "threshold_direct": "Default direct threshold (W/m²)",
+          "threshold_diffuse": "Default diffuse threshold (W/m²)",
+          "temperature_indoor_base": "Default base indoor temperature (°C)",
+          "temperature_outdoor_base": "Default base outdoor temperature (°C)"
+        },
+        "data_description": {
+          "g_value": "0.10–0.90. Required.",
+          "frame_width": "0.05–0.30 m. Required.",
+          "tilt": "0–90°. Required.",
+          "diffuse_factor": "0.05–0.50. Required.",
+          "threshold_direct": "0–1000 W/m². Required.",
+          "threshold_diffuse": "0–1000 W/m². Required.",
+          "temperature_indoor_base": "10–30 °C. Required.",
+          "temperature_outdoor_base": "10–30 °C. Required."
+        }
+      },
+      "global_scenarios": {
+        "title": "Global scenarios",
+        "description": "Scenario thresholds",
+        "data": {
+          "scenario_b_temp_indoor": "Scenario B indoor temp (°C)",
+          "scenario_b_temp_outdoor": "Scenario B outdoor temp (°C)",
+          "scenario_c_temp_indoor": "Scenario C indoor temp (°C)",
+          "scenario_c_temp_outdoor": "Scenario C outdoor temp (°C)",
+          "scenario_c_temp_forecast": "Scenario C forecast temp (°C)",
+          "scenario_c_start_hour": "Scenario C start hour"
+        },
+        "data_description": {
+          "scenario_b_temp_indoor": "10–30 °C. Required.",
+          "scenario_b_temp_outdoor": "10–30 °C. Required.",
+          "scenario_c_temp_indoor": "10–30 °C. Required.",
+          "scenario_c_temp_outdoor": "10–30 °C. Required.",
+          "scenario_c_temp_forecast": "15–40 °C. Required.",
+          "scenario_c_start_hour": "0–23. Required."
+        }
       }
     },
     "abort": {
@@ -13,6 +77,78 @@
       "missing_data": "Missing configuration data",
       "unknown_entry_type": "Unknown entry type"
     }
+  },
+  "options": {
+    "step": {
+      "global_basic": {
+        "title": "Edit global configuration",
+        "description": "Basic geometry and sensors",
+        "data": {
+          "window_width": "Default window width (m)",
+          "window_height": "Default window height (m)",
+          "shadow_depth": "Default shadow depth (m)",
+          "shadow_offset": "Default shadow offset (m)",
+          "forecast_temperature_sensor": "Forecast temperature sensor",
+          "weather_warning_sensor": "Weather warning source"
+        },
+        "data_description": {
+          "window_width": "0.10–10.00 m. Required.",
+          "window_height": "0.10–10.00 m. Required.",
+          "shadow_depth": "0–5 m. Required.",
+          "shadow_offset": "0–5 m. Required.",
+          "forecast_temperature_sensor": "Optional. A temperature sensor (°C/°F/K).",
+          "weather_warning_sensor": "Optional. A binary_sensor or input_boolean to signal warnings."
+        }
+      },
+      "global_enhanced": {
+        "title": "Edit global defaults",
+        "description": "Required default thresholds and parameters",
+        "data": {
+          "g_value": "Default G-value",
+          "frame_width": "Default frame width (m)",
+          "tilt": "Default tilt (°)",
+          "diffuse_factor": "Default diffuse factor",
+          "threshold_direct": "Default direct threshold (W/m²)",
+          "threshold_diffuse": "Default diffuse threshold (W/m²)",
+          "temperature_indoor_base": "Default base indoor temperature (°C)",
+          "temperature_outdoor_base": "Default base outdoor temperature (°C)"
+        },
+        "data_description": {
+          "g_value": "0.10–0.90. Required.",
+          "frame_width": "0.05–0.30 m. Required.",
+          "tilt": "0–90°. Required.",
+          "diffuse_factor": "0.05–0.50. Required.",
+          "threshold_direct": "0–1000 W/m². Required.",
+          "threshold_diffuse": "0–1000 W/m². Required.",
+          "temperature_indoor_base": "10–30 °C. Required.",
+          "temperature_outdoor_base": "10–30 °C. Required."
+        }
+      },
+      "global_scenarios": {
+        "title": "Edit global scenarios",
+        "description": "Scenario thresholds",
+        "data": {
+          "scenario_b_temp_indoor": "Scenario B indoor temp (°C)",
+          "scenario_b_temp_outdoor": "Scenario B outdoor temp (°C)",
+          "scenario_c_temp_indoor": "Scenario C indoor temp (°C)",
+          "scenario_c_temp_outdoor": "Scenario C outdoor temp (°C)",
+          "scenario_c_temp_forecast": "Scenario C forecast temp (°C)",
+          "scenario_c_start_hour": "Scenario C start hour"
+        },
+        "data_description": {
+          "scenario_b_temp_indoor": "10–30 °C. Required.",
+          "scenario_b_temp_outdoor": "10–30 °C. Required.",
+          "scenario_c_temp_indoor": "10–30 °C. Required.",
+          "scenario_c_temp_outdoor": "10–30 °C. Required.",
+          "scenario_c_temp_forecast": "15–40 °C. Required.",
+          "scenario_c_start_hour": "0–23. Required."
+        }
+      }
+    }
+  },
+  "error": {
+    "invalid_number": "Please enter a valid number.",
+    "number_out_of_range": "Value is out of allowed range."
   },
   "config_subentries": {
     "group": {
