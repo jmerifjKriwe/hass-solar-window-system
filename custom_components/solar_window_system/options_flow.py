@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -11,6 +12,9 @@ from homeassistant.helpers import selector
 
 
 class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Solar Window System."""
+
+    _LOGGER = logging.getLogger(__name__)
     """Handle options flow for Solar Window System."""
 
     def __init__(self) -> None:
@@ -99,14 +103,14 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             return opts.get(key, data.get(key, fallback))
 
         def _sel_default(v: Any) -> Any:
-            # For entity selector, None renders as empty/cleared; map "" -> None
-            return None if v in ("", None) else v
+            # For entity selector, None or "" renders as empty/cleared in UI
+            return v if v else None
 
         def _sel_default_with_fallback(key: str) -> Any:
-            # If key explicitly present in options, respect it (including "")
+            # If key explizit in options, respektiere ihn (auch "")
             if key in opts:
                 return _sel_default(opts.get(key))
-            # Otherwise, fall back to original data for initial display
+            # Sonst fallback auf data
             return _sel_default(data.get(key, ""))
 
         defaults = {
@@ -137,7 +141,7 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                     ): str,
                     vol.Optional(
                         "forecast_temperature_sensor",
-                        default=defaults["forecast_temperature_sensor"],
+                        description={"suggested_value": defaults["forecast_temperature_sensor"]},
                     ): vol.Any(
                         None,
                         selector.EntitySelector(
@@ -148,7 +152,7 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         "weather_warning_sensor",
-                        default=defaults["weather_warning_sensor"],
+                        description={"suggested_value": defaults["weather_warning_sensor"]},
                     ): vol.Any(
                         None,
                         selector.EntitySelector(
@@ -161,7 +165,7 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             )
             return self.async_show_form(step_id="global_basic", data_schema=schema)
 
-        # validate required numerics with per-field errors (accept comma)
+
         errors: dict[str, str] = {}
         page1: dict[str, Any] = {}
 
@@ -182,10 +186,13 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         _check_float("shadow_depth", 0, 5)
         _check_float("shadow_offset", 0, 5)
 
-        page1["forecast_temperature_sensor"] = (
-            user_input.get("forecast_temperature_sensor") or ""
-        )
-        page1["weather_warning_sensor"] = user_input.get("weather_warning_sensor") or ""
+        # EntitySelector: Wenn Feld fehlt, None oder leer, dann als '' speichern
+        for key in ("forecast_temperature_sensor", "weather_warning_sensor"):
+            val = user_input.get(key, "")
+            if val in (None, ""):
+                page1[key] = ""
+            else:
+                page1[key] = val
 
         if errors:
             schema = vol.Schema(

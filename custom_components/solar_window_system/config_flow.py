@@ -795,11 +795,16 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _check_float("shadow_depth", 0, 5)
         _check_float("shadow_offset", 0, 5)
 
+        # Handle entity selectors properly: None means user cleared the field
+        # Store None as "" for consistency with config entry data model
+        forecast_sensor = user_input.get("forecast_temperature_sensor")
         coerced["forecast_temperature_sensor"] = (
-            user_input.get("forecast_temperature_sensor") or ""
+            "" if forecast_sensor is None else (forecast_sensor or "")
         )
+
+        warning_sensor = user_input.get("weather_warning_sensor")
         coerced["weather_warning_sensor"] = (
-            user_input.get("weather_warning_sensor") or ""
+            "" if warning_sensor is None else (warning_sensor or "")
         )
 
         if errors:
