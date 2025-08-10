@@ -8,15 +8,68 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import entity_registry as er
+
 from homeassistant.helpers import selector
+from .helpers import get_temperature_sensor_entities
 
 
 class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
+    """Options flow for Solar Window System integration.
+
+    Handles window and group options flows, including required and optional selectors.
+    """
+
+    # ----- Group options flow (per group) -----
+    async def async_step_group_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Options flow for a single group: required room_temp_entity dropdown."""
+        opts = self.config_entry.options or {}
+        data = self.config_entry.data or {}
+
+        def _g(key: str, fallback: Any = "") -> Any:
+            return opts.get(key, data.get(key, fallback))
+
+        # Use shared async helper for temperature sensors
+        temp_sensor_options = await get_temperature_sensor_entities(self.hass)
+        defaults = {
+            "name": _g("name", ""),
+            "room_temp_entity": _g("room_temp_entity", ""),
+        }
+
+        schema_dict = {}
+        schema_dict[vol.Required("name", default=defaults["name"])] = str
+        schema_dict[
+            vol.Required(
+                "room_temp_entity",
+                description={"suggested_value": defaults["room_temp_entity"]},
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=temp_sensor_options,
+                custom_value=True,
+            )
+        )
+
+        schema = vol.Schema(schema_dict)
+
+        if user_input is None:
+            return self.async_show_form(step_id="group_options", data_schema=schema)
+
+        # Save selected value (required)
+        result = {
+            "name": user_input.get("name", ""),
+            "room_temp_entity": user_input.get("room_temp_entity", ""),
+        }
+        return self.async_create_entry(title=result["name"], data=result)
+
     # ----- Window options flow (per window) -----
     async def async_step_window_options(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Options flow for a single window: clearable dropdowns for group and room_temp_entity."""
+        """
+        Options flow for a single window: clearable dropdowns for group and room_temp_entity.
+        """
         opts = self.config_entry.options or {}
         data = self.config_entry.data or {}
 

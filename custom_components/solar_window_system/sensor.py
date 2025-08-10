@@ -187,6 +187,11 @@ async def _setup_window_power_sensors(
             ("total_power", "Total Power"),
             ("total_power_direct", "Total Power Direct"),
             ("total_power_diffuse", "Total Power Diffuse"),
+            ("power_m2_total", "Power/m² Total"),
+            ("power_m2_diffuse", "Power/m² Diffuse"),
+            ("power_m2_direct", "Power/m² Direct"),
+            ("power_m2_raw", "Power/m² Raw"),
+            ("total_power_raw", "Total Power Raw"),
         ):
             entities.append(
                 GroupWindowPowerSensor(

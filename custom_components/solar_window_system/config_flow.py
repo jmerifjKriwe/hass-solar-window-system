@@ -13,6 +13,7 @@ from homeassistant.helpers import selector
 
 from .const import DOMAIN
 from .options_flow import SolarWindowSystemOptionsFlow
+from .helpers import get_temperature_sensor_entities
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -117,12 +118,13 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
     # ----- Creation flow (step 1: basic) -----
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
         """Render basic group configuration (page 1)."""
-        _LOGGER.debug("GroupSubentryFlowHandler.user: input=%s", user_input)
+        # Prepare temperature sensor options
+        temp_sensor_options = await get_temperature_sensor_entities(self.hass)
 
         # Defaults for basic page
         defaults: dict[str, Any] = {
             "name": getattr(getattr(self, "subentry", None), "title", ""),
-            # All numeric fields can be empty -> use "" as default to allow clearing
+            "room_temp_entity": "",
             "diffuse_factor": "",
             "threshold_direct": "",
             "threshold_diffuse": "",
@@ -144,6 +146,15 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         schema = vol.Schema(
             {
                 vol.Required("name", default=defaults["name"]): str,
+                vol.Required(
+                    "room_temp_entity",
+                    description={"suggested_value": defaults["room_temp_entity"]},
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=temp_sensor_options,
+                        custom_value=True,
+                    )
+                ),
                 vol.Optional("diffuse_factor", default=defaults["diffuse_factor"]): str,
                 vol.Optional(
                     "threshold_direct", default=defaults["threshold_direct"]
@@ -409,7 +420,7 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         _LOGGER.debug("WindowSubentryFlowHandler.user: input=%s", user_input)
 
         # Prepare temperature sensor options
-        temp_sensor_options = await self._get_temperature_sensor_entities()
+        temp_sensor_options = await get_temperature_sensor_entities(self.hass)
 
         # Prepare group options (from Group configurations entry)
         group_options_map = await self._get_group_subentries()
@@ -659,24 +670,7 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         """Start reconfigure and reuse the same steps with defaults."""
         return await self.async_step_user(user_input)
 
-    async def _get_temperature_sensor_entities(self) -> list[str]:
-        """Collect temperature sensor entity_ids to present as options."""
-        entity_registry = er.async_get(self.hass)
-        temperature_entities: list[str] = []
-        for ent in entity_registry.entities.values():
-            if (
-                ent.entity_id.startswith("sensor.")
-                and not ent.disabled_by
-                and not ent.hidden_by
-            ):
-                state = self.hass.states.get(ent.entity_id)
-                if state and state.attributes.get("unit_of_measurement") in (
-                    "°C",
-                    "°F",
-                    "K",
-                ):
-                    temperature_entities.append(ent.entity_id)
-        return temperature_entities
+    # (removed, now using shared get_temperature_sensor_entities)
 
     async def _get_group_subentries(self) -> list[tuple[str, str]]:
         """Return list of (subentry_id, title) for existing group subentries."""
