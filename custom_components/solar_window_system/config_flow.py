@@ -355,11 +355,20 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             )
         ] = vol.In(["", *temp_sensor_options])
 
+        # Use a clearable dropdown for group assignment
         schema_dict[
             vol.Optional(
-                "linked_group", default=defaults.get("linked_group", NONE_LABEL)
+                "linked_group",
+                description={
+                    "suggested_value": defaults.get("linked_group", NONE_LABEL)
+                },
             )
-        ] = vol.In(group_display_options)
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=group_display_options,
+                custom_value=True,
+            )
+        )
 
         return vol.Schema(schema_dict)
 
@@ -401,14 +410,56 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
 
         # Prepare temperature sensor options
         temp_sensor_options = await self._get_temperature_sensor_entities()
+
         # Prepare group options (from Group configurations entry)
         group_options_map = await self._get_group_subentries()
-        # Show an explicit '(none)' option instead of an empty line
-        group_display_options = [NONE_LABEL] + [name for _, name in group_options_map]
+        group_display_options = [name for _, name in group_options_map]
         defaults = self._page1_defaults(group_options_map)
-        schema = self._page1_schema(
-            defaults, temp_sensor_options, group_display_options
+
+        # Build schema, only include group if groups exist
+        schema_dict = {}
+        schema_dict[vol.Required("name", default=defaults.get("name", ""))] = str
+        for key in (
+            "azimuth",
+            "azimuth_min",
+            "azimuth_max",
+            "elevation_min",
+            "elevation_max",
+            "window_width",
+            "window_height",
+            "shadow_depth",
+            "shadow_offset",
+        ):
+            schema_dict[vol.Optional(key, default=defaults.get(key, ""))] = str
+
+        # Use a clearable dropdown for room_temp_entity
+        schema_dict[
+            vol.Optional(
+                "room_temp_entity",
+                description={"suggested_value": defaults.get("room_temp_entity", "")},
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=temp_sensor_options,
+                custom_value=True,
+            )
         )
+
+        # Only show group field if groups exist
+        if group_display_options:
+            schema_dict[
+                vol.Optional(
+                    "linked_group",
+                    description={"suggested_value": defaults.get("linked_group", "")},
+                )
+            ] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=group_display_options,
+                    custom_value=True,
+                )
+            )
+
+        schema = vol.Schema(schema_dict)
 
         if user_input is None:
             return self.async_show_form(step_id="user", data_schema=schema)
@@ -750,25 +801,23 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("shadow_offset"): str,
                     vol.Optional(
                         "forecast_temperature_sensor",
-                        default=defaults["forecast_temperature_sensor"],
-                    ): vol.Any(
-                        None,
-                        selector.EntitySelector(
-                            selector.EntitySelectorConfig(
-                                domain=["sensor"], device_class="temperature"
-                            )
-                        ),
+                        description={
+                            "suggested_value": defaults["forecast_temperature_sensor"]
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"], device_class="temperature"
+                        )
                     ),
                     vol.Optional(
                         "weather_warning_sensor",
-                        default=defaults["weather_warning_sensor"],
-                    ): vol.Any(
-                        None,
-                        selector.EntitySelector(
-                            selector.EntitySelectorConfig(
-                                domain=["binary_sensor", "input_boolean"]
-                            )
-                        ),
+                        description={
+                            "suggested_value": defaults["weather_warning_sensor"]
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["binary_sensor", "input_boolean"]
+                        )
                     ),
                 }
             )

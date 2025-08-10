@@ -12,6 +12,82 @@ from homeassistant.helpers import selector
 
 
 class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
+    # ----- Window options flow (per window) -----
+    async def async_step_window_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Options flow for a single window: clearable dropdowns for group and room_temp_entity."""
+        opts = self.config_entry.options or {}
+        data = self.config_entry.data or {}
+
+        # Helper to get value from options or data
+        def _g(key: str, fallback: Any = "") -> Any:
+            return opts.get(key, data.get(key, fallback))
+
+        # Fetch available temperature sensors and groups
+        temp_sensor_options = self._get_temperature_sensor_entities(self.hass)
+        # For group options, mimic config_flow: get all group subentries
+        group_options_map = []
+        for entry in self.hass.config_entries.async_entries(self.config_entry.domain):
+            if entry.data.get("entry_type") == "group_configs":
+                if entry.subentries:
+                    for sub_id, sub in entry.subentries.items():
+                        if sub.subentry_type == "group":
+                            group_options_map.append(
+                                (sub_id, sub.title or f"Group {sub_id}")
+                            )
+                break
+        group_display_options = [name for _, name in group_options_map]
+
+        # If no group assigned, leave dropdown empty (no '(none)' label)
+        raw_group = _g("linked_group", "")
+        # Remove explicit '(none)' if present in options or value
+        group_display_options = [g for g in group_display_options if g != "(none)"]
+        defaults = {
+            "name": _g("name", ""),
+            "room_temp_entity": _g("room_temp_entity", ""),
+            "linked_group": raw_group if raw_group in group_display_options else "",
+        }
+
+        schema_dict = {}
+        schema_dict[vol.Required("name", default=defaults["name"])] = str
+        schema_dict[
+            vol.Optional(
+                "room_temp_entity",
+                description={"suggested_value": defaults["room_temp_entity"]},
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=temp_sensor_options,
+                custom_value=True,
+            )
+        )
+        if group_display_options:
+            schema_dict[
+                vol.Optional(
+                    "linked_group",
+                    description={"suggested_value": defaults["linked_group"]},
+                )
+            ] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=group_display_options,
+                    custom_value=True,
+                )
+            )
+
+        schema = vol.Schema(schema_dict)
+
+        if user_input is None:
+            return self.async_show_form(step_id="window_options", data_schema=schema)
+
+        # Save cleared/selected values
+        result = {
+            "name": user_input.get("name", ""),
+            "room_temp_entity": user_input.get("room_temp_entity", ""),
+            "linked_group": user_input.get("linked_group", ""),
+        }
+        return self.async_create_entry(title=result["name"], data=result)
+
     """Handle options flow for Solar Window System."""
 
     _LOGGER = logging.getLogger(__name__)
@@ -141,7 +217,9 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                     ): str,
                     vol.Optional(
                         "forecast_temperature_sensor",
-                        description={"suggested_value": defaults["forecast_temperature_sensor"]},
+                        description={
+                            "suggested_value": defaults["forecast_temperature_sensor"]
+                        },
                     ): vol.Any(
                         None,
                         selector.EntitySelector(
@@ -152,7 +230,9 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         "weather_warning_sensor",
-                        description={"suggested_value": defaults["weather_warning_sensor"]},
+                        description={
+                            "suggested_value": defaults["weather_warning_sensor"]
+                        },
                     ): vol.Any(
                         None,
                         selector.EntitySelector(
@@ -164,7 +244,6 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                 }
             )
             return self.async_show_form(step_id="global_basic", data_schema=schema)
-
 
         errors: dict[str, str] = {}
         page1: dict[str, Any] = {}
