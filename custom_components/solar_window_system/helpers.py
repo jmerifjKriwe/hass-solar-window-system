@@ -1,7 +1,8 @@
 """Shared helpers for Solar Window System custom component."""
 
-from homeassistant.helpers import entity_registry as er
 from typing import Any
+
+from homeassistant.helpers import entity_registry as er
 
 
 async def get_temperature_sensor_entities(hass: Any) -> list[str]:

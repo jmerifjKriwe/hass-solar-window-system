@@ -1,4 +1,5 @@
-"""Tests for clearing selector fields in the options flow.
+"""
+Tests for clearing selector fields in the options flow.
 
 Ensures optional selectors can be cleared, are persisted as empty strings,
 and reopen as empty in the first options step.

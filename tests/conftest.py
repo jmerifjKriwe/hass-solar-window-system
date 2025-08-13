@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock
 
@@ -11,13 +13,27 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+# Ensure custom_components is in sys.path for Home Assistant test discovery
+sys.path.insert(0, str((Path(__file__).parent.parent).resolve()))
 
 from custom_components.solar_window_system.const import (
     DOMAIN,
     GLOBAL_CONFIG_ENTITIES,
 )
+
+
+# Ensure custom integrations are enabled for all tests
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
+    """Enable custom integrations defined in the test dir."""
+    return
+
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
+# Fixtures for Home Assistant test environment
+pytest_plugins = "pytest_homeassistant_custom_component"
 
 
 @pytest.fixture
@@ -53,8 +69,8 @@ def valid_group_input() -> dict[str, str]:
     """Return valid input for group configuration flow."""
     return {
         "entry_type": "group",
-        CONF_GROUP: "test_group",
-        CONF_GROUP_NAME: "Test Group",
+        "group": "test_group",
+        "group_name": "Test Group",
     }
 
 

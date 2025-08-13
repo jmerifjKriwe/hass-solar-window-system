@@ -12,8 +12,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import DOMAIN
-from .options_flow import SolarWindowSystemOptionsFlow
 from .helpers import get_temperature_sensor_entities
+from .options_flow import SolarWindowSystemOptionsFlow
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry

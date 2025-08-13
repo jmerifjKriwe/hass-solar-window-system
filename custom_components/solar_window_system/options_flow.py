@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-from collections.abc import Mapping
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import entity_registry as er
-
 from homeassistant.helpers import selector
+
 from .helpers import get_temperature_sensor_entities
 
 # Lint-friendly messages
