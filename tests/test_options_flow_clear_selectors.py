@@ -18,7 +18,7 @@ from custom_components.solar_window_system.const import DOMAIN
 async def test_clearing_selectors_persists_empty(
     hass: HomeAssistant, enable_custom_integrations: None
 ) -> None:
-    """Clearing selector fields in options flow should persist as empty string and reopen empty."""
+    """Clearing selector fields persists as empty and reopens empty."""
     # Create a config entry with selectors pre-set (options)
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -44,6 +44,8 @@ async def test_clearing_selectors_persists_empty(
             "window_height": "1.0",
             "shadow_depth": "0.0",
             "shadow_offset": "0.0",
+            "solar_radiation_sensor": "sensor.dummy_solar",
+            "outdoor_temperature_sensor": "sensor.dummy_outdoor",
             "forecast_temperature_sensor": None,
             "weather_warning_sensor": None,
         },
@@ -87,7 +89,7 @@ async def test_clearing_selectors_persists_empty(
     assert entry.options.get("forecast_temperature_sensor", "") == ""
     assert entry.options.get("weather_warning_sensor", "") == ""
 
-    # Re-open Options Flow; defaults for selectors should be empty (None maps to empty UI)
+    # Re-open Options Flow; defaults for selectors should be empty
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == "form"
     assert result["step_id"] == "global_basic"

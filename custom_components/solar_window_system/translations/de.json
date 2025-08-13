@@ -9,6 +9,8 @@
                     "window_height": "Standard Fensterhöhe (m)",
                     "shadow_depth": "Standard Schattentiefe (m)",
                     "shadow_offset": "Standard Schattenversatz (m)",
+                    "solar_radiation_sensor": "Solare Einstrahlungssensor",
+                    "outdoor_temperature_sensor": "Außentemperatur-Sensor",
                     "forecast_temperature_sensor": "Vorhersage-Temperatursensor",
                     "weather_warning_sensor": "Quelle Wetterwarnung"
                 },
@@ -17,6 +19,8 @@
                     "window_height": "0,10–10,00 m. Erforderlich.",
                     "shadow_depth": "0–5 m. Erforderlich.",
                     "shadow_offset": "0–5 m. Erforderlich.",
+                    "solar_radiation_sensor": "Erforderlich. Ein Sensor mit solarer Einstrahlung in W/m².",
+                    "outdoor_temperature_sensor": "Erforderlich. Ein Temperatursensor (°C/°F/K).",
                     "forecast_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K).",
                     "weather_warning_sensor": "Optional. Ein binary_sensor oder input_boolean für Warnungen."
                 }
@@ -84,6 +88,8 @@
                     "window_height": "Standard Fensterhöhe (m)",
                     "shadow_depth": "Standard Schattentiefe (m)",
                     "shadow_offset": "Standard Schattenversatz (m)",
+                    "solar_radiation_sensor": "Solare Einstrahlungssensor",
+                    "outdoor_temperature_sensor": "Außentemperatur-Sensor",
                     "forecast_temperature_sensor": "Vorhersage-Temperatursensor",
                     "weather_warning_sensor": "Quelle Wetterwarnung"
                 },
@@ -92,6 +98,8 @@
                     "window_height": "0,10–10,00 m. Erforderlich.",
                     "shadow_depth": "0–5 m. Erforderlich.",
                     "shadow_offset": "0–5 m. Erforderlich.",
+                    "solar_radiation_sensor": "Erforderlich. Ein Sensor mit solarer Einstrahlung in W/m².",
+                    "outdoor_temperature_sensor": "Erforderlich. Ein Temperatursensor (°C/°F/K).",
                     "forecast_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K).",
                     "weather_warning_sensor": "Optional. Ein binary_sensor oder input_boolean für Warnungen."
                 }

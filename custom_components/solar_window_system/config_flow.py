@@ -897,6 +897,8 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "window_height": "",
             "shadow_depth": "",
             "shadow_offset": "",
+            "solar_radiation_sensor": "",
+            "outdoor_temperature_sensor": "",
             "forecast_temperature_sensor": "",
             "weather_warning_sensor": "",
         }
@@ -908,6 +910,27 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("window_height"): str,
                     vol.Required("shadow_depth"): str,
                     vol.Required("shadow_offset"): str,
+                    vol.Required(
+                        "solar_radiation_sensor",
+                        description={
+                            "suggested_value": defaults["solar_radiation_sensor"],
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"],
+                        )
+                    ),
+                    vol.Required(
+                        "outdoor_temperature_sensor",
+                        description={
+                            "suggested_value": defaults["outdoor_temperature_sensor"],
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"],
+                            device_class="temperature",
+                        )
+                    ),
                     vol.Optional(
                         "forecast_temperature_sensor",
                         description={
@@ -955,6 +978,19 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Handle entity selectors properly: None means user cleared the field
         # Store None as "" for consistency with config entry data model
+        # Required selectors must be present and non-empty
+        solar_radiation_sensor = user_input.get("solar_radiation_sensor")
+        if not solar_radiation_sensor:
+            errors["solar_radiation_sensor"] = "required"
+        else:
+            coerced["solar_radiation_sensor"] = solar_radiation_sensor
+
+        outdoor_temp_sensor = user_input.get("outdoor_temperature_sensor")
+        if not outdoor_temp_sensor:
+            errors["outdoor_temperature_sensor"] = "required"
+        else:
+            coerced["outdoor_temperature_sensor"] = outdoor_temp_sensor
+
         forecast_sensor = user_input.get("forecast_temperature_sensor")
         coerced["forecast_temperature_sensor"] = (
             "" if forecast_sensor is None else (forecast_sensor or "")
@@ -980,6 +1016,23 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         "shadow_offset", default=user_input.get("shadow_offset", "")
                     ): str,
+                    vol.Required(
+                        "solar_radiation_sensor",
+                        default=user_input.get("solar_radiation_sensor", ""),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"],
+                        )
+                    ),
+                    vol.Required(
+                        "outdoor_temperature_sensor",
+                        default=user_input.get("outdoor_temperature_sensor", ""),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"],
+                            device_class="temperature",
+                        )
+                    ),
                     vol.Optional(
                         "forecast_temperature_sensor",
                         default=user_input.get("forecast_temperature_sensor", ""),
@@ -1282,18 +1335,17 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-        _config_entry: config_entries.ConfigEntry,
+        config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
-        """Return the options flow handler only for Global entry; abort for others."""
-        if _config_entry.data.get("entry_type") == ENTRY_TYPE_GLOBAL:
-            return SolarWindowSystemOptionsFlow()
-        return _NoOpOptionsFlow()
+        """Return options flow handler; route steps by entry type inside the flow."""
+        # Hand off to the dedicated OptionsFlow which will route by entry type
+        return SolarWindowSystemOptionsFlow(config_entry)
 
 
 class _NoOpOptionsFlow(config_entries.OptionsFlow):
     """Options flow that immediately aborts for unsupported entries."""
 
     async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
+        self, _user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         return self.async_abort(reason="not_supported")

@@ -13,6 +13,8 @@
           "window_height": "Default window height (m)",
           "shadow_depth": "Default shadow depth (m)",
           "shadow_offset": "Default shadow offset (m)",
+          "solar_radiation_sensor": "Solar radiation sensor",
+          "outdoor_temperature_sensor": "Outdoor temperature sensor",
           "forecast_temperature_sensor": "Forecast temperature sensor",
           "weather_warning_sensor": "Weather warning source"
         },
@@ -21,6 +23,8 @@
           "window_height": "0.10–10.00 m. Required.",
           "shadow_depth": "0–5 m. Required.",
           "shadow_offset": "0–5 m. Required.",
+          "solar_radiation_sensor": "Required. A sensor that provides solar radiation in W/m².",
+          "outdoor_temperature_sensor": "Required. A temperature sensor (°C/°F/K).",
           "forecast_temperature_sensor": "Optional. A temperature sensor (°C/°F/K).",
           "weather_warning_sensor": "Optional. A binary_sensor or input_boolean to signal warnings."
         }
@@ -88,6 +92,8 @@
           "window_height": "Default window height (m)",
           "shadow_depth": "Default shadow depth (m)",
           "shadow_offset": "Default shadow offset (m)",
+          "solar_radiation_sensor": "Solar radiation sensor",
+          "outdoor_temperature_sensor": "Outdoor temperature sensor",
           "forecast_temperature_sensor": "Forecast temperature sensor",
           "weather_warning_sensor": "Weather warning source"
         },
@@ -96,6 +102,8 @@
           "window_height": "0.10–10.00 m. Required.",
           "shadow_depth": "0–5 m. Required.",
           "shadow_offset": "0–5 m. Required.",
+          "solar_radiation_sensor": "Required. A sensor that provides solar radiation in W/m².",
+          "outdoor_temperature_sensor": "Required. A temperature sensor (°C/°F/K).",
           "forecast_temperature_sensor": "Optional. A temperature sensor (°C/°F/K).",
           "weather_warning_sensor": "Optional. A binary_sensor or input_boolean to signal warnings."
         }

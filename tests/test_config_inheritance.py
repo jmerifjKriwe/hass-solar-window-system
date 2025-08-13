@@ -21,6 +21,8 @@ VALID_GLOBAL_BASIC = {
     "window_height": "2.0",
     "shadow_depth": "0.5",
     "shadow_offset": "0.2",
+    "solar_radiation_sensor": "sensor.dummy_solar",
+    "outdoor_temperature_sensor": "sensor.dummy_outdoor",
     "forecast_temperature_sensor": "sensor.dummy",
     "weather_warning_sensor": "binary_sensor.dummy",
 }
@@ -50,6 +52,8 @@ INVALID_GLOBAL_BASIC = {
     "window_height": "2.0",
     "shadow_depth": "0.5",
     "shadow_offset": "0.2",
+    "solar_radiation_sensor": "sensor.dummy_solar",
+    "outdoor_temperature_sensor": "sensor.dummy_outdoor",
 }
 
 

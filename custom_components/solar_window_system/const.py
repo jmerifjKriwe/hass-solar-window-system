@@ -45,6 +45,25 @@ GLOBAL_CONFIG_ENTITIES = {
         "icon": "mdi:toggle-switch-off",
         "category": "configuration",
     },
+    # Operational controls
+    "maintenance_mode": {
+        "platform": "input_boolean",
+        "name": "Maintenance Mode",
+        "default": False,
+        "icon": "mdi:tools",
+        "category": "configuration",
+    },
+    "sensitivity": {
+        "platform": "input_number",
+        "name": "Sensitivity",
+        "min": 0.5,
+        "max": 2.0,
+        "step": 0.1,
+        "default": 1.0,
+        "unit": "",
+        "icon": "mdi:tune-variant",
+        "category": "configuration",
+    },
     # Debug entities
     "debug": {
         "platform": "input_text",

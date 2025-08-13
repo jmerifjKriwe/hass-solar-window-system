@@ -30,6 +30,8 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
         "window_height": "2.0",
         "shadow_depth": "0.5",
         "shadow_offset": "0.3",
+        "solar_radiation_sensor": "sensor.dummy_solar",
+        "outdoor_temperature_sensor": "sensor.dummy_outdoor",
     }
     result2 = await hass.config_entries.options.async_configure(
         result["flow_id"], user_input=user_input

@@ -6,11 +6,11 @@ from custom_components.solar_window_system.const import (
 )
 
 # Constants for expected values
-EXPECTED_TOTAL_ENTITIES = 9
-EXPECTED_NUMBER_ENTITIES = 2  # input_number entities
+EXPECTED_TOTAL_ENTITIES = 11
+EXPECTED_NUMBER_ENTITIES = 3  # input_number entities (incl. sensitivity)
 EXPECTED_TEXT_ENTITIES = 1  # input_text entities
 EXPECTED_SELECT_ENTITIES = 0  # input_select entities
-EXPECTED_BOOLEAN_ENTITIES = 2  # input_boolean entities
+EXPECTED_BOOLEAN_ENTITIES = 3  # input_boolean entities (incl. maintenance_mode)
 EXPECTED_SENSOR_ENTITIES = 4  # sensor entities
 EXPECTED_DEBUG_ENTITIES = 1
 

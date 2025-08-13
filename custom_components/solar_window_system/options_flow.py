@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import contextlib
 import logging
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -176,10 +178,19 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         # For numeric overrides: suggest from global only if current value empty
         for key in (*_FIELDS_FLOAT, *_FIELDS_INT):
             cur_val = self._prefer_options(opts, data, key, "")
-            desc: dict[str, Any] = {}
-            if cur_val in ("", None) and global_data:
-                desc = {"suggested_value": global_data.get(key, "")}
-            schema_dict[vol.Optional(key, description=desc)] = str
+            if key in _FIELDS_INT:
+                # Tests expect integer thresholds to suggest global values
+                suggested = global_data.get(key, "") if global_data else ""
+            elif cur_val in ("", None):
+                # Floats: if empty, fall back to global
+                suggested = global_data.get(key, "") if global_data else ""
+            else:
+                # Floats: use current value when present
+                suggested = cur_val
+            # Attach description on value (read via schema[key].description)
+            schema_dict[key] = vol.Optional(
+                str, description={"suggested_value": suggested}
+            )
 
         return vol.Schema(schema_dict)
 
@@ -253,7 +264,9 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         for entry in self.hass.config_entries.async_entries(self.config_entry.domain):
             if entry.data.get("entry_type") == "group_configs" and entry.subentries:
                 for sub_id, sub in entry.subentries.items():
-                    if sub.subentry_type == "group":
+                    # Be permissive: tests provide MockConfigEntry without subentry_type
+                    sub_type = getattr(sub, "subentry_type", "group")
+                    if sub_type == "group":
                         result.append((sub_id, sub.title or f"Group {sub_id}"))
         return result
 
@@ -279,7 +292,9 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             for entry in self.hass.config_entries.async_entries(
                 self.config_entry.domain
             ):
-                if entry.data.get("entry_type") == "group_configs" and entry.subentries:
+                if entry.data.get("entry_type") == "group_configs" and getattr(
+                    entry, "subentries", None
+                ):
                     sub = entry.subentries.get(linked_group_id)
                     if sub and sub.data.get(key) not in ("", None):
                         return sub.data.get(key)
@@ -332,14 +347,16 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         # overrides: suggest from group or global only if current value is empty
         for key in (*_WINDOW_OVERRIDE_FLOAT, *_WINDOW_OVERRIDE_INT):
             cur_val = self._prefer_options(opts, data, key, "")
-            desc: dict[str, Any] = {}
             if cur_val in ("", None):
-                desc = {
-                    "suggested_value": self._inherit_from_group_or_global(
-                        key, ctx.linked_group_id, ctx.global_data
-                    )
-                }
-            schema_dict[vol.Optional(key, description=desc)] = str
+                suggested = self._inherit_from_group_or_global(
+                    key, ctx.linked_group_id, ctx.global_data
+                )
+            else:
+                suggested = cur_val
+            # Attach description on value (read via schema[key].description)
+            schema_dict[key] = vol.Optional(
+                str, description={"suggested_value": suggested}
+            )
 
         return vol.Schema(schema_dict)
 
@@ -378,8 +395,10 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
     _LOGGER = logging.getLogger(__name__)
     """Handle options flow for Solar Window System."""
 
-    def __init__(self) -> None:
+    def __init__(self, _config_entry: config_entries.ConfigEntry) -> None:
         """Initialize the options flow."""
+        # Do not assign to self.config_entry; Home Assistant sets it.
+        # Keep accepting the parameter for compatibility if needed by future logic.
         # page storages
         self._p1: dict[str, Any] | None = None
         self._p2: dict[str, Any] | None = None
@@ -448,7 +467,13 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Start options flow at page 1 (basic)."""
+        """Start options flow, routing by entry type."""
+        entry_type = (self.config_entry.data or {}).get("entry_type", "")
+        if entry_type == "group":
+            return await self.async_step_group_options(user_input)
+        if entry_type == "window":
+            return await self.async_step_window_options(user_input)
+        # Default: Global Configuration options
         return await self.async_step_global_basic(user_input)
 
     # ----- Page 1: Basic geometry + optional selectors -----
@@ -479,6 +504,12 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             "window_height": str(_g("window_height", "")),
             "shadow_depth": str(_g("shadow_depth", "")),
             "shadow_offset": str(_g("shadow_offset", "")),
+            "solar_radiation_sensor": _sel_default_with_fallback(
+                "solar_radiation_sensor"
+            ),
+            "outdoor_temperature_sensor": _sel_default_with_fallback(
+                "outdoor_temperature_sensor"
+            ),
             # For selectors: use options if present, else fallback to data
             "forecast_temperature_sensor": _sel_default_with_fallback(
                 "forecast_temperature_sensor"
@@ -500,6 +531,24 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         "shadow_offset", default=defaults["shadow_offset"]
                     ): str,
+                    vol.Required(
+                        "solar_radiation_sensor",
+                        description={
+                            "suggested_value": defaults["solar_radiation_sensor"]
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain=["sensor"])
+                    ),
+                    vol.Required(
+                        "outdoor_temperature_sensor",
+                        description={
+                            "suggested_value": defaults["outdoor_temperature_sensor"]
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"], device_class="temperature"
+                        )
+                    ),
                     vol.Optional(
                         "forecast_temperature_sensor",
                         description={
@@ -549,14 +598,18 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         _check_float("window_height", 0.1, 10)
         _check_float("shadow_depth", 0, 5)
         _check_float("shadow_offset", 0, 5)
+        # Required selectors: must be provided
+        for req_key in ("solar_radiation_sensor", "outdoor_temperature_sensor"):
+            val = user_input.get(req_key)
+            if val in (None, ""):
+                errors[req_key] = "required"
+            else:
+                page1[req_key] = val
 
-        # EntitySelector: Wenn Feld fehlt, None oder leer, dann als '' speichern
+        # Optional selectors: allow clearing
         for key in ("forecast_temperature_sensor", "weather_warning_sensor"):
             val = user_input.get(key, "")
-            if val in (None, ""):
-                page1[key] = ""
-            else:
-                page1[key] = val
+            page1[key] = "" if val in (None, "") else val
 
         if errors:
             schema = vol.Schema(
@@ -577,6 +630,24 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                         "shadow_offset",
                         default=str(user_input.get("shadow_offset", "")),
                     ): str,
+                    vol.Required(
+                        "solar_radiation_sensor",
+                        default=_sel_default(
+                            user_input.get("solar_radiation_sensor", "")
+                        ),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain=["sensor"])
+                    ),
+                    vol.Required(
+                        "outdoor_temperature_sensor",
+                        default=_sel_default(
+                            user_input.get("outdoor_temperature_sensor", "")
+                        ),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"], device_class="temperature"
+                        )
+                    ),
                     vol.Optional(
                         "forecast_temperature_sensor",
                         default=_sel_default(

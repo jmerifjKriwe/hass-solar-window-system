@@ -29,6 +29,8 @@ async def test_config_flow_invalid_value(hass: HomeAssistant) -> None:
         "window_height": "2.0",  # Valid
         "shadow_depth": "0.5",  # Valid
         "shadow_offset": "0.3",  # Valid
+        "solar_radiation_sensor": "sensor.dummy_solar",
+        "outdoor_temperature_sensor": "sensor.dummy_outdoor",
         # Optionale Sensoren nicht einbeziehen, da leere Strings ungültig sind
     }
 
