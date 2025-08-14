@@ -9,7 +9,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 
-from .const import ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
+from .const import ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES, DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -286,6 +286,7 @@ class GlobalConfigSensor(Entity):
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
         _LOGGER.debug("Sensor %s registered as %s", self._entity_key, self._attr_name)
+
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -296,10 +297,77 @@ class GlobalConfigSensor(Entity):
                     self.entity_id, name=new_friendly_name
                 )
 
+        # For aggregated sensors, listen to coordinator updates
+        sensor_keys = [
+            "total_power",
+            "total_power_direct",
+            "total_power_diffuse",
+            "window_with_shading",
+        ]
+        if self._entity_key in sensor_keys:
+            self._setup_coordinator_listeners()
+
+    def _setup_coordinator_listeners(self) -> None:
+        """Set up listeners for coordinator updates."""
+
+        # Listen to coordinator data updates to refresh state
+        @callback
+        def _coordinator_updated() -> None:
+            """Handle coordinator update."""
+            self.async_write_ha_state()
+
+        # Register listeners for all coordinators
+        domain_data = self.hass.data.get(DOMAIN, {})
+        for entry_data in domain_data.values():
+            coordinator = entry_data.get("coordinator")
+            if coordinator:
+                coordinator.async_add_listener(_coordinator_updated)
+
     @property
     def state(self) -> Any:
         """Return the state of the sensor."""
+        # For system-level sensors, aggregate data from all coordinators
+        sensor_keys = [
+            "total_power",
+            "total_power_direct",
+            "total_power_diffuse",
+            "window_with_shading",
+        ]
+        if self._entity_key in sensor_keys:
+            return self._get_aggregated_value()
         return self._state
+
+    def _get_aggregated_value(self) -> float | int:
+        """Get aggregated value from all coordinators for system totals."""
+        total_power = 0.0
+        total_power_direct = 0.0
+        total_power_diffuse = 0.0
+        windows_with_shading = 0
+
+        # Get all coordinators from hass.data
+        domain_data = self.hass.data.get(DOMAIN, {})
+
+        for entry_data in domain_data.values():
+            coordinator = entry_data.get("coordinator")
+            if coordinator and coordinator.data:
+                # Aggregate from summary data
+                summary = coordinator.data.get("summary", {})
+                total_power += summary.get("total_power", 0)
+                total_power_direct += summary.get("total_power_direct", 0)
+                total_power_diffuse += summary.get("total_power_diffuse", 0)
+                windows_with_shading += summary.get("shading_count", 0)
+
+        # Return the appropriate value based on entity key
+        if self._entity_key == "total_power":
+            return round(total_power, 2)
+        if self._entity_key == "total_power_direct":
+            return round(total_power_direct, 2)
+        if self._entity_key == "total_power_diffuse":
+            return round(total_power_diffuse, 2)
+        if self._entity_key == "window_with_shading":
+            return windows_with_shading
+
+        return 0
 
     @callback
     def async_update_state(self, value: Any) -> None:

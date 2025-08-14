@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN
+from .coordinator import SolarWindowSystemCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +43,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
 
+        # Initialize coordinator for group configurations as well
+        coordinator = SolarWindowSystemCoordinator(hass, entry)
+
+        # Store coordinator per entry to support multiple entries
+        hass.data.setdefault(DOMAIN, {})
+        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+        # Start coordinator updates
+        await coordinator.async_config_entry_first_refresh()
+
         # Set up platforms for group configurations
         await hass.config_entries.async_forward_entry_setups(
             entry, ["select", "sensor"]
@@ -50,7 +61,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Add update listener to handle new subentries
         entry.add_update_listener(_handle_config_entry_update)
 
-        # Register service for manual device creation
+    # Handle window configurations entry (subentry parent)
+    elif entry.data.get("entry_type") == "window_configs":
+        _LOGGER.debug("Handling window_configs entry - parent for subentries")
+        _LOGGER.debug("[WINDOW_CONFIGS] Entry: %s", entry)
+        _LOGGER.debug(
+            "[WINDOW_CONFIGS] Entry.subentries: %s",
+            getattr(entry, "subentries", None),
+        )
+        _LOGGER.debug("[WINDOW_CONFIGS] Entry.data: %s", entry.data)
+
+        # Create devices for existing subentries
+        await _create_subentry_devices(hass, entry)
+
+        # Initialize coordinator for calculation updates
+        coordinator = SolarWindowSystemCoordinator(hass, entry)
+
+        # Store coordinator in hass.data for access by binary sensors
+        hass.data.setdefault(DOMAIN, {})
+        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+        # Start coordinator updates
+        await coordinator.async_config_entry_first_refresh()
+
+        # Set up platforms for window configurations
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["select", "sensor", "binary_sensor", "number", "text", "switch"]
+        )
+
+        # Add update listener to handle new subentries
+        entry.add_update_listener(_handle_config_entry_update)
+
+    # Register service for manual device creation (only once)
     if not hass.services.has_service(DOMAIN, "create_subentry_devices"):
 
         async def create_subentry_devices_service(
@@ -69,21 +111,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN, "create_subentry_devices", create_subentry_devices_service
         )
 
-    # Handle window configurations entry (subentry parent)
-    elif entry.data.get("entry_type") == "window_configs":
-        _LOGGER.debug("Handling window_configs entry - parent for subentries")
-
-        # Create devices for existing subentries
-        await _create_subentry_devices(hass, entry)
-
-        # Set up platforms for window configurations
-        await hass.config_entries.async_forward_entry_setups(
-            entry, ["select", "sensor", "binary_sensor"]
-        )
-
-        # Add update listener to handle new subentries
-        entry.add_update_listener(_handle_config_entry_update)
-
     _LOGGER.info("Setup completed for: %s", entry.title)
     return True
 
@@ -94,6 +121,11 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
     _LOGGER.debug("Config entry update detected for: %s", entry.title)
     if entry.data.get("entry_type") in ["group_configs", "window_configs"]:
         await _create_subentry_devices(hass, entry)
+
+        # Reconfigure coordinator if this entry manages flows
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+            await coordinator.async_reconfigure()
 
         # Reload select platform to pick up new entities for new subentries
         _LOGGER.debug("Reloading platforms for updated entry: %s", entry.title)
@@ -109,20 +141,26 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
 async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Create devices for all subentries using proper Device Registry API."""
     _LOGGER.debug("_create_subentry_devices called for entry: %s", entry.title)
+    _LOGGER.debug("[CREATE_SUBENTRY_DEVICES] entry: %r", entry)
+    _LOGGER.debug("[CREATE_SUBENTRY_DEVICES] entry.data: %r", entry.data)
+    _LOGGER.debug(
+        "[CREATE_SUBENTRY_DEVICES] entry.subentries: %r",
+        getattr(entry, "subentries", None),
+    )
     device_registry = dr.async_get(hass)
 
     # The correct way to access subentries is through entry.subentries
     # This is a dict where keys are subentry IDs and values are ConfigSubentry objects
-    _LOGGER.debug("Entry subentries: %s", entry.subentries)
-    _LOGGER.debug("Subentries type: %s", type(entry.subentries))
+    _LOGGER.debug("Entry subentries: %s", getattr(entry, "subentries", None))
+    _LOGGER.debug("Subentries type: %s", type(getattr(entry, "subentries", None)))
 
-    if entry.subentries:
+    if getattr(entry, "subentries", None):
         for subentry_id, subentry in entry.subentries.items():
             _LOGGER.debug("Processing subentry ID: %s", subentry_id)
             _LOGGER.debug("Subentry object: %s", subentry)
-            _LOGGER.debug("Subentry title: %s", subentry.title)
-            _LOGGER.debug("Subentry data: %s", subentry.data)
-            _LOGGER.debug("Subentry type: %s", subentry.subentry_type)
+            _LOGGER.debug("Subentry title: %s", getattr(subentry, "title", None))
+            _LOGGER.debug("Subentry data: %s", getattr(subentry, "data", None))
+            _LOGGER.debug("Subentry type: %s", getattr(subentry, "subentry_type", None))
 
             if subentry.subentry_type == "group":
                 group_name = subentry.title
@@ -181,6 +219,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.title == "Solar Window System":
         return await hass.config_entries.async_unload_platforms(
             entry, ["sensor", "number", "text", "select", "switch"]
+        )
+
+    # Handle window_configs entry unloading
+    if entry.data.get("entry_type") == "window_configs":
+        # Clean up coordinator
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            del hass.data[DOMAIN][entry.entry_id]
+
+        return await hass.config_entries.async_unload_platforms(
+            entry, ["select", "sensor", "binary_sensor"]
+        )
+
+    # Handle group_configs entry unloading
+    if entry.data.get("entry_type") == "group_configs":
+        # Clean up coordinator
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            del hass.data[DOMAIN][entry.entry_id]
+        return await hass.config_entries.async_unload_platforms(
+            entry, ["select", "sensor"]
         )
 
     return True

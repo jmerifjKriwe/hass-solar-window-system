@@ -27,6 +27,13 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
+    _LOGGER.info(
+        "[switch] async_setup_entry called for entry_id=%s title=%s entry_type=%s subentries=%r",
+        entry.entry_id,
+        entry.title,
+        entry.data.get("entry_type"),
+        getattr(entry, "subentries", None),
+    )
     """Set up switch entities for Solar Window System."""
     # Only handle Global Configuration
     if entry.title != "Solar Window System":

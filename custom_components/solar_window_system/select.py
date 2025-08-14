@@ -24,6 +24,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    _LOGGER.info(
+        "[select] async_setup_entry called for entry_id=%s title=%s entry_type=%s subentries=%r",
+        entry.entry_id,
+        entry.title,
+        entry.data.get("entry_type"),
+        getattr(entry, "subentries", None),
+    )
     """Set up select entities for Solar Window System."""
     # Handle Global Configuration
     if entry.title == "Solar Window System":
@@ -432,12 +439,6 @@ async def _setup_window_config_selects(
         ]
 
         async_add_entities(subentry_select_entities, config_subentry_id=subentry_id)
-        _LOGGER.debug(
-            "Added %d select entities for window '%s' (subentry %s)",
-            len(subentry_select_entities),
-            window_name,
-            subentry_id,
-        )
 
 
 class WindowConfigSelectEntity(SelectEntity):

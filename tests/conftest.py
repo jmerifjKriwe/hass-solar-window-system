@@ -46,7 +46,7 @@ def mock_config_entry() -> Mock:
 def valid_global_input() -> dict[str, str]:
     """Return valid input for global configuration flow."""
     return {
-        "entry_type": "global",
+        "entry_type": "global_config",
         "name": "Solar Window System",
     }
 
@@ -80,7 +80,7 @@ def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Solar Window System",
-        data={"entry_type": "global"},
+        data={"entry_type": "global_config"},
         entry_id="global_config_entry_id",
     )
     entry.add_to_hass(hass)

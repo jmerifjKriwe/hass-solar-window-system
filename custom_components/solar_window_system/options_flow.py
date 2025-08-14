@@ -167,7 +167,10 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         schema_dict[
             vol.Required(
                 "room_temp_entity",
-                description={"suggested_value": room_default},
+                description={
+                    "suggested_value": room_default,
+                    "translation_key": "room_temp_entity",
+                },
             )
         ] = selector.SelectSelector(
             selector.SelectSelectorConfig(
@@ -510,6 +513,9 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             "outdoor_temperature_sensor": _sel_default_with_fallback(
                 "outdoor_temperature_sensor"
             ),
+            "indoor_temperature_sensor": _sel_default_with_fallback(
+                "indoor_temperature_sensor"
+            ),
             # For selectors: use options if present, else fallback to data
             "forecast_temperature_sensor": _sel_default_with_fallback(
                 "forecast_temperature_sensor"
@@ -543,6 +549,16 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                         "outdoor_temperature_sensor",
                         description={
                             "suggested_value": defaults["outdoor_temperature_sensor"]
+                        },
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"], device_class="temperature"
+                        )
+                    ),
+                    vol.Optional(
+                        "indoor_temperature_sensor",
+                        description={
+                            "suggested_value": defaults["indoor_temperature_sensor"]
                         },
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(
@@ -598,8 +614,13 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         _check_float("window_height", 0.1, 10)
         _check_float("shadow_depth", 0, 5)
         _check_float("shadow_offset", 0, 5)
-        # Required selectors: must be provided
-        for req_key in ("solar_radiation_sensor", "outdoor_temperature_sensor"):
+
+        # Required selectors: indoor is also required
+        for req_key in (
+            "solar_radiation_sensor",
+            "outdoor_temperature_sensor",
+            "indoor_temperature_sensor",
+        ):
             val = user_input.get(req_key)
             if val in (None, ""):
                 errors[req_key] = "required"
@@ -642,6 +663,16 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                         "outdoor_temperature_sensor",
                         default=_sel_default(
                             user_input.get("outdoor_temperature_sensor", "")
+                        ),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["sensor"], device_class="temperature"
+                        )
+                    ),
+                    vol.Required(
+                        "indoor_temperature_sensor",
+                        default=_sel_default(
+                            user_input.get("indoor_temperature_sensor", "")
                         ),
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(

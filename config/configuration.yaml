@@ -61,12 +61,14 @@ input_number:
     max: 1200
     step: 50
     unit_of_measurement: "W/m²"
+    initial: 500
   dummy_outdoor_temperature:
     name: "Dummy Outdoor Temperature"
     min: -20
     max: 40
     step: 1
     unit_of_measurement: "°C"
+    initial: 30
   # Dummies for indoor temperatures
   dummy_innentemperatur_wohnzimmer:
     name: "Dummy Innentemperatur Wohnzimmer"

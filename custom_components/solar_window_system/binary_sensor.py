@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 
@@ -15,6 +16,8 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+    from .coordinator import SolarWindowSystemCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,12 +33,22 @@ async def async_setup_entry(
 
     _LOGGER.info("Setting up Window Configuration binary sensors")
 
+    # Get coordinator
+    coordinator = None
+    if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    if not coordinator:
+        _LOGGER.warning("No coordinator found for window_configs entry")
+        return
+
     device_registry = dr.async_get(hass)
 
     if not entry.subentries:
         _LOGGER.warning("No window subentries found")
         return
 
+    entities = []
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != "window":
             continue
@@ -69,15 +82,30 @@ async def async_setup_entry(
             _LOGGER.warning("Window device not found for: %s", window_name)
             continue
 
-        entity = WindowShadingRequiredBinarySensor(window_device, window_name)
+        entity = WindowShadingRequiredBinarySensor(
+            coordinator, window_device, window_name
+        )
+        entities.append((entity, subentry_id))
+
+    # Add entities with their subentry_ids
+    for entity, subentry_id in entities:
         async_add_entities([entity], config_subentry_id=subentry_id)
 
 
-class WindowShadingRequiredBinarySensor(BinarySensorEntity):
+class WindowShadingRequiredBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor indicating if shading is required for a window."""
 
-    def __init__(self, device: dr.DeviceEntry, window_name: str) -> None:
+    coordinator: SolarWindowSystemCoordinator
+
+    def __init__(
+        self,
+        coordinator: SolarWindowSystemCoordinator,
+        device: dr.DeviceEntry,
+        window_name: str,
+    ) -> None:
         """Initialize the shading_required binary sensor for a window."""
+        super().__init__(coordinator)
+        self._window_name = window_name
         window_slug = window_name.lower().replace(" ", "_").replace("-", "_")
         self._attr_unique_id = f"sws_window_{window_slug}_shading_required"
         self._attr_suggested_object_id = f"sws_window_{window_slug}_shading_required"
@@ -90,14 +118,50 @@ class WindowShadingRequiredBinarySensor(BinarySensorEntity):
             "manufacturer": device.manufacturer,
             "model": device.model,
         }
-        self._attr_is_on = False
         self._attr_icon = "mdi:shield-sun"
         self._friendly_label = "Shading Required"
 
     @property
     def is_on(self) -> bool:
         """Return True if shading is currently required."""
-        return bool(self._attr_is_on)
+        if not self.coordinator.data:
+            return False
+        return self.coordinator.get_window_shading_status(self._window_name)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | float | int | None]:
+        """Return additional state attributes."""
+        if not self.coordinator.data:
+            return {}
+
+        window_data = self.coordinator.get_window_data(self._window_name)
+        if not window_data:
+            return {}
+
+        attributes = {}
+
+        # Add calculation results as attributes
+        if "solar_result" in window_data:
+            solar_result = window_data["solar_result"]
+            attributes.update(
+                {
+                    "solar_power": solar_result.get("power", 0),
+                    "solar_power_direct": solar_result.get("power_direct", 0),
+                    "solar_power_diffuse": solar_result.get("power_diffuse", 0),
+                    "shadow_factor": solar_result.get("shadow_factor", 1.0),
+                }
+            )
+
+        # Add shading decision details
+        if "shade_reason" in window_data:
+            attributes["shade_reason"] = window_data["shade_reason"]
+
+        if "scenarios_triggered" in window_data:
+            attributes["scenarios_triggered"] = ", ".join(
+                window_data["scenarios_triggered"]
+            )
+
+        return attributes
 
     async def async_added_to_hass(self) -> None:
         """Set a clean friendly name without prefixes (like the Selects)."""

@@ -15,6 +15,10 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
 from .const import DOMAIN, GLOBAL_CONFIG_ENTITIES
 from .global_config import GlobalConfigSensor
@@ -32,6 +36,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
+    _LOGGER.info(
+        "[sensor] async_setup_entry called for entry_id=%s title=%s entry_type=%s subentries=%r",
+        entry.entry_id,
+        entry.title,
+        entry.data.get("entry_type"),
+        getattr(entry, "subentries", None),
+    )
     """Set up sensors for Solar Window System."""
     if entry.data.get("entry_type") == "group_configs":
         await _setup_group_power_sensors(hass, entry, async_add_entities)
@@ -128,6 +139,8 @@ async def _setup_group_power_sensors(
             continue
 
         entities: list[Entity] = []
+        # Get coordinator from hass.data
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         for key, label in (
             ("total_power", "Total Power"),
             ("total_power_direct", "Total Power Direct"),
@@ -140,6 +153,7 @@ async def _setup_group_power_sensors(
                     device=group_device,
                     key=key,
                     label=label,
+                    coordinator=coordinator,
                 )
             )
         if entities:
@@ -183,6 +197,8 @@ async def _setup_window_power_sensors(
             continue
 
         entities: list[Entity] = []
+        # Get coordinator from hass.data
+        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         for key, label in (
             ("total_power", "Total Power"),
             ("total_power_direct", "Total Power Direct"),
@@ -200,13 +216,14 @@ async def _setup_window_power_sensors(
                     device=window_device,
                     key=key,
                     label=label,
+                    coordinator=coordinator,
                 )
             )
         if entities:
             async_add_entities(entities, config_subentry_id=subentry_id)
 
 
-class GroupWindowPowerSensor(Entity):
+class GroupWindowPowerSensor(CoordinatorEntity):
     """Sensor for group/window total power metrics with predictable IDs."""
 
     def __init__(
@@ -217,11 +234,14 @@ class GroupWindowPowerSensor(Entity):
         device: dr.DeviceEntry,
         key: str,  # total_power | total_power_direct | total_power_diffuse
         label: str,
+        coordinator: DataUpdateCoordinator[Any],
     ) -> None:
         """Initialize power sensor bound to a group/window device."""
+        super().__init__(coordinator)
         self._kind = kind
         self._key = key
         self._label = label
+        self._object_name = object_name
         slug = object_name.lower().replace(" ", "_").replace("-", "_")
         self._attr_unique_id = f"sws_{kind}_{slug}_{key}"
         self._attr_suggested_object_id = f"sws_{kind}_{slug}_{key}"
@@ -241,12 +261,25 @@ class GroupWindowPowerSensor(Entity):
             self._attr_icon = "mdi:weather-sunny"
         else:
             self._attr_icon = "mdi:weather-partly-cloudy"
-        self._state = 0
 
     @property
     def state(self) -> Any:
-        """Return current value."""
-        return self._state
+        """Return current power value from latest coordinator data."""
+        if not self.coordinator or not self.coordinator.data:
+            return None
+        if self._kind == "window":
+            windows = self.coordinator.data.get("windows", {})
+            for win_data in windows.values():
+                if win_data.get("name") == self._object_name:
+                    return win_data.get(self._key)
+        elif self._kind == "group":
+            groups = self.coordinator.data.get("groups", {})
+            for group_data in groups.values():
+                if group_data.get("name") == self._object_name:
+                    return group_data.get(self._key)
+        return None
+
+    # Removed duplicate state property
 
     async def async_added_to_hass(self) -> None:
         """Set a clean friendly name without prefixes (like the Selects)."""
