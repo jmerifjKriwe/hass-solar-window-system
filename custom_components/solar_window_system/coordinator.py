@@ -44,11 +44,6 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             # Initialize calculator with flow-based configuration
             self.calculator = SolarWindowCalculator.from_flows(self.hass, self.entry)
-            _LOGGER.info(
-                "Calculator initialized for entry %s with %d flows",
-                self.entry.title,
-                len(self.entry.subentries) if self.entry.subentries else 0,
-            )
         except (ValueError, TypeError, AttributeError):
             _LOGGER.exception("Failed to initialize calculator")
             self.calculator = None
@@ -97,6 +92,5 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_reconfigure(self) -> None:
         """Reconfigure the coordinator when config changes."""
-        _LOGGER.info("Reconfiguring coordinator for entry %s", self.entry.title)
         self._setup_calculator()
         await self.async_refresh()

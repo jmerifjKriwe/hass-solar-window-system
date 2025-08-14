@@ -36,13 +36,6 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    _LOGGER.info(
-        "[sensor] async_setup_entry called for entry_id=%s title=%s entry_type=%s subentries=%r",
-        entry.entry_id,
-        entry.title,
-        entry.data.get("entry_type"),
-        getattr(entry, "subentries", None),
-    )
     """Set up sensors for Solar Window System."""
     if entry.data.get("entry_type") == "group_configs":
         await _setup_group_power_sensors(hass, entry, async_add_entities)
@@ -53,8 +46,6 @@ async def async_setup_entry(
 
     # Handle Global Configuration sensors
     if entry.title == "Solar Window System":
-        _LOGGER.info("Setting up Global Configuration sensors")
-
         device_registry = dr.async_get(hass)
         global_device = None
 
@@ -76,7 +67,6 @@ async def async_setup_entry(
             ]
             if sensors:
                 async_add_entities(sensors)  # type: ignore[arg-type]
-                _LOGGER.info("Added %d Global Configuration sensors", len(sensors))
         else:
             _LOGGER.warning("Global Configuration device not found")
 

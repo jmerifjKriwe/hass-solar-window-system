@@ -22,7 +22,6 @@ async def async_create_global_config_entities(
     hass: HomeAssistant, device: dr.DeviceEntry
 ) -> None:
     """Create all global configuration entities for the global config device."""
-    _LOGGER.debug("Creating global configuration entities for device: %s", device.name)
 
     # Get available entities for selectors
     binary_sensors = await _get_binary_sensor_entities(hass)
@@ -66,10 +65,6 @@ async def async_create_global_config_entities(
             elif updated_config["platform"] == "sensor":
                 # For sensors, we'll create template sensors
                 await _create_template_sensor_via_service(entity_key)
-
-            _LOGGER.debug(
-                "Created entity: %s_%s", updated_config["platform"], entity_key
-            )
 
         except (ValueError, OSError):
             _LOGGER.exception("Failed to create entity %s", entity_key)
@@ -178,7 +173,6 @@ async def _create_template_sensor_via_service(
 
     # We'll add this sensor through the sensor platform instead
     # This is a placeholder - sensors will be created through platform setup
-    _LOGGER.debug("Template sensor %s will be created via platform", entity_id)
 
 
 async def _associate_entity_with_device(
@@ -195,7 +189,6 @@ async def _associate_entity_with_device(
     if entity_entry:
         # Update entity to associate with device
         entity_registry.async_update_entity(entity_id, device_id=device.id)
-        _LOGGER.debug("Associated entity %s with device %s", entity_id, device.name)
     else:
         _LOGGER.warning("Entity %s not found in registry", entity_id)
 
@@ -266,12 +259,6 @@ class GlobalConfigSensor(Entity):
         self._attr_name = f"SWS_GLOBAL {config['name']}"
         self._attr_has_entity_name = False
 
-        _LOGGER.debug(
-            "Sensor %s: unique_id=%s, name=%s",
-            self._entity_key,
-            self._attr_unique_id,
-            self._attr_name,
-        )
         self._attr_device_info = {
             "identifiers": device.identifiers,
             "name": device.name,
@@ -285,7 +272,6 @@ class GlobalConfigSensor(Entity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        _LOGGER.debug("Sensor %s registered as %s", self._entity_key, self._attr_name)
 
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)

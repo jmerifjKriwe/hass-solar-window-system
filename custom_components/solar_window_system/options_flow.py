@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import contextlib
-import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+import logging
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -16,6 +17,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
 from .helpers import get_temperature_sensor_entities
+
+_LOGGER = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 # Lint-friendly messages
 MSG_BELOW_MIN = "value below minimum"
@@ -43,7 +48,7 @@ def allow_empty_float(min_v: float | None = None, max_v: float | None = None) ->
     """Return validator that allows empty values and coerces floats with bounds."""
 
     def _validator(v: Any) -> Any:
-        if v in ("", None):
+        if v in ("", None, "-1", -1):
             return ""
         fv = _parse_float_locale(v)
         if min_v is not None and fv < min_v:
@@ -61,7 +66,7 @@ def allow_empty_int(min_v: int | None = None, max_v: int | None = None) -> Any:
     """Return validator that allows empty values and coerces ints with bounds."""
 
     def _validator(v: Any) -> Any:
-        if v in ("", None):
+        if v in ("", None, "-1", -1):
             return ""
         iv = _parse_int_locale(v)
         if min_v is not None and iv < min_v:
@@ -111,8 +116,15 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Options flow for a single group with inheritance from Global when empty."""
+        _LOGGER.error(
+            "DEBUG: async_step_group_options STARTED, user_input=%r", user_input
+        )
+
         opts = self.config_entry.options or {}
         data = self.config_entry.data or {}
+
+        _LOGGER.error("DEBUG: GROUP OPTIONS - opts=%r", opts)
+        _LOGGER.error("DEBUG: GROUP OPTIONS - data=%r", data)
 
         global_data = self._get_global_data()
         temp_sensor_options = await get_temperature_sensor_entities(self.hass)
@@ -122,9 +134,26 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         )
 
         if user_input is None:
+            _LOGGER.error("DEBUG: GROUP OPTIONS - showing form (first load)")
             return self.async_show_form(step_id="group_options", data_schema=schema)
 
-        result = self._parse_group_options_result(user_input)
+        _LOGGER.error("DEBUG: GROUP OPTIONS - processing user_input=%r", user_input)
+
+        # Validate input manually to handle type conversion errors gracefully
+        errors: dict[str, str] = {}
+        validated_result = self._validate_group_input(user_input, errors)
+
+        if errors:
+            # Re-create schema with user input as defaults for error display
+            error_schema = self._build_group_options_schema_with_user_input(
+                temp_sensor_options, user_input
+            )
+            return self.async_show_form(
+                step_id="group_options", data_schema=error_schema, errors=errors
+            )
+
+        # Only keep non-empty values for storage
+        result = self._build_group_result(validated_result)
         return self.async_create_entry(title=result.get("name", ""), data=result)
 
     def _get_global_data(self) -> dict[str, Any]:
@@ -153,78 +182,206 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
 
     def _build_group_options_schema(
         self,
-        temp_sensor_options: list[str],
+        temp_sensor_options: list[dict],
         opts: Mapping[str, Any],
         data: Mapping[str, Any],
-        global_data: dict[str, Any],
+        _global_data: dict[str, Any],
     ) -> vol.Schema:
         """Construct the schema for group options with inheritance suggestions."""
         schema_dict: dict[Any, Any] = {}
         name_default = str(self._prefer_options(opts, data, "name", ""))
         schema_dict[vol.Required("name", default=name_default)] = str
 
-        room_default = self._prefer_options(opts, data, "room_temp_entity", "")
+        # Use new key name for group/window local sensor that may override global
+        room_default = self._prefer_options(opts, data, "indoor_temperature_sensor", "")
+        room_default_str = "" if room_default in ("", None) else str(room_default)
         schema_dict[
             vol.Required(
-                "room_temp_entity",
+                "indoor_temperature_sensor",
                 description={
-                    "suggested_value": room_default,
-                    "translation_key": "room_temp_entity",
+                    "suggested_value": room_default_str,
+                    "translation_key": "indoor_temperature_sensor",
                 },
             )
         ] = selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=temp_sensor_options, custom_value=True
+                options=cast("Any", temp_sensor_options),
+                custom_value=True,
             )
         )
 
-        # For numeric overrides: suggest from global only if current value empty
+        # For numeric overrides: always coerce to string for default
         for key in (*_FIELDS_FLOAT, *_FIELDS_INT):
             cur_val = self._prefer_options(opts, data, key, "")
-            if key in _FIELDS_INT:
-                # Tests expect integer thresholds to suggest global values
-                suggested = global_data.get(key, "") if global_data else ""
-            elif cur_val in ("", None):
-                # Floats: if empty, fall back to global
-                suggested = global_data.get(key, "") if global_data else ""
-            else:
-                # Floats: use current value when present
-                suggested = cur_val
-            # Attach description on value (read via schema[key].description)
-            schema_dict[key] = vol.Optional(
-                str, description={"suggested_value": suggested}
+            _LOGGER.error(
+                "DEBUG GROUP BUILD SCHEMA: key=%s, cur_val=%r (type=%s)",
+                key,
+                cur_val,
+                type(cur_val),
             )
+            default_val = "" if cur_val in (None, "") else str(cur_val)
+            _LOGGER.error(
+                "DEBUG GROUP BUILD SCHEMA: key=%s, default_val=%r (type=%s)",
+                key,
+                default_val,
+                type(default_val),
+            )
+            try:
+                schema_dict[vol.Optional(key, default=default_val)] = str
+                _LOGGER.error(
+                    "DEBUG GROUP BUILD SCHEMA: key=%s, schema creation SUCCESS", key
+                )
+            except Exception as e:
+                _LOGGER.error(
+                    "DEBUG GROUP BUILD SCHEMA: key=%s, schema creation FAILED: %s",
+                    key,
+                    e,
+                )
+                raise
 
         return vol.Schema(schema_dict)
+
+    def _build_group_options_schema_with_user_input(
+        self,
+        temp_sensor_options: list[dict],
+        user_input: dict[str, Any],
+    ) -> vol.Schema:
+        """Build group options schema with user input as defaults for error display."""
+        schema_dict: dict[Any, Any] = {}
+
+        # Name field with user input as default
+        name_default = str(user_input.get("name", ""))
+        schema_dict[vol.Required("name", default=name_default)] = str
+
+        # Indoor temperature sensor with user input as default
+        sensor_default = str(user_input.get("indoor_temperature_sensor", ""))
+        schema_dict[
+            vol.Required(
+                "indoor_temperature_sensor",
+                default=sensor_default,
+                description={
+                    "suggested_value": sensor_default,
+                    "translation_key": "indoor_temperature_sensor",
+                },
+            )
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=cast("Any", temp_sensor_options),
+                custom_value=True,
+            )
+        )
+
+        # Numeric fields with user input as defaults
+        for key in (*_FIELDS_FLOAT, *_FIELDS_INT):
+            user_val = user_input.get(key, "")
+            default_val = str(user_val) if user_val not in (None, "") else ""
+            schema_dict[vol.Optional(key, default=default_val)] = str
+
+        return vol.Schema(schema_dict)
+
+    def _validate_group_input(
+        self, user_input: dict[str, Any], errors: dict[str, str]
+    ) -> dict[str, Any]:
+        """Validate group options input and populate errors dict."""
+        validated_result: dict[str, Any] = {}
+
+        # Validate name (required string)
+        name = user_input.get("name", "").strip()
+        if not name:
+            errors["name"] = "required"
+        else:
+            validated_result["name"] = name
+
+        # Validate indoor temperature sensor (required)
+        sensor = user_input.get("indoor_temperature_sensor", "")
+        if sensor in (None, ""):
+            errors["indoor_temperature_sensor"] = "required"
+        else:
+            validated_result["indoor_temperature_sensor"] = (
+                "" if sensor in ("-1", -1) else sensor
+            )
+
+        # Validate numeric fields with locale-aware parsing
+        def _validate_float_field(field: str, min_v: float, max_v: float) -> None:
+            raw = user_input.get(field, "")
+            if raw in (None, "", "-1"):
+                # Allow empty for inheritance
+                validated_result[field] = ""
+                return
+            try:
+                fv = self._parse_float_locale(raw)
+                if fv < min_v or fv > max_v:
+                    errors[field] = "number_out_of_range"
+                else:
+                    validated_result[field] = str(raw)
+            except (ValueError, TypeError):
+                errors[field] = "invalid_number"
+
+        def _validate_int_field(field: str, min_v: int, max_v: int) -> None:
+            raw = user_input.get(field, "")
+            if raw in (None, "", "-1"):
+                # Allow empty for inheritance
+                validated_result[field] = ""
+                return
+            try:
+                iv = self._parse_int_locale(raw)
+                if iv < min_v or iv > max_v:
+                    errors[field] = "number_out_of_range"
+                else:
+                    validated_result[field] = str(raw)
+            except (ValueError, TypeError):
+                errors[field] = "invalid_number"
+
+        # Validate all numeric fields
+        _validate_float_field("diffuse_factor", 0.05, 0.5)
+        _validate_int_field("threshold_direct", 0, 1000)
+        _validate_int_field("threshold_diffuse", 0, 1000)
+        _validate_float_field("temperature_indoor_base", 10, 30)
+        _validate_float_field("temperature_outdoor_base", 10, 30)
+
+        return validated_result
+
+    @staticmethod
+    def _build_group_result(validated_result: dict[str, Any]) -> dict[str, Any]:
+        """Build the final result dict for group options."""
+        result = {"name": validated_result["name"]}
+        if validated_result.get("indoor_temperature_sensor"):
+            result["indoor_temperature_sensor"] = validated_result[
+                "indoor_temperature_sensor"
+            ]
+
+        for field in (
+            "diffuse_factor",
+            "threshold_direct",
+            "threshold_diffuse",
+            "temperature_indoor_base",
+            "temperature_outdoor_base",
+        ):
+            if validated_result.get(field):
+                result[field] = validated_result[field]
+
+        return result
 
     @staticmethod
     def _parse_group_options_result(user_input: dict[str, Any]) -> dict[str, Any]:
         """Coerce group options inputs while keeping empties for inheritance."""
         result: dict[str, Any] = {
             "name": user_input.get("name", ""),
-            "room_temp_entity": user_input.get("room_temp_entity", ""),
+            "indoor_temperature_sensor": ""
+            if user_input.get("indoor_temperature_sensor") in ("-1", -1)
+            else user_input.get("indoor_temperature_sensor", ""),
         }
-
-        if "diffuse_factor" in user_input:
-            result["diffuse_factor"] = allow_empty_float(0.05, 0.5)(
-                user_input.get("diffuse_factor")
-            )
-        if "threshold_direct" in user_input:
-            result["threshold_direct"] = allow_empty_int(0, 1000)(
-                user_input.get("threshold_direct")
-            )
-        if "threshold_diffuse" in user_input:
-            result["threshold_diffuse"] = allow_empty_int(0, 1000)(
-                user_input.get("threshold_diffuse")
-            )
-        if "temperature_indoor_base" in user_input:
-            result["temperature_indoor_base"] = allow_empty_float(10, 30)(
-                user_input.get("temperature_indoor_base")
-            )
-        if "temperature_outdoor_base" in user_input:
-            result["temperature_outdoor_base"] = allow_empty_float(10, 30)(
-                user_input.get("temperature_outdoor_base")
-            )
+        # For required numeric fields, do not allow empty or inherit marker
+        for k in (
+            "diffuse_factor",
+            "threshold_direct",
+            "threshold_diffuse",
+            "temperature_indoor_base",
+            "temperature_outdoor_base",
+        ):
+            val = user_input.get(k, "")
+            if val not in (None, "", "-1"):
+                result[k] = str(val)
         return result
 
     # ----- Window options flow (per window) -----
@@ -232,8 +389,15 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Options for a window: manage linked group and overrides with inheritance."""
+        _LOGGER.error(
+            "DEBUG: async_step_window_options STARTED, user_input=%r", user_input
+        )
+
         opts = self.config_entry.options or {}
         data = self.config_entry.data or {}
+
+        _LOGGER.error("DEBUG: WINDOW OPTIONS - opts=%r", opts)
+        _LOGGER.error("DEBUG: WINDOW OPTIONS - data=%r", data)
 
         group_options_map = self._get_group_options_map()
         global_data = self._get_global_data()
@@ -249,10 +413,13 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             linked_group_name=linked_group_name,
             global_data=global_data,
         )
+        temp_sensor_options = await get_temperature_sensor_entities(self.hass)
+
         schema = self._build_window_options_schema(
             opts,
             data,
             ctx,
+            temp_sensor_options,
         )
 
         if user_input is None:
@@ -317,22 +484,25 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         opts: Mapping[str, Any],
         data: Mapping[str, Any],
         ctx: _WindowCtx,
+        temp_sensor_options: list[dict],
     ) -> vol.Schema:
         schema_dict: dict[Any, Any] = {}
         name_def = str(self._prefer_options(opts, data, "name", ""))
         schema_dict[vol.Required("name", default=name_def)] = str
 
-        # room temp entity: suggest current value only
-        temp_sensor_options = self._get_temperature_sensor_entities(self.hass)
-        rte_def = self._prefer_options(opts, data, "room_temp_entity", "")
+        # indoor temp sensor: suggest current value only (use shared async helper)
+        # Note: helper returns list[SelectOptionDict]-like dicts with value/label
+        rte_def = self._prefer_options(opts, data, "indoor_temperature_sensor", "")
+        rte_def_str = "" if rte_def in ("", None) else str(rte_def)
         schema_dict[
             vol.Optional(
-                "room_temp_entity",
-                description={"suggested_value": rte_def},
+                "indoor_temperature_sensor",
+                description={"suggested_value": rte_def_str},
             )
         ] = selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=temp_sensor_options, custom_value=True
+                options=cast("Any", temp_sensor_options),
+                custom_value=True,
             )
         )
 
@@ -356,10 +526,36 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                 )
             else:
                 suggested = cur_val
-            # Attach description on value (read via schema[key].description)
-            schema_dict[key] = vol.Optional(
-                str, description={"suggested_value": suggested}
+
+            # Convert suggested value to string for display
+            suggested_str = "" if suggested in ("", None) else str(suggested)
+
+            _LOGGER.error(
+                "DEBUG WINDOW BUILD SCHEMA: key=%s, cur_val=%r (type=%s), suggested=%r (type=%s), suggested_str=%r (type=%s)",
+                key,
+                cur_val,
+                type(cur_val),
+                suggested,
+                type(suggested),
+                suggested_str,
+                type(suggested_str),
             )
+
+            # Attach description on value (read via schema[key].description)
+            try:
+                schema_dict[
+                    vol.Optional(key, description={"suggested_value": suggested_str})
+                ] = str
+                _LOGGER.error(
+                    "DEBUG WINDOW BUILD SCHEMA: key=%s, schema creation SUCCESS", key
+                )
+            except Exception as e:
+                _LOGGER.error(
+                    "DEBUG WINDOW BUILD SCHEMA: key=%s, schema creation FAILED: %s",
+                    key,
+                    e,
+                )
+                raise
 
         return vol.Schema(schema_dict)
 
@@ -368,10 +564,14 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         user_input: dict[str, Any],
         group_options_map: list[tuple[str, str]],
     ) -> dict[str, Any]:
-        result: dict[str, Any] = {
-            "name": user_input.get("name", ""),
-            "room_temp_entity": user_input.get("room_temp_entity", ""),
-        }
+        result: dict[str, Any] = {"name": user_input.get("name", "")}
+        # Store under new key name but keep compatibility: accept old key
+        raw_sensor = user_input.get("room_temp_entity", "") or user_input.get(
+            "indoor_temperature_sensor", ""
+        )
+        result["indoor_temperature_sensor"] = (
+            "" if raw_sensor in ("-1", -1) else raw_sensor
+        )
 
         # Resolve linked group name to id
         sel_group_name = user_input.get("linked_group", "")
@@ -395,7 +595,6 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
 
     """Handle options flow for Solar Window System."""
 
-    _LOGGER = logging.getLogger(__name__)
     """Handle options flow for Solar Window System."""
 
     def __init__(self, _config_entry: config_entries.ConfigEntry) -> None:
@@ -598,8 +797,11 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
         page1: dict[str, Any] = {}
 
-        def _check_float(field: str, min_v: float, max_v: float) -> None:
+        def _check_float_required(field: str, min_v: float, max_v: float) -> None:
             raw = user_input.get(field)
+            if raw in (None, "", "-1"):
+                errors[field] = "required"
+                return
             try:
                 fv = self._parse_float_locale(raw)
             except (ValueError, TypeError):
@@ -608,12 +810,12 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             if fv < min_v or fv > max_v:
                 errors[field] = "number_out_of_range"
                 return
-            page1[field] = fv
+            page1[field] = str(raw)
 
-        _check_float("window_width", 0.1, 10)
-        _check_float("window_height", 0.1, 10)
-        _check_float("shadow_depth", 0, 5)
-        _check_float("shadow_offset", 0, 5)
+        _check_float_required("window_width", 0.1, 10)
+        _check_float_required("window_height", 0.1, 10)
+        _check_float_required("shadow_depth", 0, 5)
+        _check_float_required("shadow_offset", 0, 5)
 
         # Required selectors: indoor is also required
         for req_key in (
@@ -770,8 +972,11 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         errors2: dict[str, str] = {}
         page2: dict[str, Any] = {}
 
-        def _check_float(field: str, min_v: float, max_v: float) -> None:
+        def _check_float_required(field: str, min_v: float, max_v: float) -> None:
             raw = user_input.get(field)
+            if raw in (None, "", "-1"):
+                errors2[field] = "required"
+                return
             try:
                 fv = self._parse_float_locale(raw)
             except (ValueError, TypeError):
@@ -780,10 +985,13 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             if fv < min_v or fv > max_v:
                 errors2[field] = "number_out_of_range"
                 return
-            page2[field] = fv
+            page2[field] = str(raw)
 
-        def _check_int(field: str, min_v: int, max_v: int) -> None:
+        def _check_int_required(field: str, min_v: int, max_v: int) -> None:
             raw = user_input.get(field)
+            if raw in (None, "", "-1"):
+                errors2[field] = "required"
+                return
             try:
                 iv = self._parse_int_locale(raw)
             except (ValueError, TypeError):
@@ -792,16 +1000,16 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             if iv < min_v or iv > max_v:
                 errors2[field] = "number_out_of_range"
                 return
-            page2[field] = iv
+            page2[field] = str(raw)
 
-        _check_float("g_value", 0.1, 0.9)
-        _check_float("frame_width", 0.05, 0.3)
-        _check_int("tilt", 0, 90)
-        _check_float("diffuse_factor", 0.05, 0.5)
-        _check_int("threshold_direct", 0, 1000)
-        _check_int("threshold_diffuse", 0, 1000)
-        _check_float("temperature_indoor_base", 10, 30)
-        _check_float("temperature_outdoor_base", 10, 30)
+        _check_float_required("g_value", 0.1, 0.9)
+        _check_float_required("frame_width", 0.05, 0.3)
+        _check_int_required("tilt", 0, 90)
+        _check_float_required("diffuse_factor", 0.05, 0.5)
+        _check_int_required("threshold_direct", 0, 1000)
+        _check_int_required("threshold_diffuse", 0, 1000)
+        _check_float_required("temperature_indoor_base", 10, 30)
+        _check_float_required("temperature_outdoor_base", 10, 30)
 
         if errors2:
             schema = vol.Schema(
@@ -900,8 +1108,11 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         errors3: dict[str, str] = {}
         p3: dict[str, Any] = {}
 
-        def _check_float(field: str, min_v: float, max_v: float) -> None:
+        def _check_float_required(field: str, min_v: float, max_v: float) -> None:
             raw = user_input.get(field)
+            if raw in (None, "", "-1"):
+                errors3[field] = "required"
+                return
             try:
                 fv = self._parse_float_locale(raw)
             except (ValueError, TypeError):
@@ -910,10 +1121,13 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             if fv < min_v or fv > max_v:
                 errors3[field] = "number_out_of_range"
                 return
-            p3[field] = fv
+            p3[field] = str(raw)
 
-        def _check_int(field: str, min_v: int, max_v: int) -> None:
+        def _check_int_required(field: str, min_v: int, max_v: int) -> None:
             raw = user_input.get(field)
+            if raw in (None, "", "-1"):
+                errors3[field] = "required"
+                return
             try:
                 iv = self._parse_int_locale(raw)
             except (ValueError, TypeError):
@@ -922,14 +1136,14 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             if iv < min_v or iv > max_v:
                 errors3[field] = "number_out_of_range"
                 return
-            p3[field] = iv
+            p3[field] = str(raw)
 
-        _check_float("scenario_b_temp_indoor", 10, 30)
-        _check_float("scenario_b_temp_outdoor", 10, 30)
-        _check_float("scenario_c_temp_indoor", 10, 30)
-        _check_float("scenario_c_temp_outdoor", 10, 30)
-        _check_float("scenario_c_temp_forecast", 15, 40)
-        _check_int("scenario_c_start_hour", 0, 23)
+        _check_float_required("scenario_b_temp_indoor", 10, 30)
+        _check_float_required("scenario_b_temp_outdoor", 10, 30)
+        _check_float_required("scenario_c_temp_indoor", 10, 30)
+        _check_float_required("scenario_c_temp_outdoor", 10, 30)
+        _check_float_required("scenario_c_temp_forecast", 15, 40)
+        _check_int_required("scenario_c_start_hour", 0, 23)
 
         if errors3:
             schema = vol.Schema(

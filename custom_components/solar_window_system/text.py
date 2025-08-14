@@ -24,19 +24,10 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    _LOGGER.info(
-        "[text] async_setup_entry called for entry_id=%s title=%s entry_type=%s subentries=%r",
-        entry.entry_id,
-        entry.title,
-        entry.data.get("entry_type"),
-        getattr(entry, "subentries", None),
-    )
     """Set up text entities for Solar Window System."""
     # Only handle Global Configuration
     if entry.title != "Solar Window System":
         return
-
-    _LOGGER.debug("Setting up Global Configuration text entities")
 
     device_registry = dr.async_get(hass)
     global_device = None
@@ -61,9 +52,6 @@ async def async_setup_entry(
 
         if text_entities:
             async_add_entities(text_entities)
-            _LOGGER.debug(
-                "Added %d Global Configuration text entities", len(text_entities)
-            )
     else:
         _LOGGER.warning("Global Configuration device not found")
 
@@ -88,12 +76,6 @@ class GlobalConfigTextEntity(TextEntity):
         self._attr_name = f"SWS_GLOBAL {config['name']}"
         self._attr_has_entity_name = False
 
-        _LOGGER.debug(
-            "Text %s: unique_id=%s, name=%s",
-            self._entity_key,
-            self._attr_unique_id,
-            self._attr_name,
-        )
         self._attr_device_info = {
             "identifiers": device.identifiers,
             "name": device.name,
@@ -111,7 +93,6 @@ class GlobalConfigTextEntity(TextEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        _LOGGER.debug("Text %s registered as %s", self._entity_key, self._attr_name)
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:

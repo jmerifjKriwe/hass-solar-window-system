@@ -18,6 +18,7 @@
                 },
                 "data_description": {
                     "room_temp_entity": "Optional. Ein Temperatursensor für die Gruppe. Überschreibt den globalen Sensor, falls gesetzt.",
+                    "option_inherit": "Vererben (Elternwert verwenden)",
                     "window_width": "0,10–10,00 m. Erforderlich.",
                     "window_height": "0,10–10,00 m. Erforderlich.",
                     "shadow_depth": "0–5 m. Erforderlich.",
@@ -179,11 +180,11 @@
                     },
                     "data_description": {
                         "name": "Erforderlich. Anzeigename der Gruppe.",
-                        "diffuse_factor": "0,05–0,50. Leer lassen, um Global zu verwenden.",
-                        "threshold_direct": "0–1000 W/m². Leer lassen, um Global zu verwenden.",
-                        "threshold_diffuse": "0–1000 W/m². Leer lassen, um Global zu verwenden.",
-                        "temperature_indoor_base": "10–30 °C. Leer lassen, um Global zu verwenden.",
-                        "temperature_outdoor_base": "10–30 °C. Leer lassen, um Global zu verwenden."
+                        "diffuse_factor": "0,05–0,50. Geben Sie -1 ein, um von Global zu erben.",
+                        "threshold_direct": "0–1000 W/m². Geben Sie -1 ein, um von Global zu erben.",
+                        "threshold_diffuse": "0–1000 W/m². Geben Sie -1 ein, um von Global zu erben.",
+                        "temperature_indoor_base": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
+                        "temperature_outdoor_base": "10–30 °C. Geben Sie -1 ein, um von Global zu erben."
                     }
                 },
                 "enhanced": {
@@ -201,12 +202,12 @@
                     },
                     "data_description": {
                         "scenario_b_enable": "Aktivieren/Deaktivieren oder Vererben, um Global zu nutzen.",
-                        "scenario_b_temp_indoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
-                        "scenario_b_temp_outdoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_b_temp_indoor": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
+                        "scenario_b_temp_outdoor": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
                         "scenario_c_enable": "Aktivieren/Deaktivieren oder Vererben, um Global zu nutzen.",
-                        "scenario_c_temp_indoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
-                        "scenario_c_temp_outdoor": "10–30 °C. Leer lassen, um Global zu verwenden.",
-                        "scenario_c_temp_forecast": "15–40 °C. Leer lassen, um Global zu verwenden.",
+                        "scenario_c_temp_indoor": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
+                        "scenario_c_temp_outdoor": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
+                        "scenario_c_temp_forecast": "15–40 °C. Geben Sie -1 ein, um von Global zu erben.",
                         "scenario_c_start_hour": "0–23. Leer lassen, um Global zu verwenden."
                     }
                 },
@@ -255,15 +256,15 @@
                     },
                     "data_description": {
                         "name": "Erforderlich. Anzeigename des Fensters.",
-                        "azimuth": "0–360°. Optional; leer lassen, wenn unbekannt.",
-                        "azimuth_min": "−90–0°. Optional; leer lassen, wenn ungenutzt.",
-                        "azimuth_max": "0–90°. Optional; leer lassen, wenn ungenutzt.",
-                        "elevation_min": "0–90°. Optional; leer lassen, wenn ungenutzt.",
-                        "elevation_max": "0–90°. Optional; leer lassen, wenn ungenutzt.",
-                        "window_width": "0,10–10,00 m. Optional; leer lassen für später.",
-                        "window_height": "0,10–10,00 m. Optional; leer lassen für später.",
-                        "shadow_depth": "0–5 m. Optional; leer lassen, wenn ungenutzt.",
-                        "shadow_offset": "0–5 m. Optional; leer lassen, wenn ungenutzt.",
+                        "azimuth": "0–360°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "azimuth_min": "−90–0°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "azimuth_max": "0–90°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "elevation_min": "0–90°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "elevation_max": "0–90°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "window_width": "0,10–10,00 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "window_height": "0,10–10,00 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "shadow_depth": "0–5 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "shadow_offset": "0–5 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
                         "linked_group": "Gruppe wählen oder ‚(keine)‘ für unabhängig.",
                         "room_temp_entity": "Optional. Ein Temperatursensor (°C/°F)."
                     }
@@ -288,8 +289,8 @@
                         "diffuse_factor": "0,05–0,50. Leer lassen, um von Gruppe/Global zu erben.",
                         "threshold_direct": "0–1000 W/m². Leer lassen, um von Gruppe/Global zu erben.",
                         "threshold_diffuse": "0–1000 W/m². Leer lassen, um von Gruppe/Global zu erben.",
-                        "temperature_indoor_base": "10–30 °C. Leer lassen, um von Gruppe/Global zu erben.",
-                        "temperature_outdoor_base": "10–30 °C. Leer lassen, um von Gruppe/Global zu erben."
+                        "temperature_indoor_base": "10–30 °C. Geben Sie -1 ein, um von Gruppe oder Global zu erben.",
+                        "temperature_outdoor_base": "10–30 °C. Geben Sie -1 ein, um von Gruppe oder Global zu erben."
                     }
                 },
                 "scenarios": {
@@ -307,13 +308,13 @@
                     },
                     "data_description": {
                         "scenario_b_enable": "Aktivieren/Deaktivieren oder Vererben, um Gruppe/Global zu nutzen.",
-                        "scenario_b_temp_indoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
-                        "scenario_b_temp_outdoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
+                        "scenario_b_temp_indoor": "10–30 °C. Geben Sie -1 ein, um von Gruppe/Global zu erben.",
+                        "scenario_b_temp_outdoor": "10–30 °C. Geben Sie -1 ein, um von Gruppe/Global zu erben.",
                         "scenario_c_enable": "Aktivieren/Deaktivieren oder Vererben, um Gruppe/Global zu nutzen.",
-                        "scenario_c_temp_indoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
-                        "scenario_c_temp_outdoor": "10–30 °C. Leer lassen, um Gruppe/Global zu verwenden.",
-                        "scenario_c_temp_forecast": "15–40 °C. Leer lassen, um Gruppe/Global zu verwenden.",
-                        "scenario_c_start_hour": "0–23. Leer lassen, um Gruppe/Global zu verwenden."
+                        "scenario_c_temp_indoor": "10–30 °C. Geben Sie -1 ein, um von Gruppe/Global zu erben.",
+                        "scenario_c_temp_outdoor": "10–30 °C. Geben Sie -1 ein, um von Gruppe/Global zu erben.",
+                        "scenario_c_temp_forecast": "15–40 °C. Geben Sie -1 ein, um von Gruppe/Global zu erben.",
+                        "scenario_c_start_hour": "0–23. Geben Sie -1 ein, um von Gruppe/Global zu erben."
                     }
                 },
                 "reconfigure": {

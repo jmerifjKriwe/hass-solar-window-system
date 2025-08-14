@@ -4,6 +4,12 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+# Handle --clean parameter
+if [ "$1" == "--clean" ]; then
+  echo "Cleaning .storage directory..."
+  rm -rf "${PWD}/config/.storage"
+fi
+
 # Create config dir if not present
 if [[ ! -d "${PWD}/config" ]]; then
     mkdir -p "${PWD}/config"

@@ -31,8 +31,6 @@ async def async_setup_entry(
     if entry.data.get("entry_type") != "window_configs":
         return
 
-    _LOGGER.info("Setting up Window Configuration binary sensors")
-
     # Get coordinator
     coordinator = None
     if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:

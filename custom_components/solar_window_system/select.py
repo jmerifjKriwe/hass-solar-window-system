@@ -24,13 +24,6 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    _LOGGER.info(
-        "[select] async_setup_entry called for entry_id=%s title=%s entry_type=%s subentries=%r",
-        entry.entry_id,
-        entry.title,
-        entry.data.get("entry_type"),
-        getattr(entry, "subentries", None),
-    )
     """Set up select entities for Solar Window System."""
     # Handle Global Configuration
     if entry.title == "Solar Window System":
@@ -49,7 +42,6 @@ async def _setup_global_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Global Configuration select entities."""
-    _LOGGER.debug("Setting up Global Configuration select entities")
 
     device_registry = dr.async_get(hass)
     global_device = None
@@ -86,9 +78,6 @@ async def _setup_global_config_selects(
 
         if select_entities:
             async_add_entities(select_entities)
-            _LOGGER.debug(
-                "Added %d Global Configuration select entities", len(select_entities)
-            )
     else:
         _LOGGER.warning("Global Configuration device not found")
 
@@ -99,7 +88,6 @@ async def _setup_group_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Group Configuration select entities."""
-    _LOGGER.debug("Setting up Group Configuration select entities")
 
     device_registry = dr.async_get(hass)
 
@@ -111,7 +99,6 @@ async def _setup_group_config_selects(
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type == "group":
             group_name = subentry.title
-            _LOGGER.debug("Setting up select entities for group: %s", group_name)
 
             # Find the device for this group
             group_device = None
@@ -170,12 +157,6 @@ async def _setup_group_config_selects(
                 # IMPORTANT: Add entities for this group with the correct subentry id
                 async_add_entities(
                     subentry_select_entities, config_subentry_id=subentry_id
-                )
-                _LOGGER.debug(
-                    "Added %d select entities for group '%s' (subentry %s)",
-                    len(subentry_select_entities),
-                    group_name,
-                    subentry_id,
                 )
             else:
                 _LOGGER.warning("Group device not found for: %s", group_name)
@@ -247,12 +228,6 @@ class GlobalConfigSelectEntity(SelectEntity):
         self._attr_name = f"SWS_GLOBAL {config['name']}"
         self._attr_has_entity_name = False
 
-        _LOGGER.debug(
-            "Select %s: unique_id=%s, name=%s",
-            self._entity_key,
-            self._attr_unique_id,
-            self._attr_name,
-        )
         self._attr_device_info = {
             "identifiers": device.identifiers,
             "name": device.name,
@@ -272,7 +247,6 @@ class GlobalConfigSelectEntity(SelectEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        _LOGGER.debug("Select %s registered as %s", self._entity_key, self._attr_name)
         # Set friendly name to config['name'] (e.g. 'Weather Warning Sensor')
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -313,14 +287,6 @@ class GroupConfigSelectEntity(SelectEntity):
         self._attr_name = f"SWS_GROUP {group_name} {config['name']}"
         self._attr_has_entity_name = False
 
-        _LOGGER.debug(
-            "Group Select %s: unique_id=%s, name=%s, group=%s",
-            self._entity_key,
-            self._attr_unique_id,
-            self._attr_name,
-            self._group_name,
-        )
-
         self._attr_device_info = {
             "identifiers": device.identifiers,
             "name": device.name,
@@ -340,12 +306,6 @@ class GroupConfigSelectEntity(SelectEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass."""
         await super().async_added_to_hass()
-        _LOGGER.debug(
-            "Group Select %s registered as %s for group: %s",
-            self._entity_key,
-            self._attr_name,
-            self._group_name,
-        )
 
         # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
         entity_registry = er.async_get(self.hass)
@@ -369,7 +329,6 @@ async def _setup_window_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Window Configuration select entities."""
-    _LOGGER.debug("Setting up Window Configuration select entities")
 
     device_registry = dr.async_get(hass)
 

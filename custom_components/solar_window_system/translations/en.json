@@ -22,6 +22,7 @@
         },
         "data_description": {
           "room_temp_entity": "Optional. A temperature sensor for the room/group. Overrides the global indoor temperature sensor if set.",
+          "option_inherit": "Inherit (use parent value)",
           "window_width": "0.10–10.00 m. Required.",
           "window_height": "0.10–10.00 m. Required.",
           "shadow_depth": "0–5 m. Required.",
@@ -183,11 +184,11 @@
           },
           "data_description": {
             "name": "Required. A friendly name for the group.",
-            "diffuse_factor": "0.05–0.50. Leave empty to use Global value.",
-            "threshold_direct": "0–1000 W/m². Leave empty to use Global value.",
-            "threshold_diffuse": "0–1000 W/m². Leave empty to use Global value.",
-            "temperature_indoor_base": "10–30 °C. Leave empty to use Global value.",
-            "temperature_outdoor_base": "10–30 °C. Leave empty to use Global value."
+            "diffuse_factor": "0.05–0.50. Enter -1 to inherit from Group or Global.",
+            "threshold_direct": "0–1000 W/m². Enter -1 to inherit from Group or Global.",
+            "threshold_diffuse": "0–1000 W/m². Enter -1 to inherit from Group or Global.",
+            "temperature_indoor_base": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "temperature_outdoor_base": "10–30 °C. Enter -1 to inherit from Group or Global."
           }
         },
         "enhanced": {
@@ -205,13 +206,13 @@
           },
           "data_description": {
             "scenario_b_enable": "Choose Enable/Disable, or Inherit to use Global.",
-            "scenario_b_temp_indoor": "10–30 °C. Leave empty to use Global.",
-            "scenario_b_temp_outdoor": "10–30 °C. Leave empty to use Global.",
+            "scenario_b_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_b_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
             "scenario_c_enable": "Choose Enable/Disable, or Inherit to use Global.",
-            "scenario_c_temp_indoor": "10–30 °C. Leave empty to use Global.",
-            "scenario_c_temp_outdoor": "10–30 °C. Leave empty to use Global.",
-            "scenario_c_temp_forecast": "15–40 °C. Leave empty to use Global.",
-            "scenario_c_start_hour": "0–23. Leave empty to use Global."
+            "scenario_c_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_c_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_c_temp_forecast": "15–40 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_c_start_hour": "0–23. Enter -1 to inherit from Group or Global.."
           }
         },
         "reconfigure": {
@@ -259,15 +260,15 @@
           },
           "data_description": {
             "name": "Required. A friendly name for the window.",
-            "azimuth": "0–360°. Optional; leave empty if unknown.",
-            "azimuth_min": "−90–0°. Optional; leave empty if not used.",
-            "azimuth_max": "0–90°. Optional; leave empty if not used.",
-            "elevation_min": "0–90°. Optional; leave empty if not used.",
-            "elevation_max": "0–90°. Optional; leave empty if not used.",
-            "window_width": "0.10–10.00 m. Optional; leave empty to set later.",
-            "window_height": "0.10–10.00 m. Optional; leave empty to set later.",
-            "shadow_depth": "0–5 m. Optional; leave empty if not used.",
-            "shadow_offset": "0–5 m. Optional; leave empty if not used.",
+            "azimuth": "0–360°. Required; Enter -1 to inherit from Group or Global.",
+            "azimuth_min": "−90–0°. Required; Enter -1 to inherit from Group or Global.",
+            "azimuth_max": "0–90°. Required; Enter -1 to inherit from Group or Global.",
+            "elevation_min": "0–90°. Required; Enter -1 to inherit from Group or Global.",
+            "elevation_max": "0–90°. Required; Enter -1 to inherit from Group or Global.",
+            "window_width": "0.10–10.00 m. Required; Enter -1 to inherit from Group or Global.",
+            "window_height": "0.10–10.00 m. Required; Enter -1 to inherit from Group or Global.",
+            "shadow_depth": "0–5 m. Required; Enter -1 to inherit from Group or Global.",
+            "shadow_offset": "0–5 m. Required; Enter -1 to inherit from Group or Global.",
             "linked_group": "Select a group or choose ‘(none)’ to keep independent.",
             "room_temp_entity": "Optional. A temperature sensor entity (°C/°F)."
           }
@@ -286,14 +287,14 @@
             "temperature_outdoor_base": "Base outdoor temperature (°C)"
           },
           "data_description": {
-            "g_value": "Optional. Leave empty to inherit Group or Global.",
-            "frame_width": "Optional. Leave empty to inherit Group or Global.",
-            "tilt": "Optional. Leave empty to inherit Group or Global.",
-            "diffuse_factor": "0.05–0.50. Leave empty to inherit Group or Global.",
-            "threshold_direct": "0–1000 W/m². Leave empty to inherit Group or Global.",
-            "threshold_diffuse": "0–1000 W/m². Leave empty to inherit Group or Global.",
-            "temperature_indoor_base": "10–30 °C. Leave empty to inherit Group or Global.",
-            "temperature_outdoor_base": "10–30 °C. Leave empty to inherit Group or Global."
+            "g_value": "Optional. Enter -1 to inherit from Group or Global.",
+            "frame_width": "Optional. Enter -1 to inherit from Group or Global.",
+            "tilt": "Optional. Enter -1 to inherit from Group or Global.",
+            "diffuse_factor": "0.05–0.50. Enter -1 to inherit from Group or Global.",
+            "threshold_direct": "0–1000 W/m². Enter -1 to inherit from Group or Global.",
+            "threshold_diffuse": "0–1000 W/m². Enter -1 to inherit from Group or Global.",
+            "temperature_indoor_base": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "temperature_outdoor_base": "10–30 °C. Enter -1 to inherit from Group or Global."
           }
         },
         "scenarios": {
@@ -311,13 +312,13 @@
           },
           "data_description": {
             "scenario_b_enable": "Enable/Disable, or Inherit to use Group or Global.",
-            "scenario_b_temp_indoor": "10–30 °C. Leave empty to inherit Group/Global.",
-            "scenario_b_temp_outdoor": "10–30 °C. Leave empty to inherit Group/Global.",
+            "scenario_b_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_b_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
             "scenario_c_enable": "Enable/Disable, or Inherit to use Group or Global.",
-            "scenario_c_temp_indoor": "10–30 °C. Leave empty to inherit Group/Global.",
-            "scenario_c_temp_outdoor": "10–30 °C. Leave empty to inherit Group/Global.",
-            "scenario_c_temp_forecast": "15–40 °C. Leave empty to inherit Group/Global.",
-            "scenario_c_start_hour": "0–23. Leave empty to inherit Group/Global."
+            "scenario_c_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_c_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_c_temp_forecast": "15–40 °C. Enter -1 to inherit from Group or Global..",
+            "scenario_c_start_hour": "0–23. Enter -1 to inherit from Group/Global."
           }
         },
         "reconfigure": {

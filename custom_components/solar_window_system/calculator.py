@@ -59,7 +59,7 @@ class SolarWindowCalculator:
         self._cache_timestamp: float | None = None
         self._cache_ttl = 30  # 30 seconds cache for one calculation run
 
-        _LOGGER.info("Calculator initialized with %s windows.", len(self.windows))
+        _LOGGER.debug("Calculator initialized with %s windows.", len(self.windows))
 
     def get_safe_state(self, entity_id: str, default: str | float = 0):
         """
@@ -72,7 +72,7 @@ class SolarWindowCalculator:
         state = self.hass.states.get(entity_id)
 
         if state is None or state.state in ["unknown", "unavailable"]:
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Entity %s not found or unavailable, returning default value.",
                 entity_id,
             )
@@ -88,7 +88,7 @@ class SolarWindowCalculator:
         state = self.hass.states.get(entity_id)
 
         if state is None or state.state in ["unknown", "unavailable"]:
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Entity %s not found or unavailable, returning default value for attribute %s.",
                 entity_id,
                 attr,
@@ -134,7 +134,7 @@ class SolarWindowCalculator:
         instance._cache_timestamp = None
         instance._cache_ttl = 30  # 30 seconds cache for one calculation run
 
-        _LOGGER.info("Calculator initialized with flow-based configuration.")
+        _LOGGER.debug("Calculator initialized with flow-based configuration.")
         return instance
 
     def _get_cached_entity_state(
@@ -160,15 +160,6 @@ class SolarWindowCalculator:
             value = state.state if state else default_value
             # Cache the result
             self._entity_cache[entity_id] = value
-
-        if debug_label:
-            _LOGGER.debug(
-                "Entity %s: '%s' -> state: '%s' (default: '%s')",
-                debug_label,
-                entity_id,
-                value,
-                default_value,
-            )
         return value
 
     def _resolve_entity_state_with_fallback(
@@ -618,8 +609,26 @@ class SolarWindowCalculator:
         self._cache_timestamp = time.time()
 
         global_data = self._get_global_data_merged()
+        # Determine whether this coordinator should calculate windows. Only
+        # coordinators with entry_type == 'window_configs' do calculations.
+        entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
+        should_calculate_windows = entry_type == "window_configs"
 
-        # Get external states
+        # If this coordinator isn't responsible for windows, return empty.
+        if not should_calculate_windows:
+            _LOGGER.debug(
+                "Skipping calculations: entry_type '%s' does not calculate windows",
+                entry_type,
+            )
+            return {}
+
+        # Get all window subentries; if none exist, skip calculations.
+        windows = self._get_subentries_by_type("window")
+        if not windows:
+            _LOGGER.debug("No window subentries found; skipping calculations.")
+            return {}
+
+        # Get external states (only when there are windows to calculate)
         # Debug: log which entity IDs are being used for external states
         _LOGGER.debug(
             "Using entity IDs: solar_radiation='%s', outdoor_temp='%s', "
@@ -663,121 +672,108 @@ class SolarWindowCalculator:
             == "on",
         }
 
-        _LOGGER.debug("Starting flow-based calculation cycle")
         _LOGGER.debug("External states: %s", external_states)
 
         window_results = {}
         total_power = 0
         shading_count = 0
-        windows = {}  # Initialize windows dict for all cases
 
-        # Check if this coordinator should calculate windows
-        # Only window_configs coordinators should calculate windows to avoid duplication
-        entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
-        should_calculate_windows = entry_type == "window_configs"
+        for window_subentry_id, window_data in windows.items():
+            try:
+                # Get effective configuration
+                effective_config, _ = self.get_effective_config_from_flows(
+                    window_subentry_id
+                )
 
-        if should_calculate_windows:
-            # Get all window subentries
-            windows = self._get_subentries_by_type("window")
-            _LOGGER.debug("Found window subentries: %s", list(windows.keys()))
+                # Apply global factors
+                group_type = window_data.get("group_type", "default")
+                effective_config = self.apply_global_factors(
+                    effective_config, group_type, external_states
+                )
 
-            for window_subentry_id, window_data in windows.items():
-                try:
-                    # Get effective configuration
-                    effective_config, _ = self.get_effective_config_from_flows(
-                        window_subentry_id
-                    )
+                # Calculate solar power with shadows
+                solar_result = self.calculate_window_solar_power_with_shadow(
+                    effective_config, window_data, external_states
+                )
 
-                    # Apply global factors
-                    group_type = window_data.get("group_type", "default")
-                    effective_config = self.apply_global_factors(
-                        effective_config, group_type, external_states
-                    )
+                # Get scenario enables for this window with inheritance logic
+                (
+                    scenario_b_enabled,
+                    scenario_c_enabled,
+                ) = self._get_scenario_enables_from_flows(
+                    window_subentry_id, external_states
+                )
 
-                    # Calculate solar power with shadows
-                    solar_result = self.calculate_window_solar_power_with_shadow(
-                        effective_config, window_data, external_states
-                    )
+                # Check shading requirement with full scenario logic
+                shade_request = ShadeRequestFlow(
+                    window_data=window_data,
+                    effective_config=effective_config,
+                    external_states=external_states,
+                    scenario_b_enabled=scenario_b_enabled,
+                    scenario_c_enabled=scenario_c_enabled,
+                    solar_result=solar_result,
+                )
+                shade_required, shade_reason = self._should_shade_window_from_flows(
+                    shade_request
+                )
 
-                    # Get scenario enables for this window with inheritance logic
-                    (
-                        scenario_b_enabled,
-                        scenario_c_enabled,
-                    ) = self._get_scenario_enables_from_flows(
-                        window_subentry_id, external_states
-                    )
+                # Update result
+                solar_result.shade_required = shade_required
+                solar_result.shade_reason = shade_reason
 
-                    # Check shading requirement with full scenario logic
-                    shade_request = ShadeRequestFlow(
-                        window_data=window_data,
-                        effective_config=effective_config,
-                        external_states=external_states,
-                        scenario_b_enabled=scenario_b_enabled,
-                        scenario_c_enabled=scenario_c_enabled,
-                        solar_result=solar_result,
-                    )
-                    shade_required, shade_reason = self._should_shade_window_from_flows(
-                        shade_request
-                    )
+                # Calculate additional metrics
+                power_raw = (
+                    solar_result.power_direct / solar_result.shadow_factor
+                    + solar_result.power_diffuse
+                    if solar_result.shadow_factor > 0
+                    else solar_result.power_total
+                )
+                # Avoid division by zero
+                area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
 
-                    # Update result
-                    solar_result.shade_required = shade_required
-                    solar_result.shade_reason = shade_reason
+                # Store results in the correct structure for coordinator
+                window_results[window_subentry_id] = {
+                    "name": window_data.get("name", window_subentry_id),
+                    "total_power": round(solar_result.power_total, 2),
+                    "total_power_direct": round(solar_result.power_direct, 2),
+                    "total_power_diffuse": round(solar_result.power_diffuse, 2),
+                    "total_power_raw": round(power_raw, 2),
+                    "power_m2_total": round(solar_result.power_total / area, 2),
+                    "power_m2_direct": round(solar_result.power_direct / area, 2),
+                    "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
+                    "power_m2_raw": round(power_raw / area, 2),
+                    "shadow_factor": solar_result.shadow_factor,
+                    "area_m2": solar_result.area_m2,
+                    "is_visible": solar_result.is_visible,
+                    "shade_required": solar_result.shade_required,
+                    "shade_reason": solar_result.shade_reason,
+                    "effective_threshold": solar_result.effective_threshold,
+                }
 
-                    # Calculate additional metrics
-                    power_raw = (
-                        solar_result.power_direct / solar_result.shadow_factor
-                        + solar_result.power_diffuse
-                        if solar_result.shadow_factor > 0
-                        else solar_result.power_total
-                    )
-                    # Avoid division by zero
-                    area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
+                total_power += solar_result.power_total
+                if shade_required:
+                    shading_count += 1
 
-                    # Store results in the correct structure for coordinator
-                    window_results[window_subentry_id] = {
-                        "name": window_data.get("name", window_subentry_id),
-                        "total_power": round(solar_result.power_total, 2),
-                        "total_power_direct": round(solar_result.power_direct, 2),
-                        "total_power_diffuse": round(solar_result.power_diffuse, 2),
-                        "total_power_raw": round(power_raw, 2),
-                        "power_m2_total": round(solar_result.power_total / area, 2),
-                        "power_m2_direct": round(solar_result.power_direct / area, 2),
-                        "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
-                        "power_m2_raw": round(power_raw / area, 2),
-                        "shadow_factor": solar_result.shadow_factor,
-                        "area_m2": solar_result.area_m2,
-                        "is_visible": solar_result.is_visible,
-                        "shade_required": solar_result.shade_required,
-                        "shade_reason": solar_result.shade_reason,
-                        "effective_threshold": solar_result.effective_threshold,
-                    }
-
-                    total_power += solar_result.power_total
-                    if shade_required:
-                        shading_count += 1
-
-                except Exception as err:
-                    _LOGGER.exception("Error calculating window %s", window_subentry_id)
-                    window_results[window_subentry_id] = {
-                        "name": window_data.get("name", window_subentry_id),
-                        "total_power": 0,
-                        "total_power_direct": 0,
-                        "total_power_diffuse": 0,
-                        "total_power_raw": 0,
-                        "power_m2_total": 0,
-                        "power_m2_direct": 0,
-                        "power_m2_diffuse": 0,
-                        "power_m2_raw": 0,
-                        "shadow_factor": 0,
-                        "area_m2": 0,
-                        "is_visible": False,
-                        "shade_required": False,
-                        "shade_reason": f"Calculation error: {err}",
-                        "effective_threshold": 0,
-                    }
-        else:
-            _LOGGER.debug("Skipping window calculations for entry_type: %s", entry_type)
+            except Exception as err:
+                _LOGGER.exception("Error calculating window %s", window_subentry_id)
+                window_results[window_subentry_id] = {
+                    "name": window_data.get("name", window_subentry_id),
+                    "total_power": 0,
+                    "total_power_direct": 0,
+                    "total_power_diffuse": 0,
+                    "total_power_raw": 0,
+                    "power_m2_total": 0,
+                    "power_m2_direct": 0,
+                    "power_m2_diffuse": 0,
+                    "power_m2_raw": 0,
+                    "shadow_factor": 0,
+                    "area_m2": 0,
+                    "is_visible": False,
+                    "shade_required": False,
+                    "shade_reason": f"Calculation error: {err}",
+                    "effective_threshold": 0,
+                }
+        # (no-op) calculations completed for windows
 
         # Calculate group aggregations
         group_results = {}
@@ -831,7 +827,7 @@ class SolarWindowCalculator:
             },
         }
 
-        _LOGGER.debug("Flow-based calculation cycle finished")
+        _LOGGER.debug("calculation cycle finished")
         return results
 
     def _get_scenario_enables_from_flows(
@@ -911,16 +907,19 @@ class SolarWindowCalculator:
 
         # Get indoor temperature from window, group, or global config
         try:
-            # 1. Window-specific
-            indoor_temp_entity = shade_request.window_data.get("room_temp_entity", "")
+            # 1. Window-specific - prefer new key, but accept legacy key
+            indoor_temp_entity = shade_request.window_data.get(
+                "indoor_temperature_sensor", ""
+            ) or shade_request.window_data.get("room_temp_entity", "")
             # 2. Group (effective_config['group'] if present)
             if not indoor_temp_entity:
                 group_cfg = shade_request.effective_config.get("group", {})
-                indoor_temp_entity = (
-                    group_cfg.get("room_temp_entity", "")
-                    if isinstance(group_cfg, dict)
-                    else ""
-                )
+                # group may contain either the new or legacy key
+                indoor_temp_entity = ""
+                if isinstance(group_cfg, dict):
+                    indoor_temp_entity = group_cfg.get(
+                        "indoor_temperature_sensor", ""
+                    ) or group_cfg.get("room_temp_entity", "")
             # 3. Global
             if not indoor_temp_entity:
                 indoor_temp_entity = shade_request.effective_config.get(

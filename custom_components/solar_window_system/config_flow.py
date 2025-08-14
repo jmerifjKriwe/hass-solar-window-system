@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -43,6 +43,16 @@ def _get_global_data_merged(hass: Any) -> dict[str, Any]:
     return {}
 
 
+def _convert_inherit_value(v: Any) -> Any:
+    """Convert UI inherit marker '-1' to storage empty string.
+
+    Accepts int or str '-1' and returns "" for persistence. Otherwise returns v.
+    """
+    if v in (-1, "-1"):
+        return ""
+    return v
+
+
 # ----- Shared validators that allow clearing values (empty string) -----
 def _normalize_decimal_string(v: Any) -> str:
     """
@@ -78,7 +88,7 @@ def allow_empty_float(min_v: float | None = None, max_v: float | None = None) ->
     """
 
     def _validator(v: Any) -> Any:
-        if v in ("", None):
+        if v in ("", None, "-1", -1):
             return ""
         fv = _parse_float_locale(v)
         if min_v is not None and fv < min_v:
@@ -101,7 +111,7 @@ def allow_empty_int(min_v: int | None = None, max_v: int | None = None) -> Any:
     """
 
     def _validator(v: Any) -> Any:
-        if v in ("", None):
+        if v in ("", None, "-1", -1):
             return ""
         iv = _parse_int_locale(v)
         if min_v is not None and iv < min_v:
@@ -138,7 +148,7 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         # Defaults for basic page
         defaults: dict[str, Any] = {
             "name": getattr(getattr(self, "subentry", None), "title", ""),
-            "room_temp_entity": "",
+            "indoor_temperature_sensor": "",
             "diffuse_factor": "",
             "threshold_direct": "",
             "threshold_diffuse": "",
@@ -158,22 +168,55 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 if key == "name":
                     continue
                 if key in sub.data:
-                    defaults[key] = sub.data[key]
+                    raw_val = sub.data[key]
+                    _LOGGER.error(
+                        "DEBUG GROUP USER RECONFIGURE: key=%s, raw_val=%r (type=%s)",
+                        key,
+                        raw_val,
+                        type(raw_val),
+                    )
+                    # support migration from old key name if present
+                    if (
+                        key == "indoor_temperature_sensor"
+                        and "room_temp_entity" in sub.data
+                    ):
+                        # support migration from old key name
+                        defaults[key] = sub.data.get(
+                            "room_temp_entity", sub.data.get(key)
+                        )
+                    else:
+                        defaults[key] = raw_val
+
+        # Determine UI default for sensor: if no local default but Global has a value,
+        # show '-1' in the selector to indicate 'inherit'. The suggested_value shows
+        # the actual Global value as a hint to the user.
+        sensor_default = defaults.get("indoor_temperature_sensor", "")
+        sensor_suggested = global_data.get("indoor_temperature_sensor", "")
+        if sensor_default in ("", None) and sensor_suggested not in ("", None):
+            sensor_ui_default = "-1"
+        else:
+            sensor_ui_default = sensor_default
 
         schema_dict: dict[Any, Any] = {
             vol.Required("name", default=defaults["name"]): str,
             vol.Required(
-                "room_temp_entity",
-                description={"suggested_value": defaults["room_temp_entity"]},
+                "indoor_temperature_sensor",
+                default=sensor_ui_default,
+                description={
+                    "suggested_value": sensor_suggested
+                    or defaults["indoor_temperature_sensor"]
+                },
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=temp_sensor_options,
+                    options=cast("Any", temp_sensor_options),
                     custom_value=True,
                 )
             ),
         }
 
-        # For inheritable numerics: show suggestion from Global, keep default empty
+        # For inheritable numerics: if no local default is present but Global provides
+        # a suggested value, use '-1' as the UI default to indicate inheritance;
+        # the suggested_value shows the Global value.
         for key in (
             "diffuse_factor",
             "threshold_direct",
@@ -182,27 +225,81 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             "temperature_outdoor_base",
         ):
             sv = global_data.get(key, "")
-            if sv not in ("", None):
-                sv = str(sv)
-            schema_dict[vol.Optional(key, description={"suggested_value": sv})] = str
+            # If no local default but Global provides a value, show the UI inherit
+            # marker '-1' so the user explicitly sees inheritance. Do not show
+            # the Global value as a suggested_value here (we avoid prefill/hints).
+            cur_default = defaults.get(key, "")
+
+            _LOGGER.error(
+                "DEBUG GROUP USER SCHEMA: key=%s, cur_default=%r (type=%s), sv=%r (type=%s)",
+                key,
+                cur_default,
+                type(cur_default),
+                sv,
+                type(sv),
+            )
+
+            if cur_default in ("", None) and sv not in ("", None):
+                ui_default = "-1"
+            else:
+                # Always convert to string for Voluptuous schema compatibility
+                ui_default = str(cur_default) if cur_default not in ("", None) else ""
+
+            _LOGGER.error(
+                "DEBUG GROUP USER SCHEMA: key=%s, ui_default=%r (type=%s)",
+                key,
+                ui_default,
+                type(ui_default),
+            )
+
+            try:
+                schema_dict[vol.Optional(key, default=ui_default)] = str
+                _LOGGER.error(
+                    "DEBUG GROUP USER SCHEMA: key=%s schema creation SUCCESS", key
+                )
+            except Exception as e:
+                _LOGGER.error(
+                    "DEBUG GROUP USER SCHEMA: key=%s schema creation FAILED: %s", key, e
+                )
+                raise
 
         schema = vol.Schema(schema_dict)
 
         if user_input is None:
             return self.async_show_form(step_id="user", data_schema=schema)
 
-        # Coerce numeric strings while allowing "" to clear
+        # Coerce numeric strings for required fields (do not allow empty)
         if user_input is not None:
-            coerce_map = {
-                "diffuse_factor": allow_empty_float(0.05, 0.5),
-                "threshold_direct": allow_empty_int(0, 1000),
-                "threshold_diffuse": allow_empty_int(0, 1000),
-                "temperature_indoor_base": allow_empty_float(10, 30),
-                "temperature_outdoor_base": allow_empty_float(10, 30),
-            }
-            for k, conv in coerce_map.items():
+
+            def strict_float(field: str, min_v: float, max_v: float) -> float | None:
+                val = user_input.get(field)
+                try:
+                    fv = _parse_float_locale(val)
+                except (ValueError, TypeError):
+                    return None
+                if fv < min_v or fv > max_v:
+                    return None
+                return fv
+
+            def strict_int(field: str, min_v: int, max_v: int) -> int | None:
+                val = user_input.get(field)
+                try:
+                    iv = _parse_int_locale(val)
+                except (ValueError, TypeError):
+                    return None
+                if iv < min_v or iv > max_v:
+                    return None
+                return iv
+
+            for k, (func, min_v, max_v) in {
+                "diffuse_factor": (strict_float, 0.05, 0.5),
+                "threshold_direct": (strict_int, 0, 1000),
+                "threshold_diffuse": (strict_int, 0, 1000),
+                "temperature_indoor_base": (strict_float, 10, 30),
+                "temperature_outdoor_base": (strict_float, 10, 30),
+            }.items():
                 if k in user_input:
-                    user_input[k] = conv(user_input[k])
+                    user_input[k] = func(k, min_v, max_v)
         # Store and continue to enhanced page
         self._basic = user_input
         return await self.async_step_enhanced()
@@ -212,8 +309,6 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         """Render enhanced group configuration (page 2)."""
-        _LOGGER.debug("GroupSubentryFlowHandler.enhanced: input=%s", user_input)
-
         global_data = _get_global_data_merged(self.hass)
 
         enhanced_defaults: dict[str, Any] = {
@@ -232,68 +327,55 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             sub = self._get_reconfigure_subentry()
             for key in list(enhanced_defaults.keys()):
                 if key in sub.data:
-                    enhanced_defaults[key] = sub.data[key]
+                    raw_val = sub.data[key]
+                    _LOGGER.error(
+                        "DEBUG GROUP ENHANCED RECONFIGURE: key=%s, raw_val=%r (type=%s)",
+                        key,
+                        raw_val,
+                        type(raw_val),
+                    )
+                    enhanced_defaults[key] = raw_val
 
         # Build schema with suggestions from Global if current default is empty
         def _sv(key: str) -> str:
             v = global_data.get(key, "")
             return str(v) if v not in ("", None) else ""
 
+        # Determine UI default: if local default empty but Global provides a value,
+        # show '-1' to indicate inheritance (consistent with page 1 behavior).
+        def _ui_default(key: str) -> str:
+            cur = enhanced_defaults.get(key, "")
+            gv = global_data.get(key, "")
+            if cur in ("", None) and gv not in ("", None):
+                return "-1"
+            # Always convert to string for Voluptuous schema compatibility
+            return str(cur) if cur not in ("", None) else ""
+
         schema = vol.Schema(
             {
                 vol.Optional(
                     "scenario_b_temp_indoor",
-                    default=enhanced_defaults["scenario_b_temp_indoor"],
-                    description={
-                        "suggested_value": _sv("scenario_b_temp_indoor")
-                        if enhanced_defaults["scenario_b_temp_indoor"] in ("", None)
-                        else "",
-                    },
+                    default=_ui_default("scenario_b_temp_indoor"),
                 ): str,
                 vol.Optional(
                     "scenario_b_temp_outdoor",
-                    default=enhanced_defaults["scenario_b_temp_outdoor"],
-                    description={
-                        "suggested_value": _sv("scenario_b_temp_outdoor")
-                        if enhanced_defaults["scenario_b_temp_outdoor"] in ("", None)
-                        else "",
-                    },
+                    default=_ui_default("scenario_b_temp_outdoor"),
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_indoor",
-                    default=enhanced_defaults["scenario_c_temp_indoor"],
-                    description={
-                        "suggested_value": _sv("scenario_c_temp_indoor")
-                        if enhanced_defaults["scenario_c_temp_indoor"] in ("", None)
-                        else "",
-                    },
+                    default=_ui_default("scenario_c_temp_indoor"),
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_outdoor",
-                    default=enhanced_defaults["scenario_c_temp_outdoor"],
-                    description={
-                        "suggested_value": _sv("scenario_c_temp_outdoor")
-                        if enhanced_defaults["scenario_c_temp_outdoor"] in ("", None)
-                        else "",
-                    },
+                    default=_ui_default("scenario_c_temp_outdoor"),
                 ): str,
                 vol.Optional(
                     "scenario_c_temp_forecast",
-                    default=enhanced_defaults["scenario_c_temp_forecast"],
-                    description={
-                        "suggested_value": _sv("scenario_c_temp_forecast")
-                        if enhanced_defaults["scenario_c_temp_forecast"] in ("", None)
-                        else "",
-                    },
+                    default=_ui_default("scenario_c_temp_forecast"),
                 ): str,
                 vol.Optional(
                     "scenario_c_start_hour",
-                    default=enhanced_defaults["scenario_c_start_hour"],
-                    description={
-                        "suggested_value": _sv("scenario_c_start_hour")
-                        if enhanced_defaults["scenario_c_start_hour"] in ("", None)
-                        else "",
-                    },
+                    default=_ui_default("scenario_c_start_hour"),
                 ): str,
             }
         )
@@ -376,7 +458,12 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 "linked_group",
             ):
                 if k in sub.data:
-                    defaults[k] = sub.data[k]
+                    # migrate old key if present
+                    if k == "room_temp_entity":
+                        # keep old key name in defaults to preserve behavior for _page1_defaults
+                        defaults[k] = sub.data[k]
+                    else:
+                        defaults[k] = sub.data[k]
             # Resolve previously stored linked_group_id to display name
             if not defaults.get("linked_group"):
                 gid = sub.data.get("linked_group_id")
@@ -396,8 +483,14 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         group_display_options: list[str],
     ) -> vol.Schema:
         """Build the serializable schema for page 1."""
+
+        # Helper function to ensure string defaults for Voluptuous schema compatibility
+        def _ui_default(key: str) -> str:
+            value = defaults.get(key, "")
+            return str(value) if value not in ("", None) else ""
+
         schema_dict: dict[Any, Any] = {}
-        schema_dict[vol.Required("name", default=defaults.get("name", ""))] = str
+        schema_dict[vol.Required("name", default=_ui_default("name"))] = str
         # All numeric fields entered as text; coerced after submit
         for key in (
             "azimuth",
@@ -410,20 +503,28 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             "shadow_depth",
             "shadow_offset",
         ):
-            schema_dict[vol.Optional(key, default=defaults.get(key, ""))] = str
+            schema_dict[vol.Optional(key, default=_ui_default(key))] = str
 
+        # Note: temp_sensor_options now contain option dicts ({value,label}), but
+        # vol.In expects values; accept an empty string or any of the values.
         schema_dict[
             vol.Optional(
-                "room_temp_entity", default=defaults.get("room_temp_entity", "")
+                "indoor_temperature_sensor",
+                default=_ui_default("indoor_temperature_sensor"),
             )
-        ] = vol.In(["", *temp_sensor_options])
+        ] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=cast("Any", temp_sensor_options),
+                custom_value=True,
+            )
+        )
 
         # Use a clearable dropdown for group assignment
         schema_dict[
             vol.Optional(
                 "linked_group",
                 description={
-                    "suggested_value": defaults.get("linked_group", NONE_LABEL)
+                    "suggested_value": _ui_default("linked_group") or NONE_LABEL
                 },
             )
         ] = selector.SelectSelector(
@@ -469,8 +570,6 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
     # ----- Page 1: Basic window configuration -----
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
         """Render basic window configuration (page 1)."""
-        _LOGGER.debug("WindowSubentryFlowHandler.user: input=%s", user_input)
-
         # Prepare temperature sensor options
         temp_sensor_options = await get_temperature_sensor_entities(self.hass)
 
@@ -479,9 +578,14 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         group_display_options = [name for _, name in group_options_map]
         defaults = self._page1_defaults(group_options_map)
 
+        # Helper function to ensure string defaults for Voluptuous schema compatibility
+        def _ui_default(key: str) -> str:
+            value = defaults.get(key, "")
+            return str(value) if value not in ("", None) else ""
+
         # Build schema, only include group if groups exist
         schema_dict = {}
-        schema_dict[vol.Required("name", default=defaults.get("name", ""))] = str
+        schema_dict[vol.Required("name", default=_ui_default("name"))] = str
         for key in (
             "azimuth",
             "azimuth_min",
@@ -493,17 +597,19 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             "shadow_depth",
             "shadow_offset",
         ):
-            schema_dict[vol.Optional(key, default=defaults.get(key, ""))] = str
+            schema_dict[vol.Optional(key, default=_ui_default(key))] = str
 
-        # Use a clearable dropdown for room_temp_entity
+        # Use a clearable dropdown for indoor_temperature_sensor
         schema_dict[
             vol.Optional(
-                "room_temp_entity",
-                description={"suggested_value": defaults.get("room_temp_entity", "")},
+                "indoor_temperature_sensor",
+                description={
+                    "suggested_value": _ui_default("indoor_temperature_sensor")
+                },
             )
         ] = selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=temp_sensor_options,
+                options=cast("Any", temp_sensor_options),
                 custom_value=True,
             )
         )
@@ -513,7 +619,7 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             schema_dict[
                 vol.Optional(
                     "linked_group",
-                    description={"suggested_value": defaults.get("linked_group", "")},
+                    description={"suggested_value": _ui_default("linked_group")},
                 )
             ] = selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -531,6 +637,19 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         if user_input is None:
             self._page1 = {}
         else:
+            # Accept old key name for compatibility
+            if (
+                "room_temp_entity" in user_input
+                and "indoor_temperature_sensor" not in user_input
+            ):
+                user_input["indoor_temperature_sensor"] = user_input.get(
+                    "room_temp_entity", ""
+                )
+            # Convert UI inherit marker to storage empty
+            if "indoor_temperature_sensor" in user_input:
+                user_input["indoor_temperature_sensor"] = _convert_inherit_value(
+                    user_input.get("indoor_temperature_sensor")
+                )
             self._page1 = self._page1_process_submit(user_input, group_options_map)
         return await self.async_step_overrides()
 
@@ -539,8 +658,6 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         """Render window overrides (page 2)."""
-        _LOGGER.debug("WindowSubentryFlowHandler.overrides: input=%s", user_input)
-
         defaults: dict[str, Any] = {
             # All fields on this page can be empty
             "g_value": "",
@@ -640,8 +757,6 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> Any:
         """Render window scenario configuration (page 3)."""
-        _LOGGER.debug("WindowSubentryFlowHandler.scenarios: input=%s", user_input)
-
         defaults: dict[str, Any] = {
             # All fields clearable; scenario enable moved to entities
             "scenario_b_temp_indoor": "",

@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Solar Window System from a config entry."""
-    _LOGGER.info("Setting up entry: %s", entry.title)
+    _LOGGER.debug("Setting up entry: %s", entry.title)
     _LOGGER.debug("Entry data: %s", entry.data)
     _LOGGER.debug("Entry ID: %s", entry.entry_id)
 
@@ -38,8 +38,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Handle group configurations entry (subentry parent)
     elif entry.data.get("entry_type") == "group_configs":
-        _LOGGER.debug("Handling group_configs entry - parent for subentries")
-
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
 
@@ -63,14 +61,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Handle window configurations entry (subentry parent)
     elif entry.data.get("entry_type") == "window_configs":
-        _LOGGER.debug("Handling window_configs entry - parent for subentries")
-        _LOGGER.debug("[WINDOW_CONFIGS] Entry: %s", entry)
-        _LOGGER.debug(
-            "[WINDOW_CONFIGS] Entry.subentries: %s",
-            getattr(entry, "subentries", None),
-        )
-        _LOGGER.debug("[WINDOW_CONFIGS] Entry.data: %s", entry.data)
-
         # Create devices for existing subentries
         await _create_subentry_devices(hass, entry)
 
@@ -99,7 +89,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _call: ServiceCall,
         ) -> None:
             """Service to manually create subentry devices."""
-            _LOGGER.debug("Manual service called: create_subentry_devices")
             for config_entry in hass.config_entries.async_entries(DOMAIN):
                 if config_entry.data.get("entry_type") in [
                     "group_configs",
@@ -111,7 +100,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN, "create_subentry_devices", create_subentry_devices_service
         )
 
-    _LOGGER.info("Setup completed for: %s", entry.title)
+    _LOGGER.debug("Setup completed for: %s", entry.title)
     return True
 
 
@@ -140,28 +129,13 @@ async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -
 
 async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Create devices for all subentries using proper Device Registry API."""
-    _LOGGER.debug("_create_subentry_devices called for entry: %s", entry.title)
-    _LOGGER.debug("[CREATE_SUBENTRY_DEVICES] entry: %r", entry)
-    _LOGGER.debug("[CREATE_SUBENTRY_DEVICES] entry.data: %r", entry.data)
-    _LOGGER.debug(
-        "[CREATE_SUBENTRY_DEVICES] entry.subentries: %r",
-        getattr(entry, "subentries", None),
-    )
     device_registry = dr.async_get(hass)
 
     # The correct way to access subentries is through entry.subentries
     # This is a dict where keys are subentry IDs and values are ConfigSubentry objects
-    _LOGGER.debug("Entry subentries: %s", getattr(entry, "subentries", None))
-    _LOGGER.debug("Subentries type: %s", type(getattr(entry, "subentries", None)))
 
     if getattr(entry, "subentries", None):
         for subentry_id, subentry in entry.subentries.items():
-            _LOGGER.debug("Processing subentry ID: %s", subentry_id)
-            _LOGGER.debug("Subentry object: %s", subentry)
-            _LOGGER.debug("Subentry title: %s", getattr(subentry, "title", None))
-            _LOGGER.debug("Subentry data: %s", getattr(subentry, "data", None))
-            _LOGGER.debug("Subentry type: %s", getattr(subentry, "subentry_type", None))
-
             if subentry.subentry_type == "group":
                 group_name = subentry.title
                 _LOGGER.debug("Creating device for group subentry: %s", group_name)
@@ -178,10 +152,6 @@ async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> N
                 )
                 _LOGGER.debug(
                     "Device created for subentry: %s (%s)", device.name, device.id
-                )
-                _LOGGER.debug(
-                    "Device config_entries_subentries: %s",
-                    device.config_entries_subentries,
                 )
             elif subentry.subentry_type == "window":
                 window_name = subentry.title
@@ -213,7 +183,7 @@ async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> N
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.info("Unloading entry: %s", entry.title)
+    _LOGGER.debug("Unloading entry: %s", entry.title)
 
     # Unload platforms if this is the global config entry
     if entry.title == "Solar Window System":
