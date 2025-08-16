@@ -13,16 +13,18 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-
     # Register recalculate service (only once)
     if not hass.services.has_service(DOMAIN, "recalculate"):
+
         async def handle_recalculate_service(call: ServiceCall) -> None:
             """Service to trigger recalculation for all or a specific window."""
             window_id = call.data.get("window_id")
             # Recalculate for all window_configs coordinators
             for config_entry in hass.config_entries.async_entries(DOMAIN):
                 if config_entry.data.get("entry_type") == "window_configs":
-                    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+                    coordinator = hass.data[DOMAIN][config_entry.entry_id][
+                        "coordinator"
+                    ]
                     await coordinator.async_refresh()
                     # If a specific window_id is given, optionally filter or log
                     if window_id:
@@ -31,9 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     else:
                         _LOGGER.info("Recalculation triggered for all windows.")
 
-        hass.services.async_register(
-            DOMAIN, "recalculate", handle_recalculate_service
-        )
+        hass.services.async_register(DOMAIN, "recalculate", handle_recalculate_service)
     """Set up Solar Window System from a config entry."""
     _LOGGER.debug("Setting up entry: %s", entry.title)
     _LOGGER.debug("Entry data: %s", entry.data)

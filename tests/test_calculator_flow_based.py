@@ -5,45 +5,70 @@ def test_recalculation_triggered_on_weather_warning(monkeypatch):
     mock_entry.data = {"entry_type": "window_configs"}
     calculator = SolarWindowCalculator(Mock(), mock_entry)
     # Patch methods to simulate one window
-    monkeypatch.setattr(calculator, '_get_subentries_by_type', lambda t: {
-        'window': {'w1': VALID_WINDOW_DATA.copy()} if t == 'window' else {},
-        'group': {},
-        'global': {'global_config': {}}
-    }[t])
-    monkeypatch.setattr(calculator, '_get_global_data_merged', lambda: {
-        'solar_radiation_sensor': 'sensor.solar_radiation',
-        'outdoor_temperature_sensor': 'sensor.outdoor_temp',
-        'weather_forecast_temperature_sensor': 'sensor.forecast_temp',
-        'weather_warning_sensor': 'sensor.weather_warning',
-    })
-    monkeypatch.setattr(calculator, '_get_cached_entity_state', lambda *a, **kw: 0)
-    monkeypatch.setattr(calculator, 'get_safe_attr', lambda *a, **kw: 0)
-    monkeypatch.setattr(calculator, 'get_effective_config_from_flows', lambda w: ({
-        'physical': VALID_PHYSICAL,
-        'thresholds': VALID_THRESHOLDS,
-        'temperatures': VALID_TEMPERATURES,
-    }, {}))
-    monkeypatch.setattr(calculator, 'apply_global_factors', lambda c, g, e: c)
-    monkeypatch.setattr(calculator, '_should_shade_window_from_flows', lambda req: (True, 'Should shade'))
-    monkeypatch.setattr(calculator, '_get_scenario_enables_from_flows', lambda w, e: (False, False))
+    monkeypatch.setattr(
+        calculator,
+        "_get_subentries_by_type",
+        lambda t: {
+            "window": {"w1": VALID_WINDOW_DATA.copy()} if t == "window" else {},
+            "group": {},
+            "global": {"global_config": {}},
+        }[t],
+    )
+    monkeypatch.setattr(
+        calculator,
+        "_get_global_data_merged",
+        lambda: {
+            "solar_radiation_sensor": "sensor.solar_radiation",
+            "outdoor_temperature_sensor": "sensor.outdoor_temp",
+            "weather_forecast_temperature_sensor": "sensor.forecast_temp",
+            "weather_warning_sensor": "sensor.weather_warning",
+        },
+    )
+    monkeypatch.setattr(calculator, "_get_cached_entity_state", lambda *a, **kw: 0)
+    monkeypatch.setattr(calculator, "get_safe_attr", lambda *a, **kw: 0)
+    monkeypatch.setattr(
+        calculator,
+        "get_effective_config_from_flows",
+        lambda w: (
+            {
+                "physical": VALID_PHYSICAL,
+                "thresholds": VALID_THRESHOLDS,
+                "temperatures": VALID_TEMPERATURES,
+            },
+            {},
+        ),
+    )
+    monkeypatch.setattr(calculator, "apply_global_factors", lambda c, g, e: c)
+    monkeypatch.setattr(
+        calculator,
+        "_should_shade_window_from_flows",
+        lambda req: (True, "Should shade"),
+    )
+    monkeypatch.setattr(
+        calculator, "_get_scenario_enables_from_flows", lambda w, e: (False, False)
+    )
 
     # Simulate weather warning off, then on
     call_count = {"count": 0}
     orig_calc = calculator.calculate_all_windows_from_flows
+
     def counting_calc():
         call_count["count"] += 1
         return orig_calc()
-    monkeypatch.setattr(calculator, 'calculate_all_windows_from_flows', counting_calc)
+
+    monkeypatch.setattr(calculator, "calculate_all_windows_from_flows", counting_calc)
 
     # First call: weather warning off
-    monkeypatch.setattr(calculator, '_get_cached_entity_state', lambda *a, **kw: "off")
+    monkeypatch.setattr(calculator, "_get_cached_entity_state", lambda *a, **kw: "off")
     calculator.calculate_all_windows_from_flows()
     # Second call: weather warning on
-    monkeypatch.setattr(calculator, '_get_cached_entity_state', lambda *a, **kw: "on")
+    monkeypatch.setattr(calculator, "_get_cached_entity_state", lambda *a, **kw: "on")
     calculator.calculate_all_windows_from_flows()
 
     # The calculation should have been triggered twice
     assert call_count["count"] == 2
+
+
 """
 Refactored test suite for the SolarWindowCalculator: geometric shadows, entity caching, flow config, solar power, and integration.
 """
@@ -288,31 +313,52 @@ def test_shade_required_false_when_calculation_conditions_not_met(monkeypatch):
     mock_entry.data = {"entry_type": "window_configs"}
     calculator = SolarWindowCalculator(Mock(), mock_entry)
     # Patch methods to simulate one window and low radiation
-    monkeypatch.setattr(calculator, '_get_subentries_by_type', lambda t: {
-        'window': {'w1': VALID_WINDOW_DATA.copy()} if t == 'window' else {},
-        'group': {},
-        'global': {'global_config': {}}
-    }[t])
-    monkeypatch.setattr(calculator, '_get_global_data_merged', lambda: {
-        'solar_radiation_sensor': 'sensor.solar_radiation',
-        'outdoor_temperature_sensor': 'sensor.outdoor_temp',
-        'weather_forecast_temperature_sensor': 'sensor.forecast_temp',
-        'weather_warning_sensor': 'sensor.weather_warning',
-    })
-    monkeypatch.setattr(calculator, '_get_cached_entity_state', lambda *a, **kw: 0)
-    monkeypatch.setattr(calculator, 'get_safe_attr', lambda *a, **kw: 0)
-    monkeypatch.setattr(calculator, 'get_effective_config_from_flows', lambda w: ({
-        'physical': VALID_PHYSICAL,
-        'thresholds': VALID_THRESHOLDS,
-        'temperatures': VALID_TEMPERATURES,
-    }, {}))
-    monkeypatch.setattr(calculator, 'apply_global_factors', lambda c, g, e: c)
-    monkeypatch.setattr(calculator, '_should_shade_window_from_flows', lambda req: (True, 'Should shade'))
-    monkeypatch.setattr(calculator, '_get_scenario_enables_from_flows', lambda w, e: (False, False))
+    monkeypatch.setattr(
+        calculator,
+        "_get_subentries_by_type",
+        lambda t: {
+            "window": {"w1": VALID_WINDOW_DATA.copy()} if t == "window" else {},
+            "group": {},
+            "global": {"global_config": {}},
+        }[t],
+    )
+    monkeypatch.setattr(
+        calculator,
+        "_get_global_data_merged",
+        lambda: {
+            "solar_radiation_sensor": "sensor.solar_radiation",
+            "outdoor_temperature_sensor": "sensor.outdoor_temp",
+            "weather_forecast_temperature_sensor": "sensor.forecast_temp",
+            "weather_warning_sensor": "sensor.weather_warning",
+        },
+    )
+    monkeypatch.setattr(calculator, "_get_cached_entity_state", lambda *a, **kw: 0)
+    monkeypatch.setattr(calculator, "get_safe_attr", lambda *a, **kw: 0)
+    monkeypatch.setattr(
+        calculator,
+        "get_effective_config_from_flows",
+        lambda w: (
+            {
+                "physical": VALID_PHYSICAL,
+                "thresholds": VALID_THRESHOLDS,
+                "temperatures": VALID_TEMPERATURES,
+            },
+            {},
+        ),
+    )
+    monkeypatch.setattr(calculator, "apply_global_factors", lambda c, g, e: c)
+    monkeypatch.setattr(
+        calculator,
+        "_should_shade_window_from_flows",
+        lambda req: (True, "Should shade"),
+    )
+    monkeypatch.setattr(
+        calculator, "_get_scenario_enables_from_flows", lambda w, e: (False, False)
+    )
 
     results = calculator.calculate_all_windows_from_flows()
-    for win in results['windows'].values():
-        assert win['shade_required'] is False
+    for win in results["windows"].values():
+        assert win["shade_required"] is False
 
 
 # --- Integration/Performance Tests ---

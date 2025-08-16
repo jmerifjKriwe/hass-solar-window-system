@@ -542,7 +542,6 @@ class SolarWindowCalculator:
             except (ValueError, TypeError):
                 return default
 
-
         solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
         sun_azimuth = safe_float(states.get("sun_azimuth", 0.0), 0.0)
         sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
@@ -688,7 +687,6 @@ class SolarWindowCalculator:
         # coordinators with entry_type == 'window_configs' do calculations.
         entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
         should_calculate_windows = entry_type == "window_configs"
-
 
         # If this coordinator isn't responsible for windows, return all windows with shade_required: False
         if not should_calculate_windows:
