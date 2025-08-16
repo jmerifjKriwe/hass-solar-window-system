@@ -542,9 +542,28 @@ class SolarWindowCalculator:
             except (ValueError, TypeError):
                 return default
 
+
         solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
         sun_azimuth = safe_float(states.get("sun_azimuth", 0.0), 0.0)
         sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
+
+        # Thresholds for minimum radiation and elevation
+        MIN_RADIATION = 1e-3
+        MIN_ELEVATION = 0.0
+
+        # Check if minimums are met; if not, skip calculation
+        if solar_radiation < MIN_RADIATION or sun_elevation < MIN_ELEVATION:
+            return WindowCalculationResult(
+                power_total=0.0,
+                power_direct=0.0,
+                power_diffuse=0.0,
+                shadow_factor=1.0,
+                is_visible=False,
+                area_m2=0.0,
+                shade_required=False,
+                shade_reason="",
+                effective_threshold=effective_config["thresholds"]["direct"],
+            )
 
         # Physical parameters (robust cast)
         g_value = safe_float(effective_config["physical"].get("g_value", 0.5), 0.5)
@@ -670,19 +689,21 @@ class SolarWindowCalculator:
         entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
         should_calculate_windows = entry_type == "window_configs"
 
-        # If this coordinator isn't responsible for windows, return empty.
+
+        # If this coordinator isn't responsible for windows, return all windows with shade_required: False
         if not should_calculate_windows:
             _LOGGER.debug(
                 "Skipping calculations: entry_type '%s' does not calculate windows",
                 entry_type,
             )
-            return {}
+            windows = self._get_subentries_by_type("window")
+            return {"windows": {k: {"shade_required": False} for k in windows}}
 
-        # Get all window subentries; if none exist, skip calculations.
+        # Get all window subentries; if none exist, return all windows with shade_required: False
         windows = self._get_subentries_by_type("window")
         if not windows:
             _LOGGER.debug("No window subentries found; skipping calculations.")
-            return {}
+            return {"windows": {}}
 
         # Get external states (only when there are windows to calculate)
         # Debug: log which entity IDs are being used for external states
@@ -733,6 +754,17 @@ class SolarWindowCalculator:
         window_results = {}
         total_power = 0
         shading_count = 0
+
+        # Check if calculation conditions are met (minimum radiation/elevation)
+        min_radiation = external_states.get("solar_radiation", 0.0)
+        min_elevation = external_states.get("sun_elevation", 0.0)
+        if min_radiation < 1e-3 or min_elevation < 0.0:
+            for window_subentry_id, window_data in windows.items():
+                window_results[window_subentry_id] = {
+                    "name": window_data.get("name", window_subentry_id),
+                    "shade_required": False,
+                }
+            return {"windows": window_results}
 
         for window_subentry_id, window_data in windows.items():
             try:
