@@ -8,7 +8,7 @@ from homeassistant.components.text import TextEntity
 from homeassistant.const import EntityCategory
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-
+from homeassistant.helpers.restore_state import RestoreEntity
 from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ async def async_setup_entry(
         _LOGGER.warning("Global Configuration device not found")
 
 
-class GlobalConfigTextEntity(TextEntity):
+class GlobalConfigTextEntity(TextEntity, RestoreEntity):
     """Text entity for global configuration values."""
 
     def __init__(
@@ -91,8 +91,12 @@ class GlobalConfigTextEntity(TextEntity):
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+        # Restore previous state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None and isinstance(restored_state.state, str):
+            self._attr_native_value = restored_state.state
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -104,6 +108,6 @@ class GlobalConfigTextEntity(TextEntity):
                 )
 
     async def async_set_value(self, value: str) -> None:
-        """Update the current value."""
+        """Update the current value and persist state."""
         self._attr_native_value = value
         self.async_write_ha_state()

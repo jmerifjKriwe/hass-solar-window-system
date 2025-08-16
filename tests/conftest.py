@@ -1,10 +1,7 @@
-"""Global fixtures for Solar Window System integration tests."""
-
-from __future__ import annotations
-
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from homeassistant.core import HomeAssistant
 from unittest.mock import Mock
 
 import pytest
@@ -20,6 +17,7 @@ from custom_components.solar_window_system.const import (
     DOMAIN,
     GLOBAL_CONFIG_ENTITIES,
 )
+from tests.test_data import VALID_WINDOW_DATA
 
 
 # Ensure custom integrations are enabled for all tests
@@ -54,14 +52,7 @@ def valid_global_input() -> dict[str, str]:
 @pytest.fixture
 def valid_window_input() -> dict[str, str | float | int]:
     """Return valid input for window configuration flow."""
-    return {
-        "window_id": "living_room_1",
-        "name": "Living Room Window 1",
-        "g_value": 0.75,
-        "area": 2.5,
-        "orientation": "south",
-        "tilt_angle": 90,
-    }
+    return VALID_WINDOW_DATA.copy()
 
 
 @pytest.fixture
@@ -92,15 +83,8 @@ def window_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Return a registered window config entry."""
     entry = MockConfigEntry(
         domain=DOMAIN,
-        title="Living Room Window 1",
-        data={
-            "window_id": "living_room_1",
-            "name": "Living Room Window 1",
-            "g_value": 0.75,
-            "area": 2.5,
-            "orientation": "south",
-            "tilt_angle": 90,
-        },
+        title=VALID_WINDOW_DATA["name"],
+        data=VALID_WINDOW_DATA.copy(),
         entry_id="window_config_entry_id",
     )
     entry.add_to_hass(hass)

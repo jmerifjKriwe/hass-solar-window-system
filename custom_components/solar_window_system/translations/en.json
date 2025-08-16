@@ -85,6 +85,10 @@
       "created_missing_entries": "Created missing configuration entries",
       "missing_data": "Missing configuration data",
       "unknown_entry_type": "Unknown entry type"
+    },
+    "error": {
+      "invalid_number": "Please enter a valid number.",
+      "number_out_of_range": "Value is out of allowed range."
     }
   },
   "options": {
@@ -159,10 +163,6 @@
       }
     }
   },
-  "error": {
-    "invalid_number": "Please enter a valid number.",
-    "number_out_of_range": "Value is out of allowed range."
-  },
   "config_subentries": {
     "group": {
       "initiate_flow": {
@@ -184,11 +184,11 @@
           },
           "data_description": {
             "name": "Required. A friendly name for the group.",
-            "diffuse_factor": "0.05–0.50. Enter -1 to inherit from Group or Global.",
-            "threshold_direct": "0–1000 W/m². Enter -1 to inherit from Group or Global.",
-            "threshold_diffuse": "0–1000 W/m². Enter -1 to inherit from Group or Global.",
-            "temperature_indoor_base": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "temperature_outdoor_base": "10–30 °C. Enter -1 to inherit from Group or Global."
+            "diffuse_factor": "0.05–0.50. Enter -1 to inherit from Global.",
+            "threshold_direct": "0–1000 W/m². Enter -1 to inherit from Global.",
+            "threshold_diffuse": "0–1000 W/m². Enter -1 to inherit from Global.",
+            "temperature_indoor_base": "10–30 °C. Enter -1 to inherit from Global.",
+            "temperature_outdoor_base": "10–30 °C. Enter -1 to inherit from Global."
           }
         },
         "enhanced": {
@@ -206,13 +206,13 @@
           },
           "data_description": {
             "scenario_b_enable": "Choose Enable/Disable, or Inherit to use Global.",
-            "scenario_b_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_b_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
+            "scenario_b_temp_indoor": "10–30 °C. Enter -1 to inherit from Global.",
+            "scenario_b_temp_outdoor": "10–30 °C. Enter -1 to inherit from Global.",
             "scenario_c_enable": "Choose Enable/Disable, or Inherit to use Global.",
-            "scenario_c_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_c_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_c_temp_forecast": "15–40 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_c_start_hour": "0–23. Enter -1 to inherit from Group or Global.."
+            "scenario_c_temp_indoor": "10–30 °C. Enter -1 to inherit from Global.",
+            "scenario_c_temp_outdoor": "10–30 °C. Enter -1 to inherit from Global.",
+            "scenario_c_temp_forecast": "15–40 °C. Enter -1 to inherit from Global..",
+            "scenario_c_start_hour": "0–23. Enter -1 to inherit from Global."
           }
         },
         "reconfigure": {
@@ -228,16 +228,19 @@
           }
         }
       },
+      "error": {
+        "invalid_number": "Please enter a valid number.",
+        "number_out_of_range": "Value is out of allowed range."
+      },
       "add": "Add subentry",
-      "error": {},
       "abort": {
         "reconfigure_successful": "Changes saved"
       }
     },
     "window": {
       "initiate_flow": {
-        "user": "Add window ",
-        "reconfigure": "Reconfigure window configuration"
+        "user": "Add window",
+        "reconfigure": "Reconfigure window"
       },
       "entry_type": "Window configuration",
       "step": {
@@ -247,37 +250,37 @@
           "data": {
             "name": "Window name",
             "azimuth": "Azimuth (°)",
-            "azimuth_min": "Min azimuth (°)",
-            "azimuth_max": "Max azimuth (°)",
-            "elevation_min": "Min elevation (°)",
-            "elevation_max": "Max elevation (°)",
+            "azimuth_min": "Azimuth min (°)",
+            "azimuth_max": "Azimuth max (°)",
+            "elevation_min": "Elevation min (°)",
+            "elevation_max": "Elevation max (°)",
             "window_width": "Window width (m)",
             "window_height": "Window height (m)",
             "shadow_depth": "Shadow depth (m)",
             "shadow_offset": "Shadow offset (m)",
             "linked_group": "Linked to group",
-            "room_temp_entity": "Room temperature sensor"
+            "indoor_temperature_sensor": "Indoor temperature sensor"
           },
           "data_description": {
             "name": "Required. A friendly name for the window.",
-            "azimuth": "0–360°. Required; Enter -1 to inherit from Group or Global.",
-            "azimuth_min": "−90–0°. Required; Enter -1 to inherit from Group or Global.",
-            "azimuth_max": "0–90°. Required; Enter -1 to inherit from Group or Global.",
-            "elevation_min": "0–90°. Required; Enter -1 to inherit from Group or Global.",
-            "elevation_max": "0–90°. Required; Enter -1 to inherit from Group or Global.",
-            "window_width": "0.10–10.00 m. Required; Enter -1 to inherit from Group or Global.",
-            "window_height": "0.10–10.00 m. Required; Enter -1 to inherit from Group or Global.",
-            "shadow_depth": "0–5 m. Required; Enter -1 to inherit from Group or Global.",
-            "shadow_offset": "0–5 m. Required; Enter -1 to inherit from Group or Global.",
-            "linked_group": "Select a group or choose ‘(none)’ to keep independent.",
-            "room_temp_entity": "Optional. A temperature sensor entity (°C/°F)."
+            "azimuth": "0–360°. Required.",
+            "azimuth_min": "−90–0°. Required.",
+            "azimuth_max": "0–90°. Required.",
+            "elevation_min": "0–90°. Required.",
+            "elevation_max": "0–90°. Required.",
+            "window_width": "0.10–10.00 m. Enter -1 to inherit from Global.",
+            "window_height": "0.10–10.00 m. Enter -1 to inherit from Global.",
+            "shadow_depth": "0–5 m. Enter -1 to inherit from Global.",
+            "shadow_offset": "0–5 m. Enter -1 to inherit from Global.",
+            "linked_group": "Select a group or '(none)' for independent.",
+            "indoor_temperature_sensor": "Optional. A temperature sensor (°C/°F/K). Enter -1 to inherit from Group/Global."
           }
         },
         "overrides": {
           "title": "Overrides",
           "description": "Optional window-specific parameters",
           "data": {
-            "g_value": "G-value",
+            "g_value": "g-value",
             "frame_width": "Frame width (m)",
             "tilt": "Tilt (°)",
             "diffuse_factor": "Diffuse factor",
@@ -311,37 +314,40 @@
             "scenario_c_start_hour": "Scenario C start hour"
           },
           "data_description": {
-            "scenario_b_enable": "Enable/Disable, or Inherit to use Group or Global.",
-            "scenario_b_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_b_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_c_enable": "Enable/Disable, or Inherit to use Group or Global.",
-            "scenario_c_temp_indoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_c_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group or Global.",
-            "scenario_c_temp_forecast": "15–40 °C. Enter -1 to inherit from Group or Global..",
+            "scenario_b_enable": "Enable/Disable or Inherit to use Group/Global.",
+            "scenario_b_temp_indoor": "10–30 °C. Enter -1 to inherit from Group/Global.",
+            "scenario_b_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group/Global.",
+            "scenario_c_enable": "Enable/Disable or Inherit to use Group/Global.",
+            "scenario_c_temp_indoor": "10–30 °C. Enter -1 to inherit from Group/Global.",
+            "scenario_c_temp_outdoor": "10–30 °C. Enter -1 to inherit from Group/Global.",
+            "scenario_c_temp_forecast": "15–40 °C. Enter -1 to inherit from Group/Global.",
             "scenario_c_start_hour": "0–23. Enter -1 to inherit from Group/Global."
           }
         },
         "reconfigure": {
           "title": "Update window",
-          "description": "Update the window configuration",
+          "description": "Update window configuration",
           "data": {
             "name": "Window name",
             "azimuth": "Azimuth (°)",
-            "azimuth_min": "Min azimuth (°)",
-            "azimuth_max": "Max azimuth (°)",
-            "elevation_min": "Min elevation (°)",
-            "elevation_max": "Max elevation (°)",
+            "azimuth_min": "Azimuth min (°)",
+            "azimuth_max": "Azimuth max (°)",
+            "elevation_min": "Elevation min (°)",
+            "elevation_max": "Elevation max (°)",
             "window_width": "Window width (m)",
             "window_height": "Window height (m)",
             "shadow_depth": "Shadow depth (m)",
             "shadow_offset": "Shadow offset (m)",
             "linked_group": "Linked to group",
-            "room_temp_entity": "Room temperature sensor"
+            "indoor_temperature_sensor": "Indoor temperature sensor"
           }
         }
       },
+      "error": {
+        "invalid_number": "Please enter a valid number.",
+        "number_out_of_range": "Value is out of allowed range."
+      },
       "add": "Add subentry",
-      "error": {},
       "abort": {
         "reconfigure_successful": "Changes saved"
       }
@@ -350,7 +356,7 @@
   "labels": {
     "none": "(none)",
     "overrides": {
-      "g_value": "G-value",
+      "g_value": "g-value",
       "frame_width": "Frame width (m)",
       "tilt": "Tilt (°)",
       "diffuse_factor": "Diffuse factor",

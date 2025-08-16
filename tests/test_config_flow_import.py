@@ -1,14 +1,13 @@
-"""Basic import test for the config_flow module."""
-
-from __future__ import annotations
+"""Test for clean import and presence of main config flow class."""
 
 import importlib
+import pytest
 
 
-def test_config_flow_imports_cleanly() -> None:
-    """Ensure the config_flow module imports without syntax errors."""
+def test_config_flow_imports_cleanly():
+    """Ensure the config_flow module imports and contains SolarWindowSystemConfigFlow."""
     importlib.invalidate_caches()
     mod = importlib.import_module("custom_components.solar_window_system.config_flow")
-    if not hasattr(mod, "SolarWindowSystemConfigFlow"):
-        msg = "Missing SolarWindowSystemConfigFlow"
-        raise AssertionError(msg)
+    assert hasattr(mod, "SolarWindowSystemConfigFlow"), (
+        "Missing SolarWindowSystemConfigFlow"
+    )

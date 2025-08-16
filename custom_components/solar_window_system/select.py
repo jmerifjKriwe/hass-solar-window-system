@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
@@ -209,7 +210,7 @@ async def _get_temperature_sensor_entities(hass: HomeAssistant) -> list[str]:
     return temperature_entities
 
 
-class GlobalConfigSelectEntity(SelectEntity):
+class GlobalConfigSelectEntity(SelectEntity, RestoreEntity):
     """Select entity for global configuration values."""
 
     def __init__(
@@ -245,8 +246,12 @@ class GlobalConfigSelectEntity(SelectEntity):
             )
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+        # Restore previous state if available
+        if (restored_state := await self.async_get_last_state()) is not None:
+            if restored_state.state in self._attr_options:
+                self._attr_current_option = restored_state.state
         # Set friendly name to config['name'] (e.g. 'Weather Warning Sensor')
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -258,12 +263,12 @@ class GlobalConfigSelectEntity(SelectEntity):
                 )
 
     async def async_select_option(self, option: str) -> None:
-        """Update the current selection."""
+        """Update the current selection and persist state."""
         self._attr_current_option = option
         self.async_write_ha_state()
 
 
-class GroupConfigSelectEntity(SelectEntity):
+class GroupConfigSelectEntity(SelectEntity, RestoreEntity):
     """Select entity for group configuration scenario enables."""
 
     def __init__(
@@ -304,9 +309,12 @@ class GroupConfigSelectEntity(SelectEntity):
             )
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
-
+        # Restore previous state if available
+        if (restored_state := await self.async_get_last_state()) is not None:
+            if restored_state.state in self._attr_options:
+                self._attr_current_option = restored_state.state
         # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -318,7 +326,7 @@ class GroupConfigSelectEntity(SelectEntity):
                 )
 
     async def async_select_option(self, option: str) -> None:
-        """Update the current selection."""
+        """Update the current selection and persist state."""
         self._attr_current_option = option
         self.async_write_ha_state()
 
@@ -331,15 +339,12 @@ async def _setup_window_config_selects(
     """Set up Window Configuration select entities."""
 
     device_registry = dr.async_get(hass)
-
     if not entry.subentries:
         _LOGGER.warning("No window subentries found")
         return
-
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != "window":
             continue
-
         window_name = subentry.title
         window_device = None
 
@@ -400,12 +405,16 @@ async def _setup_window_config_selects(
         async_add_entities(subentry_select_entities, config_subentry_id=subentry_id)
 
 
-class WindowConfigSelectEntity(SelectEntity):
+class WindowConfigSelectEntity(SelectEntity, RestoreEntity):
     """Select entity for window configuration scenario enables."""
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+        # Restore previous state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None and restored_state.state in self._attr_options:
+            self._attr_current_option = restored_state.state
         # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -457,6 +466,6 @@ class WindowConfigSelectEntity(SelectEntity):
             )
 
     async def async_select_option(self, option: str) -> None:
-        """Update the current selection."""
+        """Update the current selection and persist state."""
         self._attr_current_option = option
         self.async_write_ha_state()

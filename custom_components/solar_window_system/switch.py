@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-
+from homeassistant.helpers.restore_state import RestoreEntity
 from .const import (
     DOMAIN,
     ENTITY_PREFIX_GLOBAL,
@@ -59,7 +59,7 @@ async def async_setup_entry(
         _LOGGER.warning("Global Configuration device not found")
 
 
-class GlobalConfigSwitchEntity(SwitchEntity):
+class GlobalConfigSwitchEntity(SwitchEntity, RestoreEntity):
     """Switch entity for global configuration boolean values."""
 
     def __init__(
@@ -88,8 +88,15 @@ class GlobalConfigSwitchEntity(SwitchEntity):
         self._attr_is_on = config["default"]
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+        # Restore previous state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            if restored_state.state.lower() in ("on", "true", "1"):
+                self._attr_is_on = True
+            elif restored_state.state.lower() in ("off", "false", "0"):
+                self._attr_is_on = False
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -101,11 +108,11 @@ class GlobalConfigSwitchEntity(SwitchEntity):
                 )
 
     async def async_turn_on(self) -> None:
-        """Turn the entity on."""
+        """Turn the entity on and persist state."""
         self._attr_is_on = True
         self.async_write_ha_state()
 
     async def async_turn_off(self) -> None:
-        """Turn the entity off."""
+        """Turn the entity off and persist state."""
         self._attr_is_on = False
         self.async_write_ha_state()

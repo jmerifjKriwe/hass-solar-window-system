@@ -9,6 +9,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN
 
@@ -90,7 +91,9 @@ async def async_setup_entry(
         async_add_entities([entity], config_subentry_id=subentry_id)
 
 
-class WindowShadingRequiredBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class WindowShadingRequiredBinarySensor(
+    CoordinatorEntity, BinarySensorEntity, RestoreEntity
+):
     """Binary sensor indicating if shading is required for a window."""
 
     coordinator: SolarWindowSystemCoordinator
@@ -162,8 +165,12 @@ class WindowShadingRequiredBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return attributes
 
     async def async_added_to_hass(self) -> None:
-        """Set a clean friendly name without prefixes (like the Selects)."""
+        """Restore previous state if available and set a clean friendly name."""
         await super().async_added_to_hass()
+        # Restore previous state if available (for UI consistency, not logic)
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            self._restored_state = restored_state.state
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
             ent_reg_entry = entity_registry.entities[self.entity_id]

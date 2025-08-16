@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.components.sensor import SensorEntity
 
 from .const import ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES, DOMAIN
 
@@ -22,7 +23,6 @@ async def async_create_global_config_entities(
     hass: HomeAssistant, device: dr.DeviceEntry
 ) -> None:
     """Create all global configuration entities for the global config device."""
-
     # Get available entities for selectors
     binary_sensors = await _get_binary_sensor_entities(hass)
     input_booleans = await _get_input_boolean_entities(hass)
@@ -168,10 +168,6 @@ async def _create_template_sensor_via_service(
     entity_key: str,
 ) -> None:
     """Create a template sensor entity."""
-    # Create a simple sensor entity that will be managed by this integration
-    entity_id = f"sensor.{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-
-    # We'll add this sensor through the sensor platform instead
     # This is a placeholder - sensors will be created through platform setup
 
 
@@ -240,7 +236,7 @@ async def _get_temperature_sensor_entities(hass: HomeAssistant) -> list[str]:
     return temperature_entities
 
 
-class GlobalConfigSensor(Entity):
+class GlobalConfigSensor(RestoreEntity, SensorEntity):
     """Sensor entity for global configuration values."""
 
     def __init__(
@@ -270,9 +266,16 @@ class GlobalConfigSensor(Entity):
         self._state = config["default"]
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
-
+        # Restore previous state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            try:
+                value = float(restored_state.state)
+                self._state = value
+            except (ValueError, TypeError):
+                pass
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -282,7 +285,6 @@ class GlobalConfigSensor(Entity):
                 entity_registry.async_update_entity(
                     self.entity_id, name=new_friendly_name
                 )
-
         # For aggregated sensors, listen to coordinator updates
         sensor_keys = [
             "total_power",

@@ -24,11 +24,12 @@ async def get_temperature_sensor_entities(hass: Any) -> list[dict]:
     # The label is provided via translation in the front-end; use a safe
     # fallback label here in case translations aren't loaded at call time.
     try:
-        inherit_label = hass.helpers.translation.async_gettext(
+        inherit_label = await hass.helpers.translation.async_gettext(
             "options.step.global_basic.data_description.option_inherit"
         )
-    except AttributeError:
+    except (AttributeError, TypeError):
         # If translation helper isn't available in this context, use fallback.
+        # TypeError can be raised if the translation key is not found.
         inherit_label = "Inherit (use parent value)"
     options.append({"value": "-1", "label": str(inherit_label)})
 

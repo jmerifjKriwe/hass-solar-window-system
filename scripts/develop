@@ -8,6 +8,9 @@ cd "$(dirname "$0")/.."
 if [ "$1" == "--clean" ]; then
   echo "Cleaning .storage directory..."
   rm -rf "${PWD}/config/.storage"
+  echo "Cleaning HomeAssistant DB..."
+  rm -rf "${PWD}/config/home-assistant_v2.db"
+  echo "Done"
 fi
 
 # Create config dir if not present

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.entity import Entity
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import (
 
 from .const import DOMAIN, GLOBAL_CONFIG_ENTITIES
 from .global_config import GlobalConfigSensor
+from homeassistant.helpers.restore_state import RestoreEntity
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -71,7 +72,7 @@ async def async_setup_entry(
             _LOGGER.warning("Global Configuration device not found")
 
 
-class SolarWindowSystemGroupDummySensor(Entity):
+class SolarWindowSystemGroupDummySensor(RestoreEntity, SensorEntity):
     """Dummy sensor for group configurations."""
 
     def __init__(self, group_id: str, group_name: str) -> None:
@@ -89,7 +90,17 @@ class SolarWindowSystemGroupDummySensor(Entity):
     @property
     def state(self) -> int:
         """Return the state of the sensor."""
-        return 42
+        return getattr(self, "_restored_state", 42)
+
+    async def async_added_to_hass(self) -> None:
+        """Restore previous state if available."""
+        await super().async_added_to_hass()
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            try:
+                self._restored_state = int(restored_state.state)
+            except (ValueError, TypeError):
+                self._restored_state = 42
 
 
 async def _setup_group_power_sensors(
@@ -128,7 +139,7 @@ async def _setup_group_power_sensors(
             _LOGGER.warning("Group device not found for: %s", group_name)
             continue
 
-        entities: list[Entity] = []
+        entities = []
         # Get coordinator from hass.data
         coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         for key, label in (
@@ -186,7 +197,7 @@ async def _setup_window_power_sensors(
             _LOGGER.warning("Window device not found for: %s", window_name)
             continue
 
-        entities: list[Entity] = []
+        entities = []
         # Get coordinator from hass.data
         coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         for key, label in (
@@ -213,7 +224,7 @@ async def _setup_window_power_sensors(
             async_add_entities(entities, config_subentry_id=subentry_id)
 
 
-class GroupWindowPowerSensor(CoordinatorEntity):
+class GroupWindowPowerSensor(CoordinatorEntity, RestoreEntity):
     """Sensor for group/window total power metrics with predictable IDs."""
 
     def __init__(
@@ -254,26 +265,39 @@ class GroupWindowPowerSensor(CoordinatorEntity):
 
     @property
     def state(self) -> Any:
-        """Return current power value from latest coordinator data."""
-        if not self.coordinator or not self.coordinator.data:
-            return None
-        if self._kind == "window":
-            windows = self.coordinator.data.get("windows", {})
-            for win_data in windows.values():
-                if win_data.get("name") == self._object_name:
-                    return win_data.get(self._key)
-        elif self._kind == "group":
-            groups = self.coordinator.data.get("groups", {})
-            for group_data in groups.values():
-                if group_data.get("name") == self._object_name:
-                    return group_data.get(self._key)
-        return None
+        """
+        Return current power value from latest coordinator data or restore if
+        unavailable.
+
+        If no data is available, returns the restored state if available.
+        """
+        if self.coordinator and self.coordinator.data:
+            if self._kind == "window":
+                windows = self.coordinator.data.get("windows", {})
+                for win_data in windows.values():
+                    if win_data.get("name") == self._object_name:
+                        return win_data.get(self._key)
+            elif self._kind == "group":
+                groups = self.coordinator.data.get("groups", {})
+                for group_data in groups.values():
+                    if group_data.get("name") == self._object_name:
+                        return group_data.get(self._key)
+        # If no data, return restored state if available
+        return getattr(self, "_restored_state", None)
 
     # Removed duplicate state property
 
     async def async_added_to_hass(self) -> None:
-        """Set a clean friendly name without prefixes (like the Selects)."""
+        """Restore previous state if available and set a clean friendly name."""
         await super().async_added_to_hass()
+        # Restore state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            try:
+                self._restored_state = float(restored_state.state)
+            except (ValueError, TypeError):
+                self._restored_state = None
+        # Set clean friendly name
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
             ent_reg_entry = entity_registry.entities[self.entity_id]

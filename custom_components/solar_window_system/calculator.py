@@ -45,6 +45,57 @@ class ShadeRequestFlow(NamedTuple):
 
 
 class SolarWindowCalculator:
+    def _calculate_shadow_factor(
+        self,
+        sun_elevation: float,
+        sun_azimuth: float,
+        window_azimuth: float,
+        shadow_depth: float,
+        shadow_offset: float,
+    ) -> float:
+        """
+        Calculate the geometric shadow factor for a window.
+        Returns a value between 0.1 (full shadow) and 1.0 (no shadow).
+        """
+        # If no shadow geometry, return 1.0 (no shadow)
+        if shadow_depth <= 0 and shadow_offset <= 0:
+            return 1.0
+
+        # Projected shadow length on the window plane
+        # sun_elevation in degrees, convert to radians
+        sun_el_rad = math.radians(sun_elevation)
+        if sun_el_rad <= 0:
+            return 1.0  # sun below horizon, no shadow
+
+        # Calculate the angle difference between sun and window azimuth
+        az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
+        az_factor = max(
+            0.0, math.cos(math.radians(az_diff))
+        )  # 1.0 = direct, 0.0 = perpendicular
+
+        # Shadow length: shadow_depth / tan(sun_elevation)
+        try:
+            shadow_length = shadow_depth / max(math.tan(sun_el_rad), 1e-3)
+        except Exception:
+            shadow_length = 0.0
+
+        # Effective shadow on window: shadow_length - shadow_offset
+        effective_shadow = max(0.0, shadow_length - shadow_offset)
+
+        # Heuristic: if effective_shadow is large, strong shadow; if small, weak shadow
+        # For simplicity, assume window height = 1.0m (normalized)
+        window_height = 1.0
+        if effective_shadow <= 0:
+            return 1.0  # no shadow
+        elif effective_shadow >= window_height:
+            return 0.1  # full shadow (minimum factor)
+        else:
+            # Linear interpolation between 1.0 (no shadow) and 0.1 (full shadow)
+            factor = 1.0 - 0.9 * (effective_shadow / window_height)
+            # Angle dependency: more shadow if sun is direct, less if angled
+            factor = factor * az_factor + (1.0 - az_factor)
+            return max(0.1, min(1.0, factor))
+
     def __init__(
         self, hass, defaults_config=None, groups_config=None, windows_config=None
     ):
@@ -100,17 +151,42 @@ class SolarWindowCalculator:
     def apply_global_factors(
         self, config: dict[str, Any], group_type: str, states: dict[str, Any]
     ) -> dict[str, Any]:
-        """Apply global sensitivity and offset factors to configuration."""
-        sensitivity = states.get("sensitivity", 1.0)
+        """Apply global sensitivity and offset factors to configuration, robust gegen ungültige Werte."""
+
+        def safe_float(val, default=0.0):
+            if val in ("", None, "inherit", "-1", -1):
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        # Schwellenwerte robust casten
+        config["thresholds"]["direct"] = safe_float(
+            config["thresholds"].get("direct", 200), 200
+        )
+        config["thresholds"]["diffuse"] = safe_float(
+            config["thresholds"].get("diffuse", 150), 150
+        )
+
+        sensitivity = safe_float(states.get("sensitivity", 1.0), 1.0)
         config["thresholds"]["direct"] /= sensitivity
         config["thresholds"]["diffuse"] /= sensitivity
 
         if group_type == "children":
-            factor = states.get("children_factor", 1.0)
+            factor = safe_float(states.get("children_factor", 1.0), 1.0)
             config["thresholds"]["direct"] *= factor
             config["thresholds"]["diffuse"] *= factor
 
-        temp_offset = states.get("temperature_offset", 0.0)
+        # Temperaturen robust casten
+        config["temperatures"]["indoor_base"] = safe_float(
+            config["temperatures"].get("indoor_base", 23.0), 23.0
+        )
+        config["temperatures"]["outdoor_base"] = safe_float(
+            config["temperatures"].get("outdoor_base", 19.5), 19.5
+        )
+
+        temp_offset = safe_float(states.get("temperature_offset", 0.0), 0.0)
         config["temperatures"]["indoor_base"] += temp_offset
         config["temperatures"]["outdoor_base"] += temp_offset
 
@@ -288,7 +364,11 @@ class SolarWindowCalculator:
         group_config: dict[str, Any],
         window_data: dict[str, Any],
     ) -> dict[str, Any]:
-        """Build effective configuration with inheritance."""
+        """Build effective configuration with inheritance, respecting explicit inheritance markers."""
+
+        def is_inherit_marker(val):
+            return val in ("-1", -1, "", None, "inherit")
+
         # Start with global as base
         effective = {}
 
@@ -299,25 +379,34 @@ class SolarWindowCalculator:
             else:
                 effective[key] = value
 
-        # Override with group config
+        # Override with group config, but skip inherit markers
         for key, value in group_config.items():
+            if is_inherit_marker(value):
+                continue
             if (
                 key in effective
                 and isinstance(effective[key], dict)
                 and isinstance(value, dict)
             ):
-                effective[key].update(value)
+                # Nested dict: update only non-inherit values
+                for subkey, subval in value.items():
+                    if not is_inherit_marker(subval):
+                        effective[key][subkey] = subval
             else:
                 effective[key] = value
 
-        # Override with window-specific data
+        # Override with window-specific data, but skip inherit markers
         for key, value in window_data.items():
+            if is_inherit_marker(value):
+                continue
             if (
                 key in effective
                 and isinstance(effective[key], dict)
                 and isinstance(value, dict)
             ):
-                effective[key].update(value)
+                for subkey, subval in value.items():
+                    if not is_inherit_marker(subval):
+                        effective[key][subkey] = subval
             else:
                 effective[key] = value
 
@@ -427,51 +516,6 @@ class SolarWindowCalculator:
 
         return global_data
 
-    def _calculate_shadow_factor(
-        self,
-        sun_elevation: float,
-        sun_azimuth: float,
-        window_azimuth: float,
-        shadow_depth: float,
-        shadow_offset: float,
-    ) -> float:
-        """Calculate geometric shadow factor for window."""
-        if shadow_depth <= 0 and shadow_offset <= 0:
-            return 1.0  # No shadow
-
-        effective_shadow_depth = shadow_depth + shadow_offset
-
-        if sun_elevation <= 0 or effective_shadow_depth <= 0:
-            return 1.0  # No meaningful shadow
-
-        try:
-            # Calculate shadow length on window plane using trigonometry
-            shadow_length = effective_shadow_depth / math.tan(
-                math.radians(sun_elevation)
-            )
-
-            # Calculate angle between shadow direction and window normal
-            shadow_angle_diff = abs(sun_azimuth - window_azimuth)
-            if shadow_angle_diff > 180:
-                shadow_angle_diff = 360 - shadow_angle_diff
-
-            # Project shadow length onto window
-            projected_shadow = shadow_length * math.cos(math.radians(shadow_angle_diff))
-
-            # Calculate shadow factor (assuming typical window height of 1.5m)
-            assumed_window_size = 1.5  # meters
-
-            if projected_shadow >= assumed_window_size:
-                # Complete shadow
-                return 0.1  # Minimum factor (10% of direct light still gets through)
-
-            # Partial shadow - linear interpolation
-            return max(0.1, 1.0 - (projected_shadow / assumed_window_size) * 0.9)
-
-        except (ValueError, ZeroDivisionError):
-            _LOGGER.warning("Error calculating shadow factor, returning 1.0")
-            return 1.0
-
     def calculate_window_solar_power_with_shadow(
         self,
         effective_config: dict[str, Any],
@@ -488,28 +532,40 @@ class SolarWindowCalculator:
 
         Returns:
             WindowCalculationResult with calculated values
-
         """
-        solar_radiation = states["solar_radiation"]
-        sun_azimuth = states["sun_azimuth"]
-        sun_elevation = states["sun_elevation"]
 
-        # Physical parameters
-        g_value = effective_config["physical"]["g_value"]
-        frame_width = effective_config["physical"]["frame_width"]
-        diffuse_factor = effective_config["physical"]["diffuse_factor"]
-        tilt = effective_config["physical"]["tilt"]
+        def safe_float(val, default=0.0):
+            if val in ("", None, "inherit", "-1", -1):
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
+        sun_azimuth = safe_float(states.get("sun_azimuth", 0.0), 0.0)
+        sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
+
+        # Physical parameters (robust cast)
+        g_value = safe_float(effective_config["physical"].get("g_value", 0.5), 0.5)
+        frame_width = safe_float(
+            effective_config["physical"].get("frame_width", 0.125), 0.125
+        )
+        diffuse_factor = safe_float(
+            effective_config["physical"].get("diffuse_factor", 0.15), 0.15
+        )
+        tilt = safe_float(effective_config["physical"].get("tilt", 90.0), 90.0)
 
         # Window dimensions and area calculation
-        window_width = float(window_data.get("window_width", 1.0))
-        window_height = float(window_data.get("window_height", 1.0))
+        window_width = safe_float(window_data.get("window_width", 1.0), 1.0)
+        window_height = safe_float(window_data.get("window_height", 1.0), 1.0)
         glass_width = max(0, window_width - 2 * frame_width)
         glass_height = max(0, window_height - 2 * frame_width)
         area = glass_width * glass_height
 
-        # Shadow parameters (new)
-        shadow_depth = float(window_data.get("shadow_depth", 0))
-        shadow_offset = float(window_data.get("shadow_offset", 0))
+        # Shadow parameters (robust cast)
+        shadow_depth = safe_float(window_data.get("shadow_depth", 0), 0.0)
+        shadow_offset = safe_float(window_data.get("shadow_offset", 0), 0.0)
 
         # Calculate diffuse power (not affected by shadows)
         power_diffuse = solar_radiation * diffuse_factor * area * g_value
@@ -523,17 +579,17 @@ class SolarWindowCalculator:
             window_data.get("name", "Unknown"),
             sun_elevation,
             sun_azimuth,
-            float(window_data.get("azimuth", 180)),
+            safe_float(window_data.get("azimuth", 180), 180.0),
             shadow_depth,
             shadow_offset,
         )
 
-        # Check if sun is visible to window
-        elevation_min = float(window_data.get("elevation_min", 0))
-        elevation_max = float(window_data.get("elevation_max", 90))
-        azimuth_min = float(window_data.get("azimuth_min", -90))
-        azimuth_max = float(window_data.get("azimuth_max", 90))
-        window_azimuth = float(window_data.get("azimuth", 180))
+        # Check if sun is visible to window (robust cast)
+        elevation_min = safe_float(window_data.get("elevation_min", 0), 0.0)
+        elevation_max = safe_float(window_data.get("elevation_max", 90), 90.0)
+        azimuth_min = safe_float(window_data.get("azimuth_min", -90), -90.0)
+        azimuth_max = safe_float(window_data.get("azimuth_max", 90), 90.0)
+        window_azimuth = safe_float(window_data.get("azimuth", 180), 180.0)
 
         if elevation_min <= sun_elevation <= elevation_max:
             az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
@@ -680,15 +736,66 @@ class SolarWindowCalculator:
 
         for window_subentry_id, window_data in windows.items():
             try:
-                # Get effective configuration
-                effective_config, _ = self.get_effective_config_from_flows(
-                    window_subentry_id
+                # Get effective configuration and sources
+                effective_config, effective_sources = (
+                    self.get_effective_config_from_flows(window_subentry_id)
                 )
 
                 # Apply global factors
                 group_type = window_data.get("group_type", "default")
                 effective_config = self.apply_global_factors(
                     effective_config, group_type, external_states
+                )
+
+                # Debug-Ausgabe: Vererbungs- und Wertestruktur
+                def flatten_dict(d, parent_key="", sep="."):
+                    items = []
+                    for k, v in d.items():
+                        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+                        if isinstance(v, dict):
+                            items.extend(flatten_dict(v, new_key, sep=sep).items())
+                        else:
+                            items.append((new_key, v))
+                    return dict(items)
+
+                flat_window = flatten_dict(window_data)
+                flat_group = (
+                    flatten_dict(group_config) if "group_config" in locals() else {}
+                )
+                flat_global = flatten_dict(global_data)
+                flat_effective = flatten_dict(effective_config)
+                flat_sources = flatten_dict(effective_sources)
+
+                # Welche Werte sind im Fenster gesetzt?
+                window_set = {
+                    k: v
+                    for k, v in flat_window.items()
+                    if not (v in ("-1", -1, "", None, "inherit"))
+                }
+                # Welche Werte werden aus Gruppe geerbt?
+                group_inherited = {
+                    k: flat_group.get(k)
+                    for k, src in flat_sources.items()
+                    if src == "group" and k not in window_set
+                }
+                # Welche Werte werden aus Global geerbt?
+                global_inherited = {
+                    k: flat_global.get(k)
+                    for k, src in flat_sources.items()
+                    if src == "global"
+                    and k not in window_set
+                    and k not in group_inherited
+                }
+                # Aggregierter View: finale Werte
+                final_view = flat_effective
+
+                _LOGGER.debug(
+                    "[DEBUG-VERERBUNG] Fenster '%s':\n  Fenster-spezifisch: %s\n  Geerbt (Gruppe): %s\n  Geerbt (Global): %s\n  Final genutzt: %s",
+                    window_data.get("name", window_subentry_id),
+                    window_set,
+                    group_inherited,
+                    global_inherited,
+                    final_view,
                 )
 
                 # Calculate solar power with shadows

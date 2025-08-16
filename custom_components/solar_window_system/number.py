@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
@@ -55,7 +56,7 @@ async def async_setup_entry(
         _LOGGER.warning("Global Configuration device not found")
 
 
-class GlobalConfigNumberEntity(NumberEntity):
+class GlobalConfigNumberEntity(NumberEntity, RestoreEntity):
     """Number entity for global configuration values."""
 
     def __init__(
@@ -89,8 +90,17 @@ class GlobalConfigNumberEntity(NumberEntity):
         self._attr_native_value = config["default"]
 
     async def async_added_to_hass(self) -> None:
-        """Call when entity is added to hass."""
+        """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+        # Restore previous state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            try:
+                value = float(restored_state.state)
+                if self._attr_native_min_value <= value <= self._attr_native_max_value:
+                    self._attr_native_value = value
+            except (ValueError, TypeError):
+                pass
         # Set friendly name to config['name']
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
@@ -102,6 +112,6 @@ class GlobalConfigNumberEntity(NumberEntity):
                 )
 
     async def async_set_native_value(self, value: float) -> None:
-        """Update the current value."""
+        """Update the current value and persist state."""
         self._attr_native_value = value
         self.async_write_ha_state()

@@ -12,9 +12,13 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
+from tests.test_data import (
+    VALID_GLOBAL_BASIC,
+    VALID_GLOBAL_ENHANCED,
+    VALID_GLOBAL_SCENARIOS,
+)
 
 
-@pytest.mark.skip(reason="Testen veraltete Logik und müssen noch auf den aktuellen Stand gebracht werden")
 @pytest.mark.asyncio
 async def test_clearing_selectors_persists_empty(
     hass: HomeAssistant, enable_custom_integrations: None
@@ -26,6 +30,7 @@ async def test_clearing_selectors_persists_empty(
         title="Solar Window System",
         data={"entry_type": "global_config"},
         options={
+            **VALID_GLOBAL_BASIC,
             "forecast_temperature_sensor": "sensor.example_temp",
             "weather_warning_sensor": "binary_sensor.example_warn",
         },
@@ -38,49 +43,53 @@ async def test_clearing_selectors_persists_empty(
     assert result["step_id"] == "global_basic"
 
     # Submit page 1 with cleared selectors (both empty)
+    cleared_selectors = {
+        **VALID_GLOBAL_BASIC,
+        "window_width": "1.0",
+        "window_height": "1.0",
+        "shadow_depth": "0.0",
+        "shadow_offset": "0.0",
+        "forecast_temperature_sensor": None,
+        "weather_warning_sensor": None,
+    }
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={
-            "window_width": "1.0",
-            "window_height": "1.0",
-            "shadow_depth": "0.0",
-            "shadow_offset": "0.0",
-            "solar_radiation_sensor": "sensor.dummy_solar",
-            "outdoor_temperature_sensor": "sensor.dummy_outdoor",
-            "forecast_temperature_sensor": None,
-            "weather_warning_sensor": None,
-        },
+        user_input=cleared_selectors,
     )
     assert result["type"] == "form"
     assert result["step_id"] == "global_enhanced"
 
     # Complete remaining pages with valid values
+    enhanced = {
+        **VALID_GLOBAL_ENHANCED,
+        "g_value": "0.5",
+        "frame_width": "0.125",
+        "tilt": "45",
+        "diffuse_factor": "0.15",
+        "threshold_direct": "200",
+        "threshold_diffuse": "150",
+        "temperature_indoor_base": "23.0",
+        "temperature_outdoor_base": "19.5",
+    }
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={
-            "g_value": "0.5",
-            "frame_width": "0.125",
-            "tilt": "45",
-            "diffuse_factor": "0.15",
-            "threshold_direct": "200",
-            "threshold_diffuse": "150",
-            "temperature_indoor_base": "23.0",
-            "temperature_outdoor_base": "19.5",
-        },
+        user_input=enhanced,
     )
     assert result["type"] == "form"
     assert result["step_id"] == "global_scenarios"
 
+    scenarios = {
+        **VALID_GLOBAL_SCENARIOS,
+        "scenario_b_temp_indoor": "23.5",
+        "scenario_b_temp_outdoor": "25.5",
+        "scenario_c_temp_indoor": "21.5",
+        "scenario_c_temp_outdoor": "24.0",
+        "scenario_c_temp_forecast": "28.5",
+        "scenario_c_start_hour": "9",
+    }
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={
-            "scenario_b_temp_indoor": "23.5",
-            "scenario_b_temp_outdoor": "25.5",
-            "scenario_c_temp_indoor": "21.5",
-            "scenario_c_temp_outdoor": "24.0",
-            "scenario_c_temp_forecast": "28.5",
-            "scenario_c_start_hour": "9",
-        },
+        user_input=scenarios,
     )
     assert result["type"] == "create_entry"
 

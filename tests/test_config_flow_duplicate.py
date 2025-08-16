@@ -1,57 +1,82 @@
-"""Test duplicate config entry for Solar Window System integration."""
-
-"""Test duplicate config entry for Solar Window System integration."""
+"""Test that creating entities with duplicate names is not possible via subentry flows."""
 
 import pytest
-from homeassistant import config_entries
+from unittest.mock import patch, PropertyMock
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-
 from custom_components.solar_window_system.const import DOMAIN
+
+ENTRY_TYPE_GROUPS = "group_configs"
+ENTRY_TYPE_WINDOWS = "window_configs"
+
+
+from tests.test_data import VALID_GROUP_OPTIONS_NUMERIC
 
 
 @pytest.mark.asyncio
-async def test_config_flow_duplicate_entry(hass: HomeAssistant) -> None:
-    """Test that creating a duplicate config entry is blocked."""
-    # Create initial config entries to trigger "already_configured" condition
-
-    # Create the main global config entry
-    global_entry = MockConfigEntry(
+async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
+    """Test that creating a group with a duplicate name shows an error (subentry flow handler)."""
+    # Set up the group parent entry (simulate what config flow would do)
+    group_parent_entry = MockConfigEntry(
         domain=DOMAIN,
-        title="Solar Window System",
-        data={"entry_type": "global_config"},
-        unique_id="unique_global_1",
-    )
-    global_entry.add_to_hass(hass)
-
-    # Create group configs parent entry
-    group_entry = MockConfigEntry(
-        domain=DOMAIN,
+        data={"entry_type": ENTRY_TYPE_GROUPS, "is_subentry_parent": True},
         title="Group configurations",
-        data={"entry_type": "group_configs", "is_subentry_parent": True},
-        unique_id="unique_group_parent",
     )
-    group_entry.add_to_hass(hass)
+    group_parent_entry.add_to_hass(hass)
 
-    # Create window configs parent entry
-    window_entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Window configurations",
-        data={"entry_type": "window_configs", "is_subentry_parent": True},
-        unique_id="unique_window_parent",
+    # Create the first group via handler, patching source property to 'user' for creation
+    handler1 = __import__(
+        "custom_components.solar_window_system.config_flow",
+        fromlist=["GroupSubentryFlowHandler"],
+    ).GroupSubentryFlowHandler()
+    handler1.hass = hass
+    handler1.parent_entry = group_parent_entry
+    with patch.object(
+        type(handler1), "source", new_callable=PropertyMock, return_value="user"
+    ):
+        # Step 1: user
+        group_config = {
+            k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"
+        }
+        result1 = await handler1.async_step_user(
+            {"name": "My Test Group", **group_config}
+        )
+        # Step 2: enhanced
+        result1 = await handler1.async_step_enhanced({})
+        assert result1["type"] == FlowResultType.CREATE_ENTRY
+
+    # Patch subentries to simulate an existing group
+    class DummySub:
+        def __init__(self, title: str) -> None:
+            self.title = title
+            self.subentry_type = "group"
+            self.data = {"name": title}
+
+    fake_subentries = {"1": DummySub("My Test Group")}
+    # Dynamically add a subentries property to the group_parent_entry instance
+    setattr(
+        group_parent_entry,
+        "subentries",
+        property(lambda self: fake_subentries).__get__(
+            group_parent_entry, type(group_parent_entry)
+        ),
     )
-    window_entry.add_to_hass(hass)
-
-    # Try to start a new config flow - should be blocked because all
-    # required entries exist
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    # Should be aborted immediately due to already being configured
-    if result.get("type") != "abort":
-        msg = f"Expected abort, got: {result}"
-        raise AssertionError(msg)
-    if result.get("reason") != "already_configured":
-        msg = f"Expected 'already_configured', got: {result.get('reason')}"
-        raise AssertionError(msg)
+    # Try to create a second group with the same name
+    handler2 = __import__(
+        "custom_components.solar_window_system.config_flow",
+        fromlist=["GroupSubentryFlowHandler"],
+    ).GroupSubentryFlowHandler()
+    handler2.hass = hass
+    handler2.parent_entry = group_parent_entry
+    with patch.object(
+        type(handler2), "source", new_callable=PropertyMock, return_value="subentry"
+    ):
+        group_config = {
+            k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"
+        }
+        result2 = await handler2.async_step_user(
+            {"name": "My Test Group", **group_config}
+        )
+        assert result2["type"] == FlowResultType.FORM
+        assert result2["errors"] == {"name": "duplicate_name"}

@@ -5,7 +5,6 @@
                 "title": "Globale Konfiguration",
                 "description": "Grundlegende Geometrie und Sensoren",
                 "data": {
-                    "room_temp_entity": "Raumtemperatur-Sensor (Gruppe)",
                     "window_width": "Standard Fensterbreite (m)",
                     "window_height": "Standard Fensterhöhe (m)",
                     "shadow_depth": "Standard Schattentiefe (m)",
@@ -17,7 +16,6 @@
                     "weather_warning_sensor": "Quelle Wetterwarnung"
                 },
                 "data_description": {
-                    "room_temp_entity": "Optional. Ein Temperatursensor für die Gruppe. Überschreibt den globalen Sensor, falls gesetzt.",
                     "option_inherit": "Vererben (Elternwert verwenden)",
                     "window_width": "0,10–10,00 m. Erforderlich.",
                     "window_height": "0,10–10,00 m. Erforderlich.",
@@ -27,7 +25,7 @@
                     "outdoor_temperature_sensor": "Erforderlich. Ein Temperatursensor (°C/°F/K).",
                     "indoor_temperature_sensor": "Erforderlich. Ein Temperatursensor für die Raumtemperatur (°C/°F/K).",
                     "forecast_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K).",
-                    "weather_warning_sensor": "Optional. Ein binary_sensor oder input_boolean für Warnungen."
+                    "weather_warning_sensor": "Optional. Ein Binary_sensor oder Input_boolean für Warnungen."
                 }
             },
             "global_enhanced": {
@@ -81,6 +79,10 @@
             "created_missing_entries": "Fehlende Konfigurationseinträge wurden erstellt",
             "missing_data": "Fehlende Konfigurationsdaten",
             "unknown_entry_type": "Unbekannter Eintragstyp"
+        },
+        "error": {
+            "invalid_number": "Bitte eine gültige Zahl eingeben.",
+            "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
         }
     },
     "options": {
@@ -155,10 +157,6 @@
             }
         }
     },
-    "error": {
-        "invalid_number": "Bitte eine gültige Zahl eingeben.",
-        "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
-    },
     "config_subentries": {
         "group": {
             "initiate_flow": {
@@ -176,7 +174,8 @@
                         "threshold_direct": "Schwelle Direktstrahlung (W/m²)",
                         "threshold_diffuse": "Schwelle Diffusstrahlung (W/m²)",
                         "temperature_indoor_base": "Basisraumtemperatur (°C)",
-                        "temperature_outdoor_base": "Basisaußentemperatur (°C)"
+                        "temperature_outdoor_base": "Basisaußentemperatur (°C)",
+                        "indoor_temperature_sensor": "Raumtemperatursensor"
                     },
                     "data_description": {
                         "name": "Erforderlich. Anzeigename der Gruppe.",
@@ -184,7 +183,8 @@
                         "threshold_direct": "0–1000 W/m². Geben Sie -1 ein, um von Global zu erben.",
                         "threshold_diffuse": "0–1000 W/m². Geben Sie -1 ein, um von Global zu erben.",
                         "temperature_indoor_base": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
-                        "temperature_outdoor_base": "10–30 °C. Geben Sie -1 ein, um von Global zu erben."
+                        "temperature_outdoor_base": "10–30 °C. Geben Sie -1 ein, um von Global zu erben.",
+                        "indoor_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K). Geben Sie -1 ein, um von Global zu erben."
                     }
                 },
                 "enhanced": {
@@ -224,8 +224,11 @@
                     }
                 }
             },
+            "error": {
+                "invalid_number": "Bitte eine gültige Zahl eingeben.",
+                "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
+            },
             "add": "Untereintrag hinzufügen",
-            "error": {},
             "abort": {
                 "reconfigure_successful": "Änderungen gespeichert"
             }
@@ -252,21 +255,21 @@
                         "shadow_depth": "Schattentiefe (m)",
                         "shadow_offset": "Schattenversatz (m)",
                         "linked_group": "Verknüpft mit Gruppe",
-                        "room_temp_entity": "Raumtemperatursensor"
+                        "indoor_temperature_sensor": "Raumtemperatursensor"
                     },
                     "data_description": {
                         "name": "Erforderlich. Anzeigename des Fensters.",
-                        "azimuth": "0–360°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
-                        "azimuth_min": "−90–0°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
-                        "azimuth_max": "0–90°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
-                        "elevation_min": "0–90°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
-                        "elevation_max": "0–90°. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "azimuth": "0–360°. Erforderlich.",
+                        "azimuth_min": "−90–0°. Erforderlich.",
+                        "azimuth_max": "0–90°. Erforderlichn.",
+                        "elevation_min": "0–90°. Erforderlich.",
+                        "elevation_max": "0–90°. Erforderlich.",
                         "window_width": "0,10–10,00 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
                         "window_height": "0,10–10,00 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
                         "shadow_depth": "0–5 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
                         "shadow_offset": "0–5 m. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
                         "linked_group": "Gruppe wählen oder ‚(keine)‘ für unabhängig.",
-                        "room_temp_entity": "Optional. Ein Temperatursensor (°C/°F)."
+                        "indoor_temperature_sensor": "Optional. Ein Temperatursensor (°C/°F/K). Geben Sie -1 ein, um von Gruppe/Global zu erben."
                     }
                 },
                 "overrides": {
@@ -283,13 +286,13 @@
                         "temperature_outdoor_base": "Basisaußentemperatur (°C)"
                     },
                     "data_description": {
-                        "g_value": "Optional. Leer lassen, um von Gruppe/Global zu erben.",
-                        "frame_width": "Optional. Leer lassen, um von Gruppe/Global zu erben.",
-                        "tilt": "Optional. Leer lassen, um von Gruppe/Global zu erben.",
-                        "diffuse_factor": "0,05–0,50. Leer lassen, um von Gruppe/Global zu erben.",
-                        "threshold_direct": "0–1000 W/m². Leer lassen, um von Gruppe/Global zu erben.",
-                        "threshold_diffuse": "0–1000 W/m². Leer lassen, um von Gruppe/Global zu erben.",
-                        "temperature_indoor_base": "10–30 °C. Geben Sie -1 ein, um von Gruppe oder Global zu erben.",
+                        "g_value": "Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "frame_width": "Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "tilt": "Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "diffuse_factor": "0,05–0,50. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "threshold_direct": "0–1000 W/m². Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "threshold_diffuse": "0–1000 W/m². Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
+                        "temperature_indoor_base": "10–30 °C. Erforderlich; Geben Sie -1 ein, um von Global zu erben.",
                         "temperature_outdoor_base": "10–30 °C. Geben Sie -1 ein, um von Gruppe oder Global zu erben."
                     }
                 },
@@ -332,12 +335,15 @@
                         "shadow_depth": "Schattentiefe (m)",
                         "shadow_offset": "Schattenversatz (m)",
                         "linked_group": "Verknüpft mit Gruppe",
-                        "room_temp_entity": "Raumtemperatursensor"
+                        "indoor_temperature_sensor": "Raumtemperatursensor"
                     }
                 }
             },
+            "error": {
+                "invalid_number": "Bitte eine gültige Zahl eingeben.",
+                "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
+            },
             "add": "Untereintrag hinzufügen",
-            "error": {},
             "abort": {
                 "reconfigure_successful": "Änderungen gespeichert"
             }
