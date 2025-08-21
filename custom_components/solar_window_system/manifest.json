@@ -1,10 +1,10 @@
 {
   "domain": "solar_window_system",
-  "config_flow": true,
   "name": "Solar Window System",
   "codeowners": [
     "@jmerifjKriwe"
   ],
+  "config_flow": true,
   "documentation": "https://github.com/jmerifjKriwe/hass-solar-window-system",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jmerifjKriwe/hass-solar-window-system/issues",

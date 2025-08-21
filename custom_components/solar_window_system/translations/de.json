@@ -17,7 +17,6 @@
                     "weather_warning_sensor": "Quelle Wetterwarnung"
                 },
                 "data_description": {
-                    "option_inherit": "Vererben (Elternwert verwenden)",
                     "update_interval": "Wie oft das System seine Berechnungen aktualisiert. Bereich: 1-1440 Minuten.",
                     "window_width": "0,10–10,00 m. Erforderlich.",
                     "window_height": "0,10–10,00 m. Erforderlich.",
@@ -103,6 +102,7 @@
                     "weather_warning_sensor": "Quelle Wetterwarnung"
                 },
                 "data_description": {
+                    "option_inherit": "Vererben (Elternwert verwenden)",
                     "window_width": "0,10–10,00 m. Erforderlich.",
                     "window_height": "0,10–10,00 m. Erforderlich.",
                     "shadow_depth": "0–5 m. Erforderlich.",
@@ -230,7 +230,6 @@
                 "invalid_number": "Bitte eine gültige Zahl eingeben.",
                 "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
             },
-            "add": "Untereintrag hinzufügen",
             "abort": {
                 "reconfigure_successful": "Änderungen gespeichert"
             }
@@ -345,33 +344,9 @@
                 "invalid_number": "Bitte eine gültige Zahl eingeben.",
                 "number_out_of_range": "Wert liegt außerhalb des zulässigen Bereichs."
             },
-            "add": "Untereintrag hinzufügen",
             "abort": {
                 "reconfigure_successful": "Änderungen gespeichert"
             }
-        }
-    },
-    "labels": {
-        "none": "(keine)",
-        "overrides": {
-            "g_value": "g-Wert",
-            "frame_width": "Rahmenbreite (m)",
-            "tilt": "Neigung (°)",
-            "diffuse_factor": "Diffusionsfaktor",
-            "threshold_direct": "Schwelle Direktstrahlung (W/m²)",
-            "threshold_diffuse": "Schwelle Diffusstrahlung (W/m²)",
-            "temperature_indoor_base": "Basisraumtemperatur (°C)",
-            "temperature_outdoor_base": "Basisaußentemperatur (°C)"
-        },
-        "scenarios": {
-            "scenario_b_enable": "Szenario B",
-            "scenario_b_temp_indoor": "Szenario B Raumtemperatur (°C)",
-            "scenario_b_temp_outdoor": "Szenario B Außentemperatur (°C)",
-            "scenario_c_enable": "Szenario C",
-            "scenario_c_temp_indoor": "Szenario C Raumtemperatur (°C)",
-            "scenario_c_temp_outdoor": "Szenario C Außentemperatur (°C)",
-            "scenario_c_temp_forecast": "Szenario C Vorhersagetemperatur (°C)",
-            "scenario_c_start_hour": "Szenario C Stundestart"
         }
     }
 }
