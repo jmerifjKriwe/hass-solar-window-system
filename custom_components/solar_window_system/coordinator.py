@@ -17,8 +17,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=1)
-
 
 class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Class to manage fetching solar window system data."""
@@ -27,13 +25,14 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
+        update_interval_minutes: int,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN}_{entry.entry_id}",
-            update_interval=SCAN_INTERVAL,
+            update_interval=timedelta(minutes=update_interval_minutes),
         )
         self.entry = entry
         self.calculator: SolarWindowCalculator | None = None

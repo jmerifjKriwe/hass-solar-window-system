@@ -1058,11 +1058,17 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "indoor_temperature_sensor": "",
             "forecast_temperature_sensor": "",
             "weather_warning_sensor": "",
+            "update_interval": 1,
         }
 
         if user_input is None:
             schema = vol.Schema(
                 {
+                    vol.Optional(
+                        "update_interval",
+                        description={"suggested_value": defaults["update_interval"]},
+                        default=defaults["update_interval"],
+                    ): vol.Coerce(int),
                     vol.Required("window_width"): str,
                     vol.Required("window_height"): str,
                     vol.Required("shadow_depth"): str,
@@ -1070,7 +1076,7 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         "solar_radiation_sensor",
                         description={
-                            "suggested_value": defaults["solar_radiation_sensor"],
+                            "suggested_value": defaults["solar_radiation_sensor"]
                         },
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain=["sensor"])
@@ -1135,10 +1141,23 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return
             coerced[field] = fv
 
+        def _check_int(field: str, min_v: int, max_v: int) -> None:
+            raw = user_input.get(field)
+            try:
+                iv = _parse_int_locale(raw)
+            except (ValueError, TypeError):
+                errors[field] = "invalid_number"
+                return
+            if iv < min_v or iv > max_v:
+                errors[field] = "number_out_of_range"
+                return
+            coerced[field] = iv
+
         _check_float("window_width", 0.1, 10)
         _check_float("window_height", 0.1, 10)
         _check_float("shadow_depth", 0, 5)
         _check_float("shadow_offset", 0, 5)
+        _check_int("update_interval", 1, 1440)
 
         # Handle entity selectors properly: None means user cleared the field
         # Store None as "" for consistency with config entry data model
@@ -1167,6 +1186,9 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if errors:
             schema = vol.Schema(
                 {
+                    vol.Optional(
+                        "update_interval", default=user_input.get("update_interval", 1)
+                    ): vol.Coerce(int),
                     vol.Required(
                         "window_width", default=user_input.get("window_width", "")
                     ): str,

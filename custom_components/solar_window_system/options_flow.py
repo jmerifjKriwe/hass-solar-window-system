@@ -111,6 +111,7 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             return _sel_default(data.get(key, ""))
 
         defaults = {
+            "update_interval": _g("update_interval", 1),
             "window_width": str(_g("window_width", "")),
             "window_height": str(_g("window_height", "")),
             "shadow_depth": str(_g("shadow_depth", "")),
@@ -137,6 +138,11 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         if user_input is None:
             schema = vol.Schema(
                 {
+                    vol.Optional(
+                        "update_interval",
+                        description={"suggested_value": defaults["update_interval"]},
+                        default=defaults["update_interval"],
+                    ): vol.Coerce(int),
                     vol.Required("window_width", default=defaults["window_width"]): str,
                     vol.Required(
                         "window_height", default=defaults["window_height"]
@@ -221,6 +227,22 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
                 return
             page1[field] = str(raw)
 
+        def _check_int_required(field: str, min_v: int, max_v: int) -> None:
+            raw = user_input.get(field)
+            if raw in (None, "", "-1"):
+                errors[field] = "required"
+                return
+            try:
+                iv = _parse_int_locale(raw)
+            except (ValueError, TypeError):
+                errors[field] = "invalid_number"
+                return
+            if iv < min_v or iv > max_v:
+                errors[field] = "number_out_of_range"
+                return
+            page1[field] = iv
+
+        _check_int_required("update_interval", 1, 1440)
         _check_float_required("window_width", 0.1, 10)
         _check_float_required("window_height", 0.1, 10)
         _check_float_required("shadow_depth", 0, 5)
@@ -246,6 +268,10 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         if errors:
             schema = vol.Schema(
                 {
+                    vol.Optional(
+                        "update_interval",
+                        default=user_input.get("update_interval", 1),
+                    ): vol.Coerce(int),
                     vol.Required(
                         "window_width",
                         default=str(user_input.get("window_width", "")),

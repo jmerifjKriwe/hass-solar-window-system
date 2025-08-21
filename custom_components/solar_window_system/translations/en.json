@@ -10,6 +10,7 @@
         "description": "Basic geometry and sensors",
         "data": {
           "room_temp_entity": "Room temperature sensor",
+          "update_interval": "Update interval (minutes)",
           "window_width": "Default window width (m)",
           "window_height": "Default window height (m)",
           "shadow_depth": "Default shadow depth (m)",
@@ -23,6 +24,7 @@
         "data_description": {
           "room_temp_entity": "Optional. A temperature sensor for the room/group. Overrides the global indoor temperature sensor if set.",
           "option_inherit": "Inherit (use parent value)",
+          "update_interval": "How often the system updates its calculations. Range: 1-1440 minutes.",
           "window_width": "0.10–10.00 m. Required.",
           "window_height": "0.10–10.00 m. Required.",
           "shadow_depth": "0–5 m. Required.",

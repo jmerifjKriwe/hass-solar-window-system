@@ -13,6 +13,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    # Get update interval from global config
+    update_interval_minutes = 1
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        if config_entry.data.get("entry_type") == "global_config":
+            update_interval_minutes = config_entry.options.get(
+                "update_interval", config_entry.data.get("update_interval", 1)
+            )
+            break
+
     # Register recalculate service (only once)
     if not hass.services.has_service(DOMAIN, "recalculate"):
 
@@ -63,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _create_subentry_devices(hass, entry)
 
         # Initialize coordinator for group configurations as well
-        coordinator = SolarWindowSystemCoordinator(hass, entry)
+        coordinator = SolarWindowSystemCoordinator(hass, entry, update_interval_minutes)
 
         # Store coordinator per entry to support multiple entries
         hass.data.setdefault(DOMAIN, {})
@@ -86,7 +95,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await _create_subentry_devices(hass, entry)
 
         # Initialize coordinator for calculation updates
-        coordinator = SolarWindowSystemCoordinator(hass, entry)
+        coordinator = SolarWindowSystemCoordinator(hass, entry, update_interval_minutes)
 
         # Store coordinator in hass.data for access by binary sensors
         hass.data.setdefault(DOMAIN, {})

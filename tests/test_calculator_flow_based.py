@@ -1,3 +1,62 @@
+def test_scenario_b_c_inheritance(monkeypatch, hass):
+    """Test scenario B/C enable inheritance and override logic (window > group > global)."""
+    mock_entry = Mock(spec=ConfigEntry)
+    mock_entry.data = {"entry_type": "window_configs"}
+    calculator = SolarWindowCalculator(hass, mock_entry)
+
+    # Prepare subentries for all inheritance cases
+    windows = {
+        # Inherit from global (no override)
+        "w_global": {"name": "GlobalWin", "parent_group_id": "g1"},
+        # Override at group level
+        "w_group": {"name": "GroupWin", "parent_group_id": "g2"},
+        # Override at window level
+        "w_window": {
+            "name": "WindowWin",
+            "parent_group_id": "g3",
+            "scenario_b_enable": "enable",
+            "scenario_c_enable": "disable",
+        },
+    }
+    groups = {
+        "g1": {"name": "Group1"},
+        "g2": {
+            "name": "Group2",
+            "scenario_b_enable": "disable",
+            "scenario_c_enable": "enable",
+        },
+        "g3": {
+            "name": "Group3",
+            "scenario_b_enable": "disable",
+            "scenario_c_enable": "enable",
+        },
+    }
+
+    monkeypatch.setattr(
+        calculator,
+        "_get_subentries_by_type",
+        lambda t: windows if t == "window" else (groups if t == "group" else {}),
+    )
+
+    # Global states: both enabled
+    global_states = {"scenario_b_enabled": True, "scenario_c_enabled": True}
+
+    # 1. Window inherits from global
+    b, c = calculator._get_scenario_enables_from_flows("w_global", global_states)
+    assert b is True  # from global
+    assert c is True  # from global
+
+    # 2. Window inherits from group (group disables B, enables C)
+    b, c = calculator._get_scenario_enables_from_flows("w_group", global_states)
+    assert b is False  # group disables
+    assert c is True  # group enables
+
+    # 3. Window overrides both (window enables B, disables C)
+    b, c = calculator._get_scenario_enables_from_flows("w_window", global_states)
+    assert b is True  # window enables
+    assert c is False  # window disables
+
+
 # --- TDD: Calculation is triggered when weather warning sensor goes to true ---
 def test_recalculation_triggered_on_weather_warning(monkeypatch):
     """If weather warning sensor goes to true, calculation should be triggered immediately."""

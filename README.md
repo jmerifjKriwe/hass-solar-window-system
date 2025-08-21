@@ -1,125 +1,376 @@
-# Solar Window System – Home Assistant Custom Component
 
-## Overview
+# Solar Window System – Home Assistant Integration
 
-The Solar Window System is a Home Assistant custom component that calculates when window shading is recommended based on solar radiation, temperature, and weather conditions. It provides sensors and binary sensors to inform your automations, but **does not control window shading directly**—you must create your own automations using the provided entities.
+## Kurzüberblick
 
-## Features
+Die Solar Window System Integration automatisiert die Verschattung von Fenstern in Home Assistant – basierend auf Sonnenstand, Solarstrahlung, Wetterwarnungen und weiteren Umgebungsdaten. Ziel ist maximaler Komfort, Energieeffizienz und Schutz vor Überhitzung. Die gesamte Konfiguration erfolgt ausschließlich über die Home Assistant UI (kein YAML!).
 
-- **Sensor-based Recommendations**: Calculates and exposes when shading is recommended for each window.
-- **Multiple Scenarios**: Supports logic for strong sun, diffuse heat, and heatwave forecasts (Scenarios A, B, C).
-- **Configurable Presets**: Choose between Normal, Relaxed, Sensitive, Children, or Custom modes to adjust sensitivity and behavior.
-- **Flexible Configuration**: YAML-based group and window configuration, plus UI-based options for tuning.
-- **Entities for Automations**: Exposes sensors, binary sensors, numbers, switches, and selects for use in your own automations.
+---
 
 ## Installation
 
-### Manual
-1. Copy the `custom_components/solar_window_system` folder to your Home Assistant `custom_components` directory.
-2. Restart Home Assistant.
-3. Add the integration via the Home Assistant UI.
+**Empfohlen: Über HACS**
+1. HACS öffnen → Integrationen → „+“ → nach `Solar Window System` suchen → installieren.
+2. Home Assistant neustarten.
+3. Einstellungen → Geräte & Dienste → Integration hinzufügen → `Solar Window System` auswählen.
 
-### HACS (Home Assistant Community Store)
-1. In HACS, go to "Integrations" > "Custom Repositories" and add the repository URL of this project as a custom integration.
-2. Search for "Solar Window System" in HACS and install it.
-3. Restart Home Assistant and add the integration via the UI.
+**Manuell:**
+1. Neueste Version von GitHub herunterladen ([Link](https://github.com/jmerifjKriwe/hass-solar-window-system)).
+2. Ordner `custom_components/solar_window_system` ins Home Assistant `custom_components`-Verzeichnis kopieren.
+3. Home Assistant neustarten und Integration wie oben hinzufügen.
 
-## Usage Warning
+---
 
-> **Note:** This integration only provides sensors and binary sensors that indicate when shading is recommended. **You must create your own automations** (e.g., with Home Assistant Automations or Scripts) to actually control your window shading devices.
+## Schritt-für-Schritt: Konfiguration in der UI
 
-## Configuration
+### 1. Global-Konfiguration (Pflicht, erster Schritt)
+Beim ersten Hinzufügen wirst du durch mehrere Seiten geführt. Die wichtigsten Felder:
 
-### 1. YAML Structure
+- **Fensterbreite/-höhe, Schattentiefe/-offset:** Geometrie deiner Fenster.
+- **Sensoren:**
+	- *Solarstrahlung* (Pflicht, Sensor auswählen)
+	- *Außen- & Innentemperatur* (Pflicht, Sensor auswählen)
+	- *Vorhersage-Temperatur* (optional)
+	- *Wetterwarnung* (optional, z.B. DWD, binary_sensor oder input_boolean)
+- **Update-Intervall:** Wie oft die Berechnung ausgeführt wird (in Minuten).
 
-#### `windows.yaml`
-Defines each window and its properties:
+**Validierung:**
+Alle Werte werden direkt geprüft (z.B. Fensterbreite 0,1–10 m, Temperatur 10–30 °C, etc.). Fehler werden sofort angezeigt.
+
+### 2. Erweiterte Global-Konfiguration
+Hier legst du Default-Werte für die Berechnung fest:
+- g-Wert, Rahmenbreite, Neigung, diffuse Faktoren
+- Schwellwerte für direkte/diffuse Strahlung
+- Basistemperaturen für Innen/Außen
+
+### 3. Szenarien-Konfiguration
+Grenzwerte für Szenario B/C (z.B. ab welcher Temperatur, ab welcher Uhrzeit, etc.).
+
+---
+
+## Gruppen & Fenster anlegen
+
+Nach Abschluss der Global-Konfiguration werden automatisch zwei weitere Einträge erzeugt:
+- **Group configurations** (für Gruppen von Fenstern)
+- **Window configurations** (für einzelne Fenster)
+
+Du kannst beliebig viele Gruppen und Fenster anlegen. Die Konfiguration erfolgt jeweils über die UI (Einstellungen → Geräte & Dienste → Integration → „Konfigurieren“).
+
+**Vererbung:**
+- Werte werden immer von „Global“ → „Gruppe“ → „Fenster“ vererbt.
+- Jeder Wert kann auf Gruppen- oder Fenster-Ebene überschrieben werden.
+- Nicht gesetzte Werte werden automatisch von oben übernommen.
+
+---
+
+## Entitäten & Sensoren der Integration
+
+Die Integration erzeugt (je nach Konfiguration):
+
+- **binary_sensor.sws_shading_required_[window]**: Gibt an, ob Verschattung für das Fenster aktiv ist.
+- **sensor.sws_calculated_radiation_[window]**: Zeigt die berechnete Solarstrahlung für das Fenster.
+- **switch.sws_scenario_b_enable / sws_scenario_c_enable**: Schaltet Szenario B/C für Fenster oder Gruppen an/aus.
+- **input_number.sws_min_solar_radiation / min_sun_elevation**: Globale Schwellwerte.
+- **input_number.sws_sensitivity**: Skaliert die Schwellwerte für direkte/diffuse Strahlung.
+- **input_text.sws_debug**: Debug-Ausgaben (optional, für Analysezwecke).
+- **sensor.sws_total_power, sws_total_power_direct, sws_total_power_diffuse**: Summenleistung aller Fenster.
+
+Alle Entitäten sind in Home Assistant sichtbar und können in Automatisierungen verwendet werden.
+
+---
+
+## Szenarien im Detail
+
+**Szenario A (Standard):**
+- Automatische Verschattung, wenn Solarstrahlung und Sonnenhöhe die Schwellwerte überschreiten.
+- Immer aktiv.
+
+**Szenario B (Override/Manuell):**
+- Ermöglicht gezieltes Übersteuern (z.B. Reinigung, Wartung, spezielle Events).
+# Solar Window System (SWS)
+
+Short introduction
+------------------
+
+Solar Window System (SWS) is a Home Assistant integration that decides when
+to deploy shading (shutters, blinds, awnings) per window or per group of
+windows. Decisions are based on measured solar radiation, sun position,
+indoor/outdoor temperature, weather warnings and configurable scenario
+thresholds. SWS provides a flow-based UI configuration (global → groups →
+windows) and supports inheritance (window → group → global).
+
+This README explains installation (HACS and manual), the recommended UI
+configuration order, which sensors/entities SWS creates, the three shading
+scenarios and how they work, and best practices to reduce flutter.
+
+Installation
+------------
+
+HACS (recommended)
+- Add this repository to HACS (Community -> Custom repositories -> Integration).
+- Install "Solar Window System" from HACS.
+- Restart Home Assistant (Configuration → Server Controls → Restart).
+- Add the integration via Settings → Devices & Services → Add Integration → "Solar Window System".
+
+Manual installation
+- Copy the folder `custom_components/solar_window_system` into your Home
+	Assistant `custom_components` directory.
+- Ensure the integration's `manifest.json` requirements are available in your
+	Home Assistant environment (if any). Restart Home Assistant.
+- Add the integration via Settings → Devices & Services → Add Integration.
+
+Notes
+- The integration uses Home Assistant config entries and subentries. When
+	installed it will create three logical entry types: a global configuration
+	entry and two parent entries to hold group and window subentries.
+
+UI configuration — recommended order
+-----------------------------------
+
+Follow this order to configure SWS safely for an inexperienced user:
+
+1) Global configuration (first step when adding the integration)
+	 - Global Basic page: choose sensors (solar radiation, outdoor temp,
+		 indoor temp) and provide default window geometry (width/height),
+		 shadow depth/offset and update interval.
+	 - Global Enhanced page: set physical defaults (glass g-value, frame
+		 width, tilt, diffuse_factor) and default thresholds (direct/diffuse)
+		 plus base indoor/outdoor temperatures.
+	 - Global Scenarios page: set defaults for scenario thresholds (Scenario B
+		 and C) such as forecast threshold and start hour.
+
+2) Create Group configurations (optional, but recommended for many windows)
+	 - Create group subentries with a name and optional group-level overrides
+		 (temperatures, thresholds). Group scenario enablement is exposed as
+		 a three-state select (enable / disable / inherit).
+
+3) Create Window configurations (one per physical window)
+	 - For each window enter: name, azimuth/elevation constraints, window
+		 geometry (or inherit), shadow_depth/offset (or inherit), linked group
+		 (optional), and per-window overrides for thresholds/temperatures.
+
+Important: inheritance
+----------------------
+
+- Values flow: Window → Group → Global. Use the UI's inherit option (or
+	the special marker `-1`) to explicitly inherit from the parent level.
+- Many fields accept empty/`-1` as "inherit"; others are required in the
+	Global flow (solar radiation, outdoor and indoor temp sensors).
+
+Entities and sensors created by SWS
+----------------------------------
+
+The integration creates entities for global configuration helpers, per-group
+and per-window sensors, and binary shading indicators. Main entities are:
+
+- Per-window binary sensor: shading required
+	- unique ids / entity ids like `binary_sensor.sws_window_<slug>_shading_required`
+	- Indicates whether shading is currently required for the window.
+
+- Per-window power sensors
+	- `sensor.sws_window_<slug>_total_power` (W)
+	- `sensor.sws_window_<slug>_total_power_direct` (W)
+	- `sensor.sws_window_<slug>_total_power_diffuse` (W)
+	- `sensor.sws_window_<slug>_power_m2_total` (W/m²) and related m² metrics
+
+- Per-group aggregated power sensors
+	- `sensor.sws_group_<slug>_total_power` and _direct/_diffuse
+
+- Global configuration entities (stable ids `sws_global_<key>`)
+	- input_number, input_boolean, input_select and template sensors created
+		for convenience (sensitivity, scenario enables, debug, totals, ...).
+
+Implementation notes (how values are computed)
+---------------------------------------------
+
+- Effective configuration is computed by merging global, group and window
+	data with explicit inheritance handling in `calculator.py` (functions
+	`_build_effective_config`, `_structure_flat_config`).
+- Solar power calculation is implemented in
+	`SolarWindowCalculator.calculate_window_solar_power_with_shadow()`:
+	- Diffuse power = solar_radiation * diffuse_factor * area * g_value
+	- Direct power uses an incidence cosine and is scaled by a shadow factor
+		computed from sun elevation/azimuth, window azimuth, shadow_depth and
+		shadow_offset. Shadow factor is between 0.1 and 1.0.
+- Results per window include total_power, direct/diffuse split, power per m²,
+	shadow_factor, area, is_visible, effective thresholds and shade reason.
+
+Shading decision logic (three scenarios)
+----------------------------------------
+
+The implementation uses a clear decision order (see `calculator.py`):
+
+Pre-checks and overrides
+- If `maintenance_mode` global input is active → shading disabled.
+- If configured `weather_warning` entity reports ON → shading forced ON.
+
+Scenario A — Strong direct sun (always evaluated)
+- Trigger when:
+	- window `power_total` > `threshold_direct` AND
+	- indoor_temp >= `temperatures.indoor_base` AND
+	- outdoor_temp >= `temperatures.outdoor_base`.
+- Default threshold_direct = 200 W (global default).
+
+Scenario B — Diffuse heat (optional: can be enabled/disabled)
+- Trigger when:
+	- window `power_total` > `threshold_diffuse` AND
+	- indoor_temp > (indoor_base + scenario offset) AND
+	- outdoor_temp > (outdoor_base + scenario offset).
+- Default threshold_diffuse = 150 W. Scenario B is enabled via global
+	flag and can be overridden per-group/per-window (inherit possible).
+
+Scenario C — Heatwave / forecast (optional)
+- Trigger when forecast temperature (configured sensor) exceeds
+	configured forecast threshold, indoor temperature >= indoor_base and
+	current hour >= configured start_hour.
+- Also enabled by global flag with per-group/per-window overrides.
+
+Notes about scenarios
+- Scenario A is the core/standard rule and is always evaluated. Scenarios
+	B and C can be toggled (window -> group -> global) using three-state
+	selects (enable / disable / inherit).
+- Weather warnings are treated as an immediate override: if active, shading
+	is requested regardless of scenario thresholds.
+
+Best practices to avoid flutter (rapid on/off)
+--------------------------------------------
+
+- Smooth the solar radiation input: use Home Assistant's `filter` (moving
+	average) or `statistics` to provide an averaged sensor to SWS. This is the
+	single most effective measure to reduce flicker.
+- Smooth or average noisy indoor temperature sensors.
+- Increase the global `update_interval` if your sensors are noisy.
+- Use `sensitivity` (global input_number) to scale thresholds if many small
+	oscillations occur — increasing sensitivity reduces switching.
+- Correct physical parameters: provide accurate window width/height and
+	frame width so area and power/m² calculations are stable.
+- If a specific window toggles often, consider grouping it with similar
+	windows or adding a small automation delay before actuators move.
+
+Verification of implementation (what I inspected)
+-------------------------------------------------
+
+I reviewed the following integration files to derive defaults and behaviour:
+- `calculator.py` (solar calculation, shadow factor, scenario checks)
+- `config_flow.py` and `options_flow.py` (UI flows, validation, inheritance)
+- `global_config.py` (global helper entities)
+- `sensor.py`, `binary_sensor.py`, `number.py`, `select.py` (entities created)
+- `helpers.py` and `coordinator.py` (selectors, coordinator behaviour)
+
+Quick Start — minimal working example
+------------------------------------
+
+Below is a very small, copy-pasteable example showing how to:
+
+- create a filtered (smoothed) solar radiation sensor that SWS will use as
+	its `solar_radiation_sensor`, and
+- create two automations that react to a per-window shading binary sensor
+	(`binary_sensor.sws_window_<slug>_shading_required`) with simple debounce
+	logic to avoid actuator flutter.
+
+Replace the example entity IDs with the ones from your system.
+
+1) Filtered solar radiation sensor
+
+This uses Home Assistant's `filter` integration to produce a short moving
+average of a raw radiation sensor (replace
+`sensor.raw_solar_radiation` with your real sensor).
+
+Add to your `configuration.yaml` (or include via a package):
 
 ```yaml
-windows:
-  eg_atelier_sued:
-    name: "EG Atelier - Süd"
-    azimuth: 208
-    azimuth_range: [-84, 90]
-    elevation_range: [20, 90]
-    width: 1.170
-    height: 1.250
-    shadow_depth: 0.15
-    shadow_offset: 0
-    room_temp_entity: "sensor.temperatur_wohnzimmer"
-    group_type: "atelier"
-    # ...
+sensor:
+	- platform: filter
+		name: "Solar Radiation (filtered)"
+		entity_id: sensor.raw_solar_radiation
+		filters:
+			- sliding_window_moving_average:
+					window_size: 5    # average over last 5 samples
+					precision: 1
 ```
 
-#### `groups.yaml`
-Defines group defaults for thresholds and scenarios:
+Notes:
+- Use `window_size` and the integration's update interval so the moving
+	average is meaningful (e.g. if SWS updates every minute, a window_size of
+	3–10 samples works well).
+- Alternatively you can use `time_simple_moving_average` with a time window
+	(e.g. `60s`) if your raw sensor updates irregularly.
 
-```yaml
-groups:
-  atelier:
-    name: "Atelier/Büro"
-    thresholds:
-      direct: 200
-      diffuse: 150
-    temperatures:
-      indoor_base: 23.0
-      outdoor_base: 19.5
-    scenario_b:
-      enabled: true
-      temp_indoor_offset: 0.0
-      temp_outdoor_offset: 6.0
-    scenario_c:
-      enabled: true
-      temp_forecast_threshold: 28.5
-      start_hour: 9
-    # ...
-```
+2) Automations reacting to shading_required
 
-### 2. Options Flow
-After adding the integration, use the options flow in the UI to select sensors, set update intervals, and adjust scenario parameters.
+Example automations that control a cover (blinds) when a window requests
+shading. These include simple `for` debounce to avoid acting on very short
+spikes.
 
-### 3. Presets and Tuning
-Select or customize preset modes (Normal, Relaxed, Sensitive, Children, Custom) to fit your needs. Adjust number entities for fine-tuning.
-
-## Entities
-
-### Sensors
-- `sensor.solar_window_power_*`: Solar power per window (W)
-- `sensor.solar_window_summary`: Total power, window count, shading count
-
-### Binary Sensors
-- `binary_sensor.solar_window_shading_*`: Indicates if shading is recommended for each window
-
-### Numbers
-- Adjustable parameters: global sensitivity, children factor, temperature offset, g-value, frame width, diffuse factor, tilt, thresholds, scenario offsets, etc.
-
-### Switches
-- Maintenance mode, debug mode, scenario toggles
-
-### Select
-- Preset mode selection (Normal, Relaxed, Sensitive, Children, Custom)
-
-## Advanced
-
-- **Group/Window Overrides**: Fine-tune thresholds and physical properties per group or window via YAML.
-- **Debugging**: Enable debug mode for detailed logging.
-- **Maintenance Mode**: Pause recommendations for cleaning or repairs.
-
-## Example Automation
+Close blinds when shading is required (state -> on for >= 5s):
 
 ```yaml
 automation:
-  - alias: "Shade window when recommended"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.solar_window_shading_eg_atelier_sued
-        to: 'on'
-    action:
-      - service: cover.close_cover
-        target:
-          entity_id: cover.your_window_cover
+	- id: sws_close_blinds_on_shade_required
+		alias: "SWS: Close blinds when shading required"
+		trigger:
+			- platform: state
+				entity_id: binary_sensor.sws_window_living_room_shading_required
+				to: 'on'
+				for: '00:00:05'
+		action:
+			- service: cover.close_cover
+				target:
+					entity_id: cover.living_room_blinds
+		mode: single
 ```
 
-## License
+Re-open blinds when shading is no longer required (state -> off for >= 10m):
 
-See LICENSE file.
+```yaml
+automation:
+	- id: sws_open_blinds_when_not_required
+		alias: "SWS: Open blinds when shading not required"
+		trigger:
+			- platform: state
+				entity_id: binary_sensor.sws_window_living_room_shading_required
+				to: 'off'
+				for: '00:10:00'
+		action:
+			- service: cover.open_cover
+				target:
+					entity_id: cover.living_room_blinds
+		mode: single
+```
+
+Hints to avoid actuator flutter:
+- Use `for` in the triggers (as shown) so the state must be stable for a
+	short period before the cover moves.
+- Optionally combine the SWS binary sensor with an additional check on the
+	averaged radiation sensor in a condition if you want extra safety, e.g.:
+
+```yaml
+condition:
+	- condition: numeric_state
+		entity_id: sensor.solar_radiation_filtered
+		above: 50
+```
+
+You can now return to the README for more details or ask me to produce a
+compact "one-group, one-window" example config with matching example entity
+IDs if you want a complete end-to-end sample.
+
+Questions about the current implementation
+-----------------------------------------
+
+You asked me to inspect the implementation chain (including default
+calculations and helper functions) — I did so and reflected the logic above.
+If you want a deeper dive into a specific function (for example the
+shadow-factor formula or the exact inheritance edge-cases) tell me which
+function or flow page to expand and I will trace values and edge cases
+recursively through the code and produce a short technical note with
+recommendations.
+
+Notes
+-----
+
+This README is intentionally operational and targeted at an unexperienced
+Home Assistant user so they can install, configure, and understand the
+effect of the integration without reading the source. Implementation details
+and defaults were taken directly from the code and validated against the
+UI flows and coordinator behaviour.

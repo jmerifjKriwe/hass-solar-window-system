@@ -74,7 +74,7 @@ def mock_entry():
 @pytest.mark.asyncio
 async def test_coordinator_initialization(mock_hass, mock_entry):
     """Test that coordinator initializes correctly."""
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry)
+    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
 
     assert coordinator.hass == mock_hass
     assert coordinator.entry == mock_entry
@@ -127,7 +127,7 @@ async def test_coordinator_update_data(mock_hass, mock_entry):
     # Patch hass.config_entries.async_entries to return [mock_entry]
     mock_hass.config_entries.async_entries.return_value = [mock_entry]
 
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry)
+    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
@@ -151,7 +151,7 @@ async def test_coordinator_update_data(mock_hass, mock_entry):
 @pytest.mark.asyncio
 async def test_coordinator_window_data_access(mock_hass, mock_entry):
     """Test that coordinator provides window-specific data access."""
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry)
+    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
@@ -175,7 +175,7 @@ async def test_coordinator_window_data_access(mock_hass, mock_entry):
 @pytest.mark.asyncio
 async def test_coordinator_reconfigure(mock_hass, mock_entry):
     """Test that coordinator can be reconfigured."""
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry)
+    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
@@ -201,7 +201,7 @@ def test_coordinator_with_missing_calculator(mock_hass):
     entry.data = {"entry_type": "window_configs"}
     entry.subentries = None
 
-    coordinator = SolarWindowSystemCoordinator(mock_hass, entry)
+    coordinator = SolarWindowSystemCoordinator(mock_hass, entry, 1)
 
     # Calculator should be None if initialization fails
     # But coordinator should still be created
@@ -212,7 +212,7 @@ def test_coordinator_with_missing_calculator(mock_hass):
 @pytest.mark.asyncio
 async def test_flow_based_calculation_called(mock_hass, mock_entry):
     """Test that the coordinator actually calls the new flow-based calculation."""
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry)
+    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
 
     # Mock the calculate_all_windows_from_flows method to verify it's called
     original_method = coordinator.calculator.calculate_all_windows_from_flows
