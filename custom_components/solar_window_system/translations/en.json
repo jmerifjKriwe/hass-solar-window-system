@@ -23,7 +23,7 @@
         },
         "data_description": {
           "room_temp_entity": "Optional. A temperature sensor for the room/group. Overrides the global indoor temperature sensor if set.",
-          "option_inherit": "Inherit (use parent value)",
+          
           "update_interval": "How often the system updates its calculations. Range: 1-1440 minutes.",
           "window_width": "0.10–10.00 m. Required.",
           "window_height": "0.10–10.00 m. Required.",
@@ -234,7 +234,7 @@
         "invalid_number": "Please enter a valid number.",
         "number_out_of_range": "Value is out of allowed range."
       },
-      "add": "Add subentry",
+
       "abort": {
         "reconfigure_successful": "Changes saved"
       }
@@ -349,33 +349,11 @@
         "invalid_number": "Please enter a valid number.",
         "number_out_of_range": "Value is out of allowed range."
       },
-      "add": "Add subentry",
+
       "abort": {
         "reconfigure_successful": "Changes saved"
       }
     }
   },
-  "labels": {
-    "none": "(none)",
-    "overrides": {
-      "g_value": "g-value",
-      "frame_width": "Frame width (m)",
-      "tilt": "Tilt (°)",
-      "diffuse_factor": "Diffuse factor",
-      "threshold_direct": "Direct threshold (W/m²)",
-      "threshold_diffuse": "Diffuse threshold (W/m²)",
-      "temperature_indoor_base": "Base indoor temperature (°C)",
-      "temperature_outdoor_base": "Base outdoor temperature (°C)"
-    },
-    "scenarios": {
-      "scenario_b_enable": "Scenario B",
-      "scenario_b_temp_indoor": "Scenario B indoor temp (°C)",
-      "scenario_b_temp_outdoor": "Scenario B outdoor temp (°C)",
-      "scenario_c_enable": "Scenario C",
-      "scenario_c_temp_indoor": "Scenario C indoor temp (°C)",
-      "scenario_c_temp_outdoor": "Scenario C outdoor temp (°C)",
-      "scenario_c_temp_forecast": "Scenario C forecast temp (°C)",
-      "scenario_c_start_hour": "Scenario C start hour"
-    }
-  }
+  
 }
