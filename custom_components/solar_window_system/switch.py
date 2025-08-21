@@ -1,90 +1,118 @@
-# /config/custom_components/solar_window_system/switch.py
+"""Switch platform for Solar Window System."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.restore_state import RestoreEntity
+from .const import (
+    DOMAIN,
+    ENTITY_PREFIX_GLOBAL,
+    GLOBAL_CONFIG_ENTITIES,
+)
 
-from .const import DOMAIN
-from .entity import SolarWindowSystemConfigEntity
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the switch entities."""
-    async_add_entities(
-        [
-            SolarMaintenanceSwitch(hass, entry),
-            SolarDebugSwitch(hass, entry),
-            SolarScenarioBSwitch(hass, entry),
-            SolarScenarioCSwitch(hass, entry),
-        ]
-    )
+    """Set up switch entities for Solar Window System."""
+    # Only handle Global Configuration
+    if entry.title != "Solar Window System":
+        return
+
+    device_registry = dr.async_get(hass)
+    global_device = None
+
+    # Find the global configuration device
+    for device in device_registry.devices.values():
+        if device.config_entries and entry.entry_id in device.config_entries:
+            for identifier in device.identifiers:
+                if identifier[0] == DOMAIN and identifier[1] == "global_config":
+                    global_device = device
+                    break
+            if global_device:
+                break
+
+    if global_device:
+        switch_entities = []
+        for entity_key, config in GLOBAL_CONFIG_ENTITIES.items():
+            if config["platform"] == "input_boolean":
+                switch_entities.append(
+                    GlobalConfigSwitchEntity(entity_key, config, global_device)
+                )
+
+        if switch_entities:
+            async_add_entities(switch_entities)
+    else:
+        _LOGGER.warning("Global Configuration device not found")
 
 
-class BaseSwitchEntity(SolarWindowSystemConfigEntity, SwitchEntity):
-    """Base class for our switch entities."""
+class GlobalConfigSwitchEntity(SwitchEntity, RestoreEntity):
+    """Switch entity for global configuration boolean values."""
 
     def __init__(
-        self, hass: HomeAssistant, entry: ConfigEntry, key: str, default: bool
-    ):
-        super().__init__(hass, entry)
-        self._key = key
-        self._default = default
-        self._attr_should_poll = False
+        self,
+        entity_key: str,
+        config: dict,
+        device: dr.DeviceEntry,
+    ) -> None:
+        """Initialize the switch entity."""
+        self._entity_key = entity_key
+        self._config = config
+        self._device = device
+        # Stable unique id and desired object id for switch.sws_global_*
+        self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
+        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
+        self._attr_name = f"SWS_GLOBAL {config['name']}"
+        self._attr_has_entity_name = False
 
-    @property
-    def is_on(self) -> bool:
-        """Return the state of the entity."""
-        return self.entry.options.get(self._key, self._default)
+        self._attr_device_info = {
+            "identifiers": device.identifiers,
+            "name": device.name,
+            "manufacturer": device.manufacturer,
+            "model": device.model,
+        }
+        self._attr_icon = config.get("icon")
+        self._attr_is_on = config["default"]
 
-    async def async_turn_on(self, **kwargs) -> None:
-        """Turn the entity on."""
-        await self._async_update_option(True)
+    async def async_added_to_hass(self) -> None:
+        """Call when entity is added to hass and restore previous state if available."""
+        await super().async_added_to_hass()
+        # Restore previous state if available
+        restored_state = await self.async_get_last_state()
+        if restored_state is not None:
+            if restored_state.state.lower() in ("on", "true", "1"):
+                self._attr_is_on = True
+            elif restored_state.state.lower() in ("off", "false", "0"):
+                self._attr_is_on = False
+        # Set friendly name to config['name']
+        entity_registry = er.async_get(self.hass)
+        if self.entity_id in entity_registry.entities:
+            ent_reg_entry = entity_registry.entities[self.entity_id]
+            new_friendly_name = self._config.get("name")
+            if ent_reg_entry.original_name != new_friendly_name:
+                entity_registry.async_update_entity(
+                    self.entity_id, name=new_friendly_name
+                )
 
-    async def async_turn_off(self, **kwargs) -> None:
-        """Turn the entity off."""
-        await self._async_update_option(False)
+    async def async_turn_on(self) -> None:
+        """Turn the entity on and persist state."""
+        self._attr_is_on = True
+        self.async_write_ha_state()
 
-    async def _async_update_option(self, value: bool) -> None:
-        """Update the config entry option."""
-        options = dict(self.entry.options)
-        options[self._key] = value
-        await self.hass.config_entries.async_update_entry(self.entry, options=options)
-
-
-class SolarMaintenanceSwitch(BaseSwitchEntity):
-    _attr_name = "Beschattungsautomatik pausieren"
-    _attr_unique_id = f"{DOMAIN}_automatic_paused"
-    _attr_icon = "mdi:pause-circle-outline"
-
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
-        super().__init__(hass, entry, "maintenance_mode", False)
-
-
-class SolarDebugSwitch(BaseSwitchEntity):
-    _attr_name = "Debug Mode"
-    _attr_unique_id = f"{DOMAIN}_debug_mode"
-    _attr_icon = "mdi:bug"
-
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
-        super().__init__(hass, entry, "debug_mode", False)
-
-
-class SolarScenarioBSwitch(BaseSwitchEntity):
-    _attr_name = "Scenario B Enabled"
-    _attr_unique_id = f"{DOMAIN}_scenario_b_enabled"
-    _attr_icon = "mdi:weather-cloudy"
-
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
-        super().__init__(hass, entry, "scenario_b_enabled", True)
-
-
-class SolarScenarioCSwitch(BaseSwitchEntity):
-    _attr_name = "Scenario C Enabled"
-    _attr_unique_id = f"{DOMAIN}_scenario_c_enabled"
-    _attr_icon = "mdi:white-balance-sunny"
-
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
-        super().__init__(hass, entry, "scenario_c_enabled", True)
+    async def async_turn_off(self) -> None:
+        """Turn the entity off and persist state."""
+        self._attr_is_on = False
+        self.async_write_ha_state()

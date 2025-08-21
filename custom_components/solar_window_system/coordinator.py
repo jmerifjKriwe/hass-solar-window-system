@@ -1,100 +1,95 @@
-import logging
-import asyncio
-from datetime import timedelta
+"""Data update coordinator for Solar Window System."""
 
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
+from __future__ import annotations
+
+import logging
+from datetime import timedelta
+from typing import TYPE_CHECKING, Any
+
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .calculator import SolarWindowCalculator
 from .const import DOMAIN
 
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+
 _LOGGER = logging.getLogger(__name__)
 
 
-class SolarWindowDataUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching Solar Window System data."""
+class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Class to manage fetching solar window system data."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, config_data: dict):
-        """Initialize."""
-        self._entry_id = entry.entry_id
-        self.calculator = SolarWindowCalculator(
-            hass, config_data["defaults"], config_data["groups"], config_data["windows"]
-        )
-        self._first_refresh_lock = asyncio.Lock()
-
-        update_interval_minutes = entry.options.get("update_interval", 5)
-        update_interval = timedelta(minutes=update_interval_minutes)
-
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        update_interval_minutes: int,
+    ) -> None:
+        """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            name=DOMAIN,
-            update_interval=update_interval,
+            name=f"{DOMAIN}_{entry.entry_id}",
+            update_interval=timedelta(minutes=update_interval_minutes),
         )
+        self.entry = entry
+        self.calculator: SolarWindowCalculator | None = None
+        self._setup_calculator()
 
-        self.config_entry = entry
-
-    async def _async_update_data(self):
-        """Fetch data from the calculator."""
-
-        latest_entry = self.hass.config_entries.async_get_entry(
-            self.config_entry.entry_id
-        )
-        if latest_entry is None:
-            _LOGGER.warning(
-                "Config entry not available during coordinator refresh, skipping update."
-            )
-            return self.data
-
-        current_options = {**latest_entry.data, **latest_entry.options}
-
-        # --- KORRIGIERTE LOGIK ---
-        if current_options.get("maintenance_mode", False):
-            _LOGGER.info("Maintenance mode active. Keeping last known values.")
-
-            # Wenn noch keine Daten vorhanden sind, führe eine einmalige Berechnung durch
-            if self.data is None:
-                _LOGGER.info(
-                    "No data available yet. Performing initial calculation despite maintenance mode."
-                )
-                try:
-                    return await self.hass.async_add_executor_job(
-                        self.calculator.calculate_all_windows, current_options
-                    )
-                except Exception as exception:
-                    raise UpdateFailed(
-                        f"Error during initial calculation: {exception}"
-                    ) from exception
-
-            # Ansonsten die letzten bekannten Daten zurückgeben
-            return self.data
-
-        # Normale Berechnung wenn nicht im Maintenance-Modus
+    def _setup_calculator(self) -> None:
+        """Set up the calculator with flow-based configuration."""
         try:
-            return await self.hass.async_add_executor_job(
-                self.calculator.calculate_all_windows, current_options
+            # Initialize calculator with flow-based configuration
+            self.calculator = SolarWindowCalculator.from_flows(self.hass, self.entry)
+        except (ValueError, TypeError, AttributeError):
+            _LOGGER.exception("Failed to initialize calculator")
+            self.calculator = None
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Fetch data from the calculator."""
+        if not self.calculator:
+            _LOGGER.warning("Calculator not initialized, skipping update")
+            return {}
+
+        try:
+            # Use the new flow-based calculation method
+            results = self.calculator.calculate_all_windows_from_flows()
+        except (ValueError, TypeError, AttributeError) as err:
+            _LOGGER.exception("Error updating solar window data")
+            msg = f"Error updating solar window data: {err}"
+            raise UpdateFailed(msg) from err
+        else:
+            _LOGGER.debug(
+                "Calculator update completed with %d window results",
+                len(results.get("windows", {})),
             )
-        except Exception as exception:
-            raise UpdateFailed(
-                f"Error communicating with calculator: {exception}"
-            ) from exception
+            # Ensure stable shape for consumers/tests
+            if "windows" not in results:
+                results["windows"] = {}
+            if "groups" not in results:
+                results["groups"] = {}
+            return results
 
-    @property
-    def defaults(self) -> dict:
-        """Return the default configuration data."""
-        return self.calculator.defaults
+    def get_window_shading_status(self, window_name: str) -> bool:
+        """Get shading status for a specific window."""
+        if not self.data:
+            return False
 
-    async def async_config_entry_first_refresh(self) -> None:
-        """Perform the first refresh of the coordinator data."""
-        async with self._first_refresh_lock:
-            if self.data is not None:
-                return
+        windows = self.data.get("windows", {})
+        window_data = windows.get(window_name, {})
+        return window_data.get("requires_shading", False)
 
-            _LOGGER.debug("Performing first refresh for %s", self.name)
-            await self.async_refresh()
+    def get_window_data(self, window_name: str) -> dict[str, Any]:
+        """Get all data for a specific window."""
+        if not self.data:
+            return {}
 
-            if self.data is None:
-                raise UpdateFailed(f"Initial refresh failed for {self.name}")
+        windows = self.data.get("windows", {})
+        return windows.get(window_name, {})
 
-            _LOGGER.debug("First refresh for %s complete", self.name)
+    async def async_reconfigure(self) -> None:
+        """Reconfigure the coordinator when config changes."""
+        self._setup_calculator()
+        await self.async_refresh()
