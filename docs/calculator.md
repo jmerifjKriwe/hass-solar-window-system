@@ -1,369 +1,255 @@
-# Solar Window System Calculator - Dokumentation
-
-## Überblick
-
-Der Solar Window System Calculator ist das Herzstück der Integration und berechnet für jedes Fenster, ob eine Beschattung erforderlich ist. Er kombiniert physikalische Solarberechnungen mit intelligenter Schattenanalyse und berücksichtigt dabei drei verschiedene Beschattungsszenarien.
-
-## Architektur
-
-### SolarWindowSystemCoordinator
-
-Das System verwendet einen zentralen Coordinator (`SolarWindowSystemCoordinator`), der:
-- **Automatische Berechnungen** alle 60 Sekunden durchführt
-- **Flow-basierte Berechnungen** mit `calculate_all_windows_from_flows()` ausführt
-- **Binary Sensor Updates** mit den neuesten Berechnungsergebnissen versorgt
-- **Fehlerbehandlung** und Logging zentral koordiniert
-
-### Flow-basierte Konfiguration
-
-Die Calculator-Architektur basiert ausschließlich auf modernen flow-basierten Methoden und dem HomeAssistant Sub-Entry System mit einer dreistufigen Hierarchie:
-
-```
-Global Configuration (Basis-Einstellungen)
-    ↓ (vererbt an)
-Group Configuration (Gruppierung ähnlicher Fenster)
-    ↓ (vererbt an)
-Window Configuration (individuelle Fenster-Parameter)
-```
-
-**Vererbungslogik:**
-- Window-Einstellungen überschreiben Group-Einstellungen
-- Group-Einstellungen überschreiben Global-Einstellungen
-- Nicht gesetzte Werte werden von der nächsthöheren Ebene übernommen
-
-**Modernisierte Methoden:**
-Der Calculator arbeitet ausschließlich mit flow-basierten Methoden:
-- Alle Berechnungen erfolgen über `calculate_all_windows_from_flows()`
-- Parameter werden über `ShadeRequestFlow` NamedTuple strukturiert übertragen
-- Vollständige Szenario-Vererbung (Window→Group→Global) ist implementiert
-
-## Eingangsdaten
-
-### 1. Externe Sensordaten
-
-| Parameter | Quelle | Beschreibung | Einheit |
-|-----------|--------|--------------|---------|
-| `solar_radiation` | Sensor | Aktuelle Globalstrahlung | W/m² |
-| `sun_azimuth` | sun.sun | Sonnen-Azimuthwinkel | Grad (0-360°) |
-| `sun_elevation` | sun.sun | Sonnen-Elevationswinkel | Grad (0-90°) |
-| `outdoor_temp` | Sensor | Außentemperatur | °C |
-| `indoor_temp` | Sensor | Raumtemperatur pro Fenster | °C |
-| `forecast_temp` | Sensor | Wettervorhersage-Temperatur | °C |
-| `weather_warning` | Sensor | Wetterwarnung aktiv | boolean |
-
-### 2. Fenster-spezifische Parameter
-
-#### Geometrie
-- **window_width** / **window_height**: Fensterabmessungen in Metern
-- **azimuth**: Fensterausrichtung (0° = Nord, 90° = Ost, 180° = Süd, 270° = West)
-- **tilt**: Fensterneigung (0° = vertikal, 90° = horizontal)
-- **frame_width**: Rahmenbreite (reduziert die Glasfläche)
-
-#### Sichtbereich
-- **elevation_min** / **elevation_max**: Vertikaler Sichtbereich der Sonne
-- **azimuth_min** / **azimuth_max**: Horizontaler Sichtbereich (relativ zur Fensterausrichtung)
-
-#### Neue Schatten-Parameter
-- **shadow_depth**: Fenster-Rückversetzung von der Fassade (0-5m)
-- **shadow_offset**: Zusätzliche Beschattung durch Überstände etc. (0-5m)
-
-#### Physikalische Eigenschaften
-- **g_value**: Gesamtenergiedurchlassgrad des Glases (0.1-1.0)
-- **diffuse_factor**: Anteil diffuser Strahlung (0.1-0.5)
-
-## Calculator-Methoden
-
-Der `SolarWindowCalculator` bietet folgende moderne, flow-basierte Methoden:
-
-### Hauptmethoden
-- **`from_flows(global_config_flow, group_flows, window_flows)`**: Erstellt Calculator-Instanz aus Flow-Konfigurationen
-- **`calculate_all_windows_from_flows()`**: Führt komplette Berechnung für alle Fenster durch
-- **`calculate_window_solar_power_with_shadow(window_flow, sun_data)`**: Berechnet Solarleistung mit Schattenberücksichtigung
-
-### Hilfsmethoden
-- **`get_effective_config_from_flows(window_flow)`**: Ermittelt effektive Konfiguration mit Vererbung
-- **`_should_shade_window_from_flows(window_flow, power_data)`**: Beschattungsentscheidung basierend auf Szenarien
-- **`apply_global_factors(power_data, global_flow)`**: Wendet globale Faktoren an
-
-### Utility-Methoden
-- **`get_safe_attr(entity_id, attribute, default)`**: Sichere Attribut-Abfrage mit Fallback
-- **`get_safe_state(entity_id, default)`**: Sichere State-Abfrage mit Fallback
-
-**Hinweis**: Alle veralteten Methoden (calculate_all_windows, should_shade_window, etc.) wurden entfernt. Der Calculator arbeitet ausschließlich mit den modernen flow-basierten Methoden.
-
-## Berechnungslogik
-
-### 1. Solarleistungsberechnung
-
-#### Schritt 1: Sichtbarkeitscheck
-```python
-# Prüfung ob Sonne im definierten Sichtbereich
-if elevation_min <= sun_elevation <= elevation_max:
-    az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
-    if azimuth_min <= az_diff <= azimuth_max:
-        is_visible = True
-```
-
-#### Schritt 2: Glasflächenberechnung
-```python
-glass_width = max(0, window_width - 2 * frame_width)
-glass_height = max(0, window_height - 2 * frame_width)
-area = glass_width * glass_height
-```
-
-#### Schritt 3: Diffuse Strahlung (immer vorhanden)
-```python
-power_diffuse = solar_radiation * diffuse_factor * area * g_value
-```
-
-#### Schritt 4: Direkte Strahlung (nur bei Sichtbarkeit)
-```python
-# Einfallswinkel-Berechnung (trigonometrisch)
-cos_incidence = (sin(sun_elevation) * cos(tilt) +
-                cos(sun_elevation) * sin(tilt) *
-                cos(sun_azimuth - window_azimuth))
-
-if cos_incidence > 0:
-    power_direct = (solar_radiation * (1 - diffuse_factor) *
-                   cos_incidence / sin(sun_elevation)) * area * g_value
-```
-
-### 2. Geometrische Schattenberechnung
-
-Die neue geometrische Schattenberechnung berücksichtigt realistische Gebäudeschatten:
-
-#### Schritt 1: Effektive Schattentiefe
-```python
-effective_shadow_depth = shadow_depth + shadow_offset
-```
-
-#### Schritt 2: Trigonometrische Schattenberechnung
-```python
-if sun_elevation > 0 and effective_shadow_depth > 0:
-    # Schattenlänge auf Fensterebene
-    shadow_length = effective_shadow_depth / tan(sun_elevation)
-
-    # Winkel zwischen Sonnenschatten und Fensternormale
-    shadow_angle_diff = abs(sun_azimuth - window_azimuth)
-
-    # Projizierte Schattenlänge auf Fenster
-    projected_shadow = shadow_length * cos(shadow_angle_diff)
-
-    # Annahme: Fensterhöhe als Referenz für Beschattungsgrad
-    assumed_window_size = 1.5  # Meter
-
-    if projected_shadow >= assumed_window_size:
-        shadow_factor = 0.1  # Minimal 10% direkte Strahlung
-    else:
-        # Linearer Übergang von 1.0 (keine Beschattung) zu 0.1
-        shadow_factor = max(0.1, 1.0 - (projected_shadow / assumed_window_size) * 0.9)
-```
-
-#### Schritt 3: Anwendung auf direkte Strahlung
-```python
-power_direct_shadowed = power_direct * shadow_factor
-```
-
-### 3. Beschattungslogik (Drei Szenarien)
-
-#### Szenario A: Starke direkte Sonneneinstrahlung (immer aktiv)
-```python
-if (power_total > threshold_direct and
-    indoor_temp >= temp_indoor_base and
-    outdoor_temp >= temp_outdoor_base):
-    return True, "Strong sun"
-```
-
-#### Szenario B: Diffuse Wärme (optional)
-```python
-if (scenario_b_enabled and
-    power_total > threshold_diffuse and
-    indoor_temp > temp_indoor_base + temp_indoor_offset_b and
-    outdoor_temp > temp_outdoor_base + temp_outdoor_offset_b):
-    return True, "Diffuse heat"
-```
-
-#### Szenario C: Hitzewarnung/Vorhersage (optional)
-```python
-if (scenario_c_enabled and
-    forecast_temp > temp_forecast_threshold and
-    indoor_temp >= temp_indoor_base and
-    current_hour >= start_hour):
-    return True, "Heatwave forecast"
-```
-
-### 4. Szenario-Vererbung
-
-Die Aktivierung der Szenarien B und C folgt der Vererbungslogik:
-
-```python
-# Window Entity: "inherit" | "enable" | "disable"
-# ↓ (wenn "inherit")
-# Group Entity: "inherit" | "enable" | "disable"
-# ↓ (wenn "inherit")
-# Global Entity: "on" | "off"
-```
-
-## Ausgangsdaten
-
-### Pro Fenster gespeicherte Werte
-
-#### Berechnungsergebnisse
-- **power_total**: Gesamte Solarleistung durch das Fenster (W)
-- **power_direct**: Direkte Solarleistung (W)
-- **power_diffuse**: Diffuse Solarleistung (W)
-- **shadow_factor**: Angewendeter Schattenfaktor (0.1-1.0)
-- **area_m2**: Effektive Glasfläche (m²)
-
-#### Entscheidung
-- **is_visible**: Ist die Sonne für das Fenster sichtbar (boolean)
-- **shade_required**: Beschattung erforderlich (boolean)
-- **shade_reason**: Begründung für die Entscheidung (Text)
-- **effective_threshold**: Angewendeter Schwellwert (W)
-
-**Hinweis**: Diese Daten werden in der `WindowCalculationResult`-Dataclass gespeichert und stehen für die Entität-Updates zur Verfügung. Die tatsächliche Speicherung erfolgt direkt in den entsprechenden HomeAssistant-Entitäten (siehe Entität-Updates).
-
-#### Summary-Daten (für zukünftige Implementierung)
-- **total_power**: Summe aller Fenster-Solarleistungen (W)
-- **window_count**: Anzahl berechneter Fenster
-- **shading_count**: Anzahl Fenster mit Beschattungsempfehlung
-- **calculation_time**: Zeitstempel der Berechnung (ISO)
-
-**Hinweis**: Summary-Daten sind in der `WindowCalculationResult`-Struktur vorbereitet, aber noch nicht vollständig in separaten Entitäten implementiert. Die Aggregation erfolgt derzeit über die Group-Entitäten.
-
-### Entität-Updates
-
-Der Calculator stellt die Berechnungsergebnisse über den `SolarWindowSystemCoordinator` bereit, der alle 60 Sekunden automatisch die Berechnungen durchführt und die HomeAssistant-Entitäten aktualisiert:
-
-#### Coordinator-Architektur
-- **Automatische Updates**: Alle 60 Sekunden wird `calculate_all_windows_from_flows()` ausgeführt
-- **Binary Sensor Integration**: Binary Sensoren werden direkt über den Coordinator mit aktuellen Beschattungsempfehlungen versorgt
-- **Zentrale Fehlerbehandlung**: Der Coordinator fängt Berechnungsfehler ab und sorgt für stabile Entität-Updates
-- **Performance-Optimierung**: Intelligentes Caching und effiziente Batch-Verarbeitung
-
-#### Window-Entitäten (pro Fenster)
-**Sensoren (aus sensor.py):**
-```
-sensor.sws_window_{name}_total_power           # Gesamtleistung (W)
-sensor.sws_window_{name}_total_power_direct    # Direkte Leistung (W)
-sensor.sws_window_{name}_total_power_diffuse   # Diffuse Leistung (W)
-sensor.sws_window_{name}_power_m2_total        # Leistung pro m² gesamt
-sensor.sws_window_{name}_power_m2_direct       # Leistung pro m² direkt
-sensor.sws_window_{name}_power_m2_diffuse      # Leistung pro m² diffus
-sensor.sws_window_{name}_power_m2_raw          # Rohe Leistung pro m²
-sensor.sws_window_{name}_total_power_raw       # Rohe Gesamtleistung
-```
-
-**Binary-Sensoren (aus binary_sensor.py):**
-```
-binary_sensor.sws_window_{name}_shading_required  # Beschattung empfohlen
-```
-
-**Select-Entitäten (aus select.py):**
-```
-select.sws_window_{name}_scenario_b_enable     # Szenario B aktivieren
-select.sws_window_{name}_scenario_c_enable     # Szenario C aktivieren
-```
-
-#### Group-Entitäten (pro Gruppe)
-**Sensoren:**
-```
-sensor.sws_group_{name}_total_power            # Summe Gruppenleistung (W)
-sensor.sws_group_{name}_total_power_direct     # Summe direkte Leistung (W)
-sensor.sws_group_{name}_total_power_diffuse    # Summe diffuse Leistung (W)
-```
-
-#### Global-Entitäten
-Die globalen Konfigurationsentitäten werden über `global_config.py` bereitgestellt und umfassen verschiedene Einstellungen, Schwellwerte und Konfigurationsparameter.
-
-## Performance-Optimierungen
-
-### Coordinator-basierte Optimierungen
-- **Zentrale Koordination**: SolarWindowSystemCoordinator führt alle Berechnungen zentral durch
-- **60-Sekunden-Takt**: Ausbalanciert zwischen Aktualität und Systemlast
-- **Intelligente Updates**: Nur bei tatsächlichen Änderungen werden Entitäten aktualisiert
-- **Fehlerbehandlung**: Isolierung von Berechnungsfehlern pro Fenster
-
-### Entity-Caching
-- **Cache-Dauer**: 30 Sekunden pro Berechnungszyklus
-- **Cache-Invalidierung**: Automatisch bei jedem neuen Berechnungslauf
-- **Fallback-Handling**: Graceful degradation bei fehlenden Entitäten
-
-### Berechnungseffizienz
-- **Flow-basierte Architektur**: Moderne, strukturierte Parameterübergabe
-- **Lazy Evaluation**: Schatten nur bei sichtbarer Sonne berechnet
-- **Trigonometrische Optimierung**: Einmalige Winkelberechnung pro Fenster
-- **Batch-Processing**: Alle Fenster in einem Durchlauf
-
-## Fehlerbehandlung
-
-### Coordinator-Robustheit
-- **Zentrale Fehlerbehandlung**: SolarWindowSystemCoordinator fängt alle Berechnungsfehler ab
-- **Graceful Degradation**: Bei Fehlern werden andere Fenster weiter berechnet
-- **Retry-Mechanismus**: Automatische Wiederholung bei temporären Fehlern
-- **Entität-Schutz**: Binary Sensoren bleiben stabil auch bei Berechnungsfehlern
-
-### Calculator-Robustheit
-- **Fehlende Sensoren**: Fallback auf Standardwerte
-- **Ungültige Werte**: Automatische Korrektur oder Überspringen
-- **Berechnungsfehler**: Isolierung pro Fenster, Weiterführung der anderen
-- **Flow-Validierung**: Strukturvalidierung der Flow-Parameter
-
-### Logging
-- **Debug-Level**: Detaillierte Berechnungsschritte und Coordinator-Aktivitäten
-- **Info-Level**: Zusammenfassungen und wichtige Entscheidungen
-- **Warning-Level**: Fehlerhafte Konfigurationen oder Sensorwerte
-- **Error-Level**: Schwerwiegende Berechnungsfehler und Coordinator-Probleme
-
-## Konfigurationsbeispiel
-
-### Typische Window-Konfiguration
-```yaml
-window_width: 1.5          # 1.5m breites Fenster
-window_height: 2.0         # 2.0m hohes Fenster
-azimuth: 180               # Südfenster
-tilt: 0                    # Vertikal
-shadow_depth: 0.3          # 30cm Rückversetzung
-shadow_offset: 0.5         # 50cm Balkon-Überhang
-elevation_min: 0           # Sonne ab Horizont
-elevation_max: 90          # Bis Zenit
-azimuth_min: -45           # 45° links
-azimuth_max: 45            # 45° rechts
-```
-
-### Typische Schwellwerte
-```yaml
-thresholds:
-  direct: 400              # 400W für Szenario A
-  diffuse: 200             # 200W für Szenario B
-
-temperatures:
-  indoor_base: 24          # 24°C Basis-Innentemperatur
-  outdoor_base: 25         # 25°C Basis-Außentemperatur
-```
-
-## Architektur-Modernisierung
-
-### Von Legacy zu Flow-basiert
-
-Das Solar Window System wurde vollständig modernisiert:
-
-**Entfernte veraltete Methoden:**
-- `calculate_all_windows()` → `calculate_all_windows_from_flows()`
-- `should_shade_window()` → `_should_shade_window_from_flows()`
-- `calculate_window_solar_power()` → `calculate_window_solar_power_with_shadow()`
-- `get_effective_config()` → `get_effective_config_from_flows()`
-- `_apply_entity_overrides()` → Eingebaut in Flow-System
-- `init_from_flows()` → `from_flows()` (Klassenmethod)
-
-**Vorteile der neuen Architektur:**
-- **Coordinator-Integration**: Zentrale, automatisierte Berechnungen
-- **Strukturierte Parameter**: Typisierte Flow-Objekte statt Dictionary-Parametern
-- **Vollständige Vererbung**: Komplette Szenario-Vererbung implementiert
-- **Bessere Testbarkeit**: Klare Interfaces und Abhängigkeiten
-- **Performance**: Optimierte Batch-Verarbeitung und Caching
-
-**Backward Compatibility:**
-Die Integration funktioniert nahtlos mit bestehenden Konfigurationen. Alle bisherigen Einstellungen und Entitäten bleiben unverändert - nur die interne Berechnungslogik wurde modernisiert.
-
-Diese Dokumentation bietet eine vollständige Übersicht über die Funktionsweise des modernisierten Calculators und hilft Anwendern beim Verständnis der komplexen Berechnungslogik.
+# Solar Window System — Calculator (developer guide)
+
+This document explains how the Calculator in the Solar Window System works
+from a developer perspective. It covers the architecture, public functions,
+data shapes, the solar + shadow math, shading decision logic, caching and
+practical notes for testing and debugging.
+
+Checklist (what this page provides)
+- Contract: inputs, outputs, side-effects for the main APIs
+- Data shapes used by the calculator
+- Step-by-step explanation of the solar power calculation and the shadow
+    factor
+- Detailed scenario logic (A/B/C) and inheritance rules
+- Performance & caching notes and recommended unit tests
+
+Audience: this is written for developers who want to understand or extend
+the calculation logic, add tests, or debug shading decisions.
+
+## High-level architecture
+
+- Coordinator: `SolarWindowSystemCoordinator`
+    - Owns a `SolarWindowCalculator` instance and calls
+        `calculate_all_windows_from_flows()` on a regular interval.
+    - Exposes calculation results as coordinator data that sensor/binary
+        platforms read to update Home Assistant entities.
+
+- Calculator: `SolarWindowCalculator`
+    - Flow-based entry point: `from_flows(hass, entry)` to create an instance
+        when using the UI-based flow entries.
+    - Main calculation API: `calculate_all_windows_from_flows()` returns a
+        dict with `windows`, `groups` and `summary` ready for the coordinator.
+
+## Contracts
+
+1) SolarWindowCalculator.calculate_all_windows_from_flows() -> dict
+     - Inputs: uses `hass.config_entries` to discover flow subentries and
+         queries configured entity states (solar radiation, sun.sun attributes,
+         temperature sensors) via short-lived cache helpers.
+     - Output: dict with keys:
+         - `windows`: mapping window_subentry_id -> window result dict
+         - `groups`: mapping group_subentry_id -> group result dict
+         - `summary`: aggregated values (total_power, counts, calculation_time)
+     - Error modes: returns empty results for invalid conditions (e.g. no
+         windows) and isolates exceptions per-window (exceptions are logged and
+         the window receives a result with shade_required False and an error
+         message).
+
+2) SolarWindowCalculator.calculate_window_solar_power_with_shadow(effective_config, window_data, states) -> WindowCalculationResult
+     - Inputs:
+         - `effective_config`: nested dict (thresholds, temperatures, physical,
+             plus extra keys)
+         - `window_data`: raw window subentry data (may contain overrides)
+         - `states`: dict with numeric `solar_radiation`, `sun_azimuth`,
+             `sun_elevation`, `outdoor_temp`, `forecast_temp`, booleans etc.
+     - Output: `WindowCalculationResult` dataclass with fields:
+         - power_total, power_direct, power_diffuse, shadow_factor, is_visible,
+             area_m2, shade_required (initial False), shade_reason (empty), effective_threshold
+     - Error modes: returns zeros and is_visible False if minimums are not met.
+
+Utility helpers
+- `get_safe_state(entity_id, default)` and `get_safe_attr(entity_id, attr, default)`
+    provide resilient state access and log missing/unavailable entities.
+- `_get_cached_entity_state(entity_id, default, label)` caches entity state
+    values for the duration of one calculation run to avoid repeated hass
+    lookups.
+
+## Data shapes
+
+- `effective_config` (example minimal structure):
+    {
+        "thresholds": {"direct": 200.0, "diffuse": 150.0},
+        "temperatures": {"indoor_base": 23.0, "outdoor_base": 19.5},
+        "physical": {"g_value": 0.5, "frame_width": 0.125, "diffuse_factor": 0.15, "tilt": 90.0},
+        ...additional window/group keys...
+    }
+
+- `WindowCalculationResult` fields (float/bool/str):
+    - power_total, power_direct, power_diffuse, shadow_factor (0.1–1.0),
+        is_visible, area_m2, shade_required, shade_reason, effective_threshold
+
+## Effective config & inheritance
+
+- `get_effective_config_from_flows(window_subentry_id)` discovers the
+    corresponding window, optional linked group, and global config entries and
+    merges them. The merging rules are:
+    - Start with global as base
+    - Overlay group values (skip explicit inheritance markers: -1, "inherit", "")
+    - Overlay window-specific values (skip inheritance markers)
+    - Finally normalize flat keys into nested `thresholds`, `temperatures`,
+        `physical` using `_structure_flat_config()` so downstream code expects a
+        stable shape.
+
+This function also returns a `sources` structure that maps each final key to
+its origin (global/group/window) which is useful for debugging and UI
+tooling.
+
+## Calculation steps (per-window)
+
+1) Short-circuit checks
+     - If `solar_radiation` < MIN_RADIATION (1e-3) or `sun_elevation` < MIN_ELEVATION
+         (0.0), return zeros and is_visible False.
+
+2) Physical parameters & area
+     - Read `g_value`, `frame_width`, `diffuse_factor`, `tilt` from
+         `effective_config` (safe float casting).
+     - Compute glass area: `glass_width = max(0, window_width - 2*frame_width)` and
+         `glass_height = max(0, window_height - 2*frame_width)`; `area = glass_width * glass_height`.
+
+3) Diffuse power (always present)
+     - power_diffuse = solar_radiation * diffuse_factor * area * g_value
+
+4) Visibility & direct power
+     - Determine visibility by checking elevation_min/max and an azimuth
+         windowed sector. Azimuth difference `az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180`.
+     - If visible and cos_incidence > 0 compute (see numeric note below):
+         power_direct = (solar_radiation * (1 - diffuse_factor) * cos_incidence / sin(sun_el_rad)) * area * g_value
+
+Numeric note: cos_incidence is computed with standard spherical trig using
+sun elevation/azimuth, window azimuth and panel tilt. Division by sin(sun_el)
+is guarded by a small epsilon to avoid blow-ups near zero elevation.
+
+5) Shadow factor
+     - If shadow_depth>0 or shadow_offset>0 compute shadow factor via
+         `_calculate_shadow_factor(sun_elevation, sun_azimuth, window_azimuth, shadow_depth, shadow_offset)`.
+     - Implementation summary:
+         - Convert sun elevation to radians; if <= 0 return 1.0 (sun below horizon).
+         - Projected shadow length = shadow_depth / tan(sun_el_rad) (guard tan near 0).
+         - Effective_shadow = max(0, shadow_length - shadow_offset)
+         - Normalize by an assumed window height (the code used normalized 1.0m),
+             then linearly interpolate factor between 1.0 (no shadow) and 0.1
+             (full shadow). Angle dependency via azimuth difference reduces factor
+             when sun aligns with window normal.
+
+     - Final `power_direct` is multiplied by `shadow_factor`.
+
+6) Aggregate metrics
+     - power_total = power_direct + power_diffuse
+     - power_m2 = power_total / max(area, 1) (guard against zero area)
+
+7) Scenario decision
+     - The code builds a `ShadeRequestFlow` with the window_data, effective_config,
+         external_states and the solar_result and then calls
+         `_should_shade_window_from_flows(shade_request)` which applies the
+         scenario logic (A/B/C) described below.
+
+## Shadow factor — design rationale and edge cases
+
+- Rationale: treat shadow as geometric occlusion projected on the plane of
+    the window. It scales the direct (beam) component only; diffuse remains
+    unaffected.
+- Edge cases and guards:
+    - Near-zero sun elevation would otherwise blow up shadow_length; code
+        guards using min tan and early return when sun_el_rad <= 0.
+    - Negative or zero window area leads to zero power and is handled by
+        max(area, 1) in per-area metrics and by returning is_visible False above.
+
+## Scenario logic (detailed)
+
+Precedence and overrides
+- The function `_should_shade_window_from_flows()` first checks global
+    overrides: `maintenance_mode` (disable shading) and `weather_warning`
+    (force shading ON).
+
+Scenario A — Strong direct sun (unconditional scenario)
+- Trigger when:
+    - solar_result.power_total > threshold_direct AND
+    - indoor_temp >= temperatures.indoor_base AND
+    - outdoor_temp >= temperatures.outdoor_base
+- Returns True with reason string "Strong sun (...W > ...W)".
+
+Scenario B — Diffuse heat (optional)
+- Only evaluated if scenario B is enabled by inheritance logic.
+- Trigger when:
+    - solar_result.power_total > threshold_diffuse AND
+    - indoor_temp > (indoor_base + scenario_b.temp_indoor_offset) AND
+    - outdoor_temp > (outdoor_base + scenario_b.temp_outdoor_offset)
+
+Scenario C — Heatwave forecast (optional)
+- Only evaluated if scenario C is enabled by inheritance logic.
+- Trigger when forecast_temp > temp_forecast_threshold AND
+    indoor_temp >= indoor_base AND current_hour >= start_hour.
+
+Inheritance for scenario enables
+- `_get_scenario_enables_from_flows()` resolves scenario enables using
+    window → group → global precedence. Window/group values can be
+    `enable`/`disable`/`inherit`; global is boolean.
+
+## Caching and performance
+
+- Per-calculation-run entity-state caching: `_get_cached_entity_state()`
+    caches states for ~30 seconds to avoid repeated hass.state lookups.
+- Coordinator update interval (configurable) determines how often the
+    heavy calculation runs. Default in code is 1 minute.
+- When there are no windows (or insufficient radiation/elevation), the
+    function returns early to save CPU.
+
+## Logging & debugging
+
+- The calculator logs a debug-level inheritance dump for each window
+    (values coming from window/group/global and the final effective view).
+- Important debug points:
+    - External states read (solar_radiation, sun attributes)
+    - Effective config produced per window (flat map vs sources)
+    - Shadow factor and cos_incidence values when direct power is computed
+
+## Edge cases and recommended test cases
+
+Edge cases to cover in unit tests:
+- sun below horizon or sun_elevation very small → no direct power, no
+    shadow division by zero.
+- shadow_depth=0 and shadow_offset>0 and vice versa.
+- window dimensions too small (width/height smaller than 2*frame_width)
+    → glass area clamps to zero.
+- missing temperature sensor (window/group/global) → `_should_shade_window_from_flows`
+    logs a warning and returns False with reason "No room temperature sensor".
+- invalid numeric strings in flow data → helpers cast robustly and fall back.
+
+Suggested unit tests (minimal set)
+- calculate_window_solar_power_with_shadow: sunny, visible, no shadow
+- calculate_window_solar_power_with_shadow: sun below horizon -> zeros
+- _calculate_shadow_factor: series of sun elevations/azimuths vs expected factor
+- _should_shade_window_from_flows: scenario A true/false, scenario B/C true/false,
+    including inheritance permutations (window/group/global)
+
+## How to trace a single shading decision (developer recipe)
+
+1) Start from `SolarWindowSystemCoordinator._async_update_data()` — it calls the calculator method that returns the full results.
+2) In the calculator: `calculate_all_windows_from_flows()` iterates windows and calls `get_effective_config_from_flows(window_id)` to build `effective_config` and `effective_sources`.
+3) `apply_global_factors()` adjusts thresholds/temperatures with sensitivity/children_factor.
+4) `calculate_window_solar_power_with_shadow(effective_config, window_data, external_states)` computes `WindowCalculationResult`.
+5) `_get_scenario_enables_from_flows()` resolves scenario enables; `_should_shade_window_from_flows()` makes the final decision and sets `shade_required` and `shade_reason`.
+
+Insert debug logs or run unit tests that assert intermediate values (effective_config, solar_result, shadow_factor) when verifying correctness.
+
+## Recommendations for contributors
+
+- Keep public helper behavior stable (safe state/attr getters and cache TTL).
+- Write unit tests for pure calculation functions (`_calculate_shadow_factor`,
+    `calculate_window_solar_power_with_shadow`, `_check_scenario_b/_c`).
+- Use the `effective_sources` output to write tests that ensure inheritance
+    works as expected.
+- When changing numeric formulas, add tests for edge cases near singularities
+    (sun elevation close to zero) and for typical mid-day values.
+
+## Appendix — quick reference
+
+- Default thresholds found in code: direct=200 W, diffuse=150 W
+- Default physical values: g_value=0.5, frame_width=0.125 m, diffuse_factor=0.15, tilt=90°
+- Cache TTL per calculation run: 30 seconds
+
+If you want I can now:
+- produce a small test module exercising the shadow factor and scenario
+    decisions, or
+- add a small tracing helper that writes the `effective_config`, `solar_result`
+    and `shade_reason` to the log with a single call for easier debugging.
