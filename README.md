@@ -1,11 +1,10 @@
 ![GitHub Release](https://img.shields.io/github/v/release/jmerifjKriwe/hass-solar-window-system)
 ![Static Badge](https://img.shields.io/badge/HomeAssistant-2025.07-blue)
-
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
 [![HACS+Hassfest validation](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml)
 [![Run Tests](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml)
 
-[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
 
 Short introduction
