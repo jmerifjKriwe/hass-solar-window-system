@@ -10,23 +10,28 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write   # erlaubt es semantic-release, Änderungen zurückzuschreiben
+      contents: write   # erlaubt semantic-release, Änderungen zu committen und Releases anzulegen
 
     steps:
+      # Checkout mit allen Commits und Tags
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # wichtig: alle Commits und Tags holen
+          fetch-depth: 0
+          tags: true
 
+      # Python einrichten
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # python-semantic-release installieren
       - name: Install dependencies
         run: pip install python-semantic-release
 
+      # Release ausführen
       - name: Release
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}   # dein PAT mit repo-Rechten
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Actions-Token für Commits
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}         # für GitHub Release
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # für Commit & Push ins Repo
         run: semantic-release publish
