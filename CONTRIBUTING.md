@@ -69,7 +69,6 @@ Common prefixes used in this repository:
 - `feat(...)`: a new feature
 - `fix(...)`: a bug fix
 - `chore(...)`: maintenance tasks (tests, tooling, docs)
-- `refactor(...)`: code refactoring without behavioral changes
 
 Example: `chore(tests): reorganize tests (poC)`
 
