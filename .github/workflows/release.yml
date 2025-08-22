@@ -1,13 +1,13 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Test", "Lint", "Validate"]
+    types:
+      - completed
 
 jobs:
   release:
-    needs: [lint, test, validate]
     runs-on: ubuntu-latest
 
     permissions:
