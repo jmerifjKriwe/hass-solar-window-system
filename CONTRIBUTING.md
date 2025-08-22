@@ -58,7 +58,7 @@ file.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under its MIT License.
+By contributing, you agree that your contributions will be licensed under its Mozilla Public License 2.0 licence.
 
 ## Commit messages and releases
 
@@ -70,7 +70,7 @@ Common prefixes used in this repository:
 - `fix(...)`: a bug fix
 - `chore(...)`: maintenance tasks (tests, tooling, docs)
 - `refactor(...)`: code refactoring without behavioral changes
- 
+
 Example: `chore(tests): reorganize tests (poC)`
 
 If you're unsure which prefix to use, prefer `chore` for test or tooling changes.
