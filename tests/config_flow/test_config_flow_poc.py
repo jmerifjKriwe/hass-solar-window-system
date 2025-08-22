@@ -6,11 +6,7 @@ Home Assistant test helpers and project fixtures.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import importlib
-
-if TYPE_CHECKING:
-    from typing import Any
 
 
 def test_config_flow_imports_cleanly() -> None:
