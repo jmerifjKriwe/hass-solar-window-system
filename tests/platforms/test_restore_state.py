@@ -3,7 +3,9 @@
 import pytest
 from unittest.mock import patch, Mock
 
-from custom_components.solar_window_system.sensor import SolarWindowSystemGroupDummySensor
+from custom_components.solar_window_system.sensor import (
+    SolarWindowSystemGroupDummySensor,
+)
 
 
 @pytest.mark.asyncio
@@ -19,6 +21,8 @@ async def test_restore_state_on_restart(hass):
         entity = SolarWindowSystemGroupDummySensor("group1", "Test Group")
         await entity.async_added_to_hass()
         assert entity.state == 99
+
+
 """Migrated: Test state restoration for Solar Window System entities after Home Assistant restart."""
 
 import pytest

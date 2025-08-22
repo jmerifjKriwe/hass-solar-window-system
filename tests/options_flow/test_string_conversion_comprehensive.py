@@ -43,7 +43,9 @@ class TestSecondSaveBugFix:
             initial_input["indoor_temperature_sensor"] = "sensor.temp1"
             result = await flow.async_step_user(None)
 
-            group_step1_data = {k: str(v) for k, v in VALID_GROUP_OPTIONS_NUMERIC.items()}
+            group_step1_data = {
+                k: str(v) for k, v in VALID_GROUP_OPTIONS_NUMERIC.items()
+            }
             result = await flow.async_step_user(group_step1_data)
             assert result["type"] == "form"
             assert result["step_id"] == "enhanced"
@@ -122,7 +124,9 @@ class TestSecondSaveBugFix:
             }
             result = await flow.async_step_user(None)
 
-            window_step1_data = {k: str(v) for k, v in VALID_WINDOW_OPTIONS_NUMERIC.items()}
+            window_step1_data = {
+                k: str(v) for k, v in VALID_WINDOW_OPTIONS_NUMERIC.items()
+            }
             result = await flow.async_step_user(window_step1_data)
             assert result["type"] == "form"
             assert result["step_id"] == "overrides"
@@ -182,22 +186,10 @@ class TestSecondSaveBugFix:
         import voluptuous as vol
 
         with pytest.raises(vol.Invalid, match="expected str"):
-            schema = vol.Schema(
-                {
-                    vol.Optional(
-                        "test_field", default=123
-                    ): str
-                }
-            )
+            schema = vol.Schema({vol.Optional("test_field", default=123): str})
             schema({})
 
-        schema_fixed = vol.Schema(
-            {
-                vol.Optional(
-                    "test_field", default="123"
-                ): str
-            }
-        )
+        schema_fixed = vol.Schema({vol.Optional("test_field", default="123"): str})
         result = schema_fixed({})
         assert result["test_field"] == "123"
 

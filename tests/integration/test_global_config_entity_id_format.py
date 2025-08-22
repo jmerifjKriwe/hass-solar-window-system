@@ -19,7 +19,9 @@ from custom_components.solar_window_system.text import GlobalConfigTextEntity
 
 
 @pytest.mark.asyncio
-async def test_global_config_entity_id_and_unique_id_format(hass: HomeAssistant) -> None:
+async def test_global_config_entity_id_and_unique_id_format(
+    hass: HomeAssistant,
+) -> None:
     # Create and add a mock config entry
     config_entry = Mock(spec=ConfigEntry)
     config_entry.entry_id = "test_entry"
@@ -40,7 +42,15 @@ async def test_global_config_entity_id_and_unique_id_format(hass: HomeAssistant)
     )
 
     for entity_key in GLOBAL_CONFIG_ENTITIES:
-        config = {"name": entity_key, "default": 0, "min": 0, "max": 100, "step": 1, "options": ["A", "B"], "icon": "mdi:test"}
+        config = {
+            "name": entity_key,
+            "default": 0,
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "options": ["A", "B"],
+            "icon": "mdi:test",
+        }
         sensor = GlobalConfigSensor(entity_key, config, device)
         number = GlobalConfigNumberEntity(entity_key, config, device)
         select = GlobalConfigSelectEntity(entity_key, config, device)

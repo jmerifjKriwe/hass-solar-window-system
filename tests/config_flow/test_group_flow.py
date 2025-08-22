@@ -61,7 +61,9 @@ async def test_group_subentry_flow_add_and_invalid(
         "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities",
         return_value=[{"label": "Indoor Temp", "value": "sensor.indoor_temp"}],
     ):
-        from custom_components.solar_window_system.config_flow import GroupSubentryFlowHandler
+        from custom_components.solar_window_system.config_flow import (
+            GroupSubentryFlowHandler,
+        )
 
         flow_handler = GroupSubentryFlowHandler()
         flow_handler.hass = hass
@@ -89,6 +91,8 @@ async def test_group_subentry_flow_add_and_invalid(
         assert result2["type"] == FlowResultType.FORM
         errors = result2.get("errors")
         assert errors and "diffuse_factor" in errors
+
+
 """Test group config flow."""
 
 import pytest
@@ -195,6 +199,8 @@ async def test_group_subentry_flow_add_and_invalid(
         if not errors or "diffuse_factor" not in errors:
             msg = f"Expected error for diffuse_factor, got: {errors}"
             raise AssertionError(msg)
+
+
 """Test group config flow."""
 
 """Tests for the Group subentry config flow steps."""

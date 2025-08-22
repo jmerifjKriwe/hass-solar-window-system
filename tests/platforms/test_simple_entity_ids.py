@@ -7,7 +7,16 @@ from custom_components.solar_window_system.number import GlobalConfigNumberEntit
 class TestEntityIDGenerationSimple:
     def test_number_entity_unique_id(self) -> None:
         entity_key = "window_g_value"
-        config = {"platform": "input_number", "name": "Window G-Value", "min": 0.1, "max": 0.9, "step": 0.01, "default": 0.5, "unit": "", "icon": "mdi:window-closed-variant"}
+        config = {
+            "platform": "input_number",
+            "name": "Window G-Value",
+            "min": 0.1,
+            "max": 0.9,
+            "step": 0.01,
+            "default": 0.5,
+            "unit": "",
+            "icon": "mdi:window-closed-variant",
+        }
 
         class MockDevice:
             def __init__(self):

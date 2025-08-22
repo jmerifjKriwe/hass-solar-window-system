@@ -74,6 +74,8 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
     expected = "1.5"
     if actual != expected:
         raise AssertionError(f"Expected window_width '{expected}', got '{actual}'")
+
+
 """Options flow tests for the Solar Window System integration."""
 
 import pytest
@@ -148,6 +150,8 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
     expected = "1.5"
     if actual != expected:
         raise AssertionError(f"Expected window_width '{expected}', got '{actual}'")
+
+
 """Options flow tests migrated from legacy suite."""
 
 import pytest

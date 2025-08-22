@@ -29,7 +29,12 @@ async def test_switch_platform_setup(hass) -> None:
 
     added_entities = []
 
-    def mock_async_add_entities(new_entities: Iterable, update_before_add: bool = False, *, config_subentry_id: str | None = None) -> None:
+    def mock_async_add_entities(
+        new_entities: Iterable,
+        update_before_add: bool = False,
+        *,
+        config_subentry_id: str | None = None,
+    ) -> None:
         added_entities.extend(new_entities)
 
     await async_setup_entry(hass, entry, mock_async_add_entities)
@@ -39,6 +44,8 @@ async def test_switch_platform_setup(hass) -> None:
     for entity in added_entities:
         if not hasattr(entity, "_attr_unique_id"):
             raise AssertionError("Entity has no unique_id")
+
+
 """Test the Switch platform setup for Solar Window System integration."""
 
 import pytest

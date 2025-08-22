@@ -44,7 +44,9 @@ class TestSecondSaveBugFix:
             initial_input["indoor_temperature_sensor"] = "sensor.temp1"
             result = await flow.async_step_user(None)
 
-            group_step1_data = {k: str(v) for k, v in VALID_GROUP_OPTIONS_NUMERIC.items()}
+            group_step1_data = {
+                k: str(v) for k, v in VALID_GROUP_OPTIONS_NUMERIC.items()
+            }
             result = await flow.async_step_user(group_step1_data)
             assert result["type"] == "form"
             assert result["step_id"] == "enhanced"
@@ -123,7 +125,9 @@ class TestSecondSaveBugFix:
             }
             result = await flow.async_step_user(None)
 
-            window_step1_data = {k: str(v) for k, v in VALID_WINDOW_OPTIONS_NUMERIC.items()}
+            window_step1_data = {
+                k: str(v) for k, v in VALID_WINDOW_OPTIONS_NUMERIC.items()
+            }
             result = await flow.async_step_user(window_step1_data)
             assert result["type"] == "form"
             assert result["step_id"] == "overrides"
@@ -215,4 +219,6 @@ class TestSecondSaveBugFix:
 
         for key in test_defaults:
             result = _ui_default(key)
-            assert isinstance(result, str), f"Result for {key} is not a string: {type(result)}"
+            assert isinstance(result, str), (
+                f"Result for {key} is not a string: {type(result)}"
+            )

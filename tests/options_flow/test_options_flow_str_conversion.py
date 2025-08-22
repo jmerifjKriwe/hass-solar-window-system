@@ -82,6 +82,8 @@ async def test_window_options_numeric_values_conversion(hass: HomeAssistant) -> 
     assert result["type"] == "form"
     assert result["step_id"] == "user"
     assert "data_schema" in result
+
+
 """Test to specifically verify the str conversion fix for options flow handlers."""
 
 import pytest

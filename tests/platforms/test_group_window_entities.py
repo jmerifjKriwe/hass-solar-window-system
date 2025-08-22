@@ -180,4 +180,3 @@ async def test_setup_window_power_sensors_creation(
         assert entity.device_info is not None
         subentry_id = name_to_id[entity._object_name]
         assert (DOMAIN, f"window_{subentry_id}") in entity.device_info["identifiers"]
-

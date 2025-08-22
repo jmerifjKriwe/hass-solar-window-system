@@ -39,9 +39,7 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
         type(handler1), "source", new_callable=PropertyMock, return_value="user"
     ):
         group_config = {
-            k: v
-            for k, v in VALID_GROUP_OPTIONS_NUMERIC.items()
-            if k != "name"
+            k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"
         }
         result1 = await handler1.async_step_user(
             {"name": "My Test Group", **group_config}
@@ -71,9 +69,7 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
         type(handler2), "source", new_callable=PropertyMock, return_value="subentry"
     ):
         group_config = {
-            k: v
-            for k, v in VALID_GROUP_OPTIONS_NUMERIC.items()
-            if k != "name"
+            k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"
         }
         result2 = await handler2.async_step_user(
             {"name": "My Test Group", **group_config}

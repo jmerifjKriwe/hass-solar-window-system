@@ -2,6 +2,7 @@
 
 Place reusable fixtures and helpers here so platform tests can be concise.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -15,7 +16,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.solar_window_system.const import DOMAIN
 
 
-def create_global_config_entry(hass: HomeAssistant, entry_id: str = "test_entry") -> MockConfigEntry:
+def create_global_config_entry(
+    hass: HomeAssistant, entry_id: str = "test_entry"
+) -> MockConfigEntry:
     """Create and add a MockConfigEntry for global config and return it."""
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -39,14 +42,18 @@ def ensure_global_device(hass: HomeAssistant, entry: MockConfigEntry):
     )
 
 
-async def collect_entities_for_setup(hass: HomeAssistant, module: Any, entry: MockConfigEntry) -> List[Any]:
+async def collect_entities_for_setup(
+    hass: HomeAssistant, module: Any, entry: MockConfigEntry
+) -> List[Any]:
     """Call module.async_setup_entry and return a list of added entities.
 
     The module is expected to expose `async_setup_entry(hass, entry, async_add_entities)`.
     """
     added_entities: List[Any] = []
 
-    def _mock_async_add_entities(new_entities: Iterable, update_before_add: bool = False, **kwargs) -> None:
+    def _mock_async_add_entities(
+        new_entities: Iterable, update_before_add: bool = False, **kwargs
+    ) -> None:
         # materialize iterator
         added_entities.extend(list(new_entities))
 
@@ -58,4 +65,3 @@ async def collect_entities_for_setup(hass: HomeAssistant, module: Any, entry: Mo
 def global_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Pytest fixture that creates and returns a global MockConfigEntry."""
     return create_global_config_entry(hass)
-

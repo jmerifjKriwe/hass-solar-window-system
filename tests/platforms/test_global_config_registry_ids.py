@@ -11,7 +11,15 @@ from custom_components.solar_window_system.number import GlobalConfigNumberEntit
 @pytest.mark.asyncio
 async def test_entity_attributes_have_sws_global_prefix() -> None:
     entity_key = "window_g_value"
-    config = {"name": "Window G-Value", "min": 0.1, "max": 1.0, "step": 0.01, "default": 0.5, "unit": None, "icon": "mdi:window-closed-variant"}
+    config = {
+        "name": "Window G-Value",
+        "min": 0.1,
+        "max": 1.0,
+        "step": 0.01,
+        "default": 0.5,
+        "unit": None,
+        "icon": "mdi:window-closed-variant",
+    }
 
     device = Mock(spec=dr.DeviceEntry)
     device.identifiers = {("solar_window_system", "global_config")}
@@ -37,7 +45,15 @@ async def test_entity_attributes_have_sws_global_prefix() -> None:
 
 @pytest.mark.asyncio
 async def test_multiple_entities_have_correct_prefixes() -> None:
-    config = {"name": "Test Entity", "min": 0, "max": 100, "step": 1, "default": 50, "unit": None, "icon": "mdi:test"}
+    config = {
+        "name": "Test Entity",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "default": 50,
+        "unit": None,
+        "icon": "mdi:test",
+    }
 
     device = Mock(spec=dr.DeviceEntry)
     device.identifiers = {("solar_window_system", "global_config")}

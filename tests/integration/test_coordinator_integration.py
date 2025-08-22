@@ -236,12 +236,16 @@ async def test_flow_based_calculation_called(mock_hass, mock_entry):
     assert coordinator.data["summary"]["window_count"] == 2
     assert coordinator.get_window_shading_status("Living Room Window") is True
     assert coordinator.get_window_shading_status("Bedroom Window") is False
+
+
 """Test the coordinator integration (migrated from legacy tests)."""
 
 import pytest
 from unittest.mock import MagicMock
 
-from custom_components.solar_window_system.coordinator import SolarWindowSystemCoordinator
+from custom_components.solar_window_system.coordinator import (
+    SolarWindowSystemCoordinator,
+)
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
 
 
@@ -275,6 +279,8 @@ async def test_flow_based_calculation_called(mock_hass, mock_entry):
 
     # Verify the flow-based method was called
     coordinator.calculator.calculate_all_windows_from_flows.assert_called_once()
+
+
 """Test the new coordinator integration."""
 
 import pytest

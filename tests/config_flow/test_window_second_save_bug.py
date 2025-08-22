@@ -11,7 +11,9 @@ from tests.test_data import VALID_GLOBAL_BASIC, VALID_GLOBAL_ENHANCED
 
 
 @pytest.mark.asyncio
-async def test_window_options_second_save_expected_str_error(hass: HomeAssistant) -> None:
+async def test_window_options_second_save_expected_str_error(
+    hass: HomeAssistant,
+) -> None:
     """Test window subentry reconfigure (second save) scenario for 'expected str' error."""
     parent_entry = MockConfigEntry(
         version=1,

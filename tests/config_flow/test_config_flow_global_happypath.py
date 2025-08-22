@@ -49,4 +49,3 @@ async def test_global_config_flow_create_entry(hass: HomeAssistant) -> None:
         result3["flow_id"], user_input=VALID_GLOBAL_SCENARIOS
     )
     assert result4.get("type") == FlowResultType.CREATE_ENTRY
-

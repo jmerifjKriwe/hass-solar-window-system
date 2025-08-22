@@ -10,7 +10,9 @@ from custom_components.solar_window_system import config_flow
 
 
 @pytest.mark.asyncio
-async def test_group_reconfigure_invalid_diffuse_factor(hass: HomeAssistant, global_config_entry) -> None:
+async def test_group_reconfigure_invalid_diffuse_factor(
+    hass: HomeAssistant, global_config_entry
+) -> None:
     """Ensure invalid diffuse_factor in reconfigure shows an error and is not saved."""
     from tests.test_data import VALID_GLOBAL_ENHANCED
 
@@ -28,11 +30,14 @@ async def test_group_reconfigure_invalid_diffuse_factor(hass: HomeAssistant, glo
     # Use the public reconfigure entrypoint
     mock_subentry = AsyncMock()
     mock_subentry.data = stored_data
-    with patch.object(
-        reconfig_flow, "_get_reconfigure_subentry", return_value=mock_subentry
-    ), patch(
-        "custom_components.solar_window_system.helpers.get_temperature_sensor_entities",
-        return_value=[],
+    with (
+        patch.object(
+            reconfig_flow, "_get_reconfigure_subentry", return_value=mock_subentry
+        ),
+        patch(
+            "custom_components.solar_window_system.helpers.get_temperature_sensor_entities",
+            return_value=[],
+        ),
     ):
         result = await reconfig_flow.async_step_reconfigure(None)
         assert result["type"] == "form"

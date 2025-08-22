@@ -44,12 +44,22 @@ def mock_global_config_entry() -> MockConfigEntry:
 
 
 @pytest.mark.asyncio
-async def test_group_subentry_flow_basic_step(hass: HomeAssistant, mock_group_parent_entry: MockConfigEntry, mock_global_config_entry: MockConfigEntry) -> None:
+async def test_group_subentry_flow_basic_step(
+    hass: HomeAssistant,
+    mock_group_parent_entry: MockConfigEntry,
+    mock_global_config_entry: MockConfigEntry,
+) -> None:
     """Test that the user step returns a form for the subentry flow."""
     mock_group_parent_entry.add_to_hass(hass)
     mock_global_config_entry.add_to_hass(hass)
 
-    with patch("custom_components.solar_window_system.config_flow.get_temperature_sensor_entities", return_value=[{"label": "Indoor Temp", "value": "sensor.indoor_temp"}, {"label": "Inherit from Global", "value": "-1"}]):
+    with patch(
+        "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities",
+        return_value=[
+            {"label": "Indoor Temp", "value": "sensor.indoor_temp"},
+            {"label": "Inherit from Global", "value": "-1"},
+        ],
+    ):
         flow = GroupSubentryFlowHandler()
         flow.hass = hass
         try:
@@ -67,13 +77,29 @@ async def test_group_subentry_flow_basic_step(hass: HomeAssistant, mock_group_pa
 
 
 @pytest.mark.asyncio
-async def test_group_subentry_flow_complete(hass: HomeAssistant, mock_group_parent_entry: MockConfigEntry, mock_global_config_entry: MockConfigEntry) -> None:
+async def test_group_subentry_flow_complete(
+    hass: HomeAssistant,
+    mock_group_parent_entry: MockConfigEntry,
+    mock_global_config_entry: MockConfigEntry,
+) -> None:
     """Test a full create path that ends in CREATE_ENTRY (mocked)."""
     mock_group_parent_entry.add_to_hass(hass)
     mock_global_config_entry.add_to_hass(hass)
 
-    with patch("custom_components.solar_window_system.config_flow.get_temperature_sensor_entities", return_value=[{"label": "Indoor Temp", "value": "sensor.indoor_temp"}]), patch("custom_components.solar_window_system.config_flow.GroupSubentryFlowHandler.async_create_entry") as mock_create_entry:
-        mock_create_entry.return_value = {"type": FlowResultType.CREATE_ENTRY, "title": "Test Group", "data": {"name": "Test Group"}}
+    with (
+        patch(
+            "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities",
+            return_value=[{"label": "Indoor Temp", "value": "sensor.indoor_temp"}],
+        ),
+        patch(
+            "custom_components.solar_window_system.config_flow.GroupSubentryFlowHandler.async_create_entry"
+        ) as mock_create_entry,
+    ):
+        mock_create_entry.return_value = {
+            "type": FlowResultType.CREATE_ENTRY,
+            "title": "Test Group",
+            "data": {"name": "Test Group"},
+        }
 
         flow = GroupSubentryFlowHandler()
         flow.hass = hass
@@ -86,7 +112,9 @@ async def test_group_subentry_flow_complete(hass: HomeAssistant, mock_group_pare
         except Exception:
             setattr(flow, "parent_entry_id", mock_group_parent_entry.entry_id)
 
-        res1 = await flow.async_step_user({"name": "Test Group", "indoor_temperature_sensor": "sensor.indoor_temp"})
+        res1 = await flow.async_step_user(
+            {"name": "Test Group", "indoor_temperature_sensor": "sensor.indoor_temp"}
+        )
         assert res1["step_id"] == "enhanced"
 
         res2 = await flow.async_step_enhanced({})

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.asyncio
-async def test_config_flow_invalid_value(hass: 'HomeAssistant') -> None:
+async def test_config_flow_invalid_value(hass: "HomeAssistant") -> None:
     """Invalid numeric values should be reported as form errors."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -36,6 +36,3 @@ async def test_config_flow_invalid_value(hass: 'HomeAssistant') -> None:
     errors = result2.get("errors")
     if not errors or "window_width" not in errors:
         raise AssertionError(f"Expected error for window_width, got: {errors}")
-
-
-

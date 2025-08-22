@@ -38,6 +38,7 @@ async def test_diagnostics_config_entry(
     result = await async_get_config_entry_diagnostics(hass, entry)
     assert result == snapshot
 
+
 """Test diagnostics endpoint for Solar Window System integration."""
 
 import pytest

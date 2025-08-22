@@ -32,8 +32,12 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
         type(handler1), "source", new_callable=PropertyMock, return_value="user"
     ):
         # Step 1: user
-        group_config = {k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"}
-        result1 = await handler1.async_step_user({"name": "My Test Group", **group_config})
+        group_config = {
+            k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"
+        }
+        result1 = await handler1.async_step_user(
+            {"name": "My Test Group", **group_config}
+        )
         # Step 2: enhanced
         result1 = await handler1.async_step_enhanced({})
         assert result1["type"] == FlowResultType.CREATE_ENTRY
@@ -50,7 +54,9 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
     setattr(
         group_parent_entry,
         "subentries",
-        property(lambda self: fake_subentries).__get__(group_parent_entry, type(group_parent_entry)),
+        property(lambda self: fake_subentries).__get__(
+            group_parent_entry, type(group_parent_entry)
+        ),
     )
     # Try to create a second group with the same name
     handler2 = __import__(
@@ -62,7 +68,11 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
     with patch.object(
         type(handler2), "source", new_callable=PropertyMock, return_value="subentry"
     ):
-        group_config = {k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"}
-        result2 = await handler2.async_step_user({"name": "My Test Group", **group_config})
+        group_config = {
+            k: v for k, v in VALID_GROUP_OPTIONS_NUMERIC.items() if k != "name"
+        }
+        result2 = await handler2.async_step_user(
+            {"name": "My Test Group", **group_config}
+        )
         assert result2["type"] == FlowResultType.FORM
         assert result2["errors"] == {"name": "duplicate_name"}

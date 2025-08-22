@@ -39,12 +39,16 @@ def test_shadow_factor_complete_shadow(calculator):
 def test_entity_cache_hit(calculator):
     mock_state = Mock()
     mock_state.state = "42.5"
-    with patch("homeassistant.core.StateMachine.get", return_value=mock_state) as mock_get:
+    with patch(
+        "homeassistant.core.StateMachine.get", return_value=mock_state
+    ) as mock_get:
         result1 = calculator._get_cached_entity_state("sensor.test", 0)
         result2 = calculator._get_cached_entity_state("sensor.test", 0)
         assert result1 == "42.5"
         assert result2 == "42.5"
         assert mock_get.call_count == 1
+
+
 """
 Refactored integration-style tests for SolarWindowCalculator migrated from legacy suite.
 These tests focus on flow inheritance, triggers, calculation correctness, and performance.

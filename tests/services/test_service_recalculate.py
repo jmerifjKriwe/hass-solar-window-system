@@ -77,6 +77,8 @@ async def test_recalculate_service_no_window_configs(hass: HomeAssistant):
     await async_setup_entry(hass, entry)
     # Should not raise
     await hass.services.async_call(DOMAIN, "recalculate", {}, blocking=True)
+
+
 """Tests for the recalculate service and integration-level behavior."""
 
 from unittest.mock import AsyncMock, Mock, patch

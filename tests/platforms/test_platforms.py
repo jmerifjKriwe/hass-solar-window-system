@@ -3,6 +3,7 @@
 This file demonstrates how platform tests can be consolidated and
 parametrized to reduce duplication.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -28,9 +29,7 @@ PLATFORMS: list[Tuple[str, str]] = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("platform_name", "module_path"), PLATFORMS)
-async def test_platform_setup_minimal(
-    hass, platform_name: str, module_path: str
-):
+async def test_platform_setup_minimal(hass, platform_name: str, module_path: str):
     """Minimal smoke test for platform setup using shared helpers."""
     entry = create_global_config_entry(hass, entry_id=f"test_{platform_name}_entry")
     ensure_global_device(hass, entry)

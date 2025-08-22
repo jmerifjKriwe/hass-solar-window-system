@@ -37,6 +37,8 @@ async def test_recalculate_service_invalid_window(hass: HomeAssistant):
         )
     except Exception as e:
         raise AssertionError(f"Service call failed: {e}")
+
+
 """Tests for registered services of the Solar Window System integration."""
 
 import pytest
@@ -71,6 +73,8 @@ async def test_recalculate_service_invalid_window(hass):
         )
     except Exception as exc:
         raise AssertionError(f"Service call failed: {exc}")
+
+
 """Test all registered services for Solar Window System integration."""
 
 import pytest

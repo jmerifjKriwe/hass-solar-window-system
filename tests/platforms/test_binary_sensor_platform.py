@@ -43,9 +43,6 @@ async def test_binary_sensor_platform_setup(hass: HomeAssistant) -> None:
     await async_setup_entry(hass, entry, mock_async_add_entities)
 
     # For global configuration no BinarySensor entities are expected
-    msg = (
-        "For global configuration no BinarySensor entities should be "
-        "registered."
-    )
+    msg = "For global configuration no BinarySensor entities should be registered."
     if len(added_entities) != 0:
         raise AssertionError(msg)
