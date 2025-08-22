@@ -8,15 +8,15 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    
+
     permissions:
-      contents: write
+      contents: write   # erlaubt es semantic-release, Änderungen zurückzuschreiben
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          
+          fetch-depth: 0   # wichtig: alle Commits und Tags holen
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -27,5 +27,6 @@ jobs:
 
       - name: Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}   # dein PAT mit repo-Rechten
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Actions-Token für Commits
         run: semantic-release publish
