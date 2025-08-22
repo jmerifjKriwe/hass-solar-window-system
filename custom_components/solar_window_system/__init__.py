@@ -1,185 +1,243 @@
+"""Solar Window System integration package."""
+
 import logging
-import os
-import yaml
 
-from homeassistant.core import HomeAssistant, CoreState, ServiceCall
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PLATFORMS
-from .coordinator import SolarWindowDataUpdateCoordinator
+from .const import DOMAIN
+from .coordinator import SolarWindowSystemCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _get_default_config() -> dict:
-    """Return the built-in default configuration matching number entities."""
-    return {
-        "physical": {
-            "g_value": 0.5,
-            "frame_width": 0.125,
-            "diffuse_factor": 0.15,
-            "tilt": 90,
-        },
-        "thresholds": {"direct": 200, "diffuse": 150},
-        "temperatures": {"indoor_base": 23.0, "outdoor_base": 19.5},
-        "scenario_b": {
-            "enabled": True,
-            "temp_indoor_offset": 0.5,
-            "temp_outdoor_offset": 6.0,
-        },
-        "scenario_c": {
-            "enabled": True,
-            "temp_forecast_threshold": 28.5,
-            "start_hour": 9,
-        },
-        "calculation": {"min_sun_elevation": 10},
-    }
-
-
-def _load_config_from_files(hass: HomeAssistant) -> dict:
-    """Load window and group configuration from YAML files."""
-    config_path = hass.config.path("solar_windows")
-
-    _LOGGER.info(f"Looking for config files in: {config_path}")
-
-    groups_config = {}
-    windows_config = {}
-
-    try:
-        with open(os.path.join(config_path, "groups.yaml"), "r", encoding="utf-8") as f:
-            loaded = yaml.safe_load(f)
-            if loaded is None:
-                groups_config = {}
-            else:
-                groups_config = loaded.get("groups", {})
-            _LOGGER.info(
-                f"groups.yaml loaded successfully with groups: {list(groups_config.keys())}"
-            )
-    except FileNotFoundError:
-        _LOGGER.debug("groups.yaml not found, using empty configuration.")
-    except Exception as e:
-        _LOGGER.error("Error loading groups.yaml: %s", e)
-
-    try:
-        with open(
-            os.path.join(config_path, "windows.yaml"), "r", encoding="utf-8"
-        ) as f:
-            loaded = yaml.safe_load(f)
-            if loaded is None:
-                windows_config = {}
-            else:
-                windows_config = loaded.get("windows", {})
-            _LOGGER.info(
-                f"windows.yaml loaded successfully with windows: {list(windows_config.keys())}"
-            )
-    except FileNotFoundError:
-        _LOGGER.warning("windows.yaml not found. No windows will be configured.")
-    except Exception as e:
-        _LOGGER.error("Error loading windows.yaml: %s", e)
-
-    return {"groups": groups_config, "windows": windows_config}
-
-
-async def _setup_integration(hass: HomeAssistant, entry: ConfigEntry, is_delayed: bool):
-    _LOGGER.info(
-        f"Proceeding with setup for entry {entry.entry_id} (delayed: {is_delayed})"
-    )
-    file_config = await hass.async_add_executor_job(_load_config_from_files, hass)
-
-    if not file_config.get("windows"):
-        _LOGGER.error(
-            f"No windows configured, aborting setup. File config: {file_config}"
-        )
-        raise ConfigEntryNotReady("No windows configured in windows.yaml")
-
-    # 2. Get built-in defaults and combine into the final config object
-    config_data = {
-        "defaults": _get_default_config(),
-        "groups": file_config.get("groups", {}),
-        "windows": file_config.get("windows", {}),
-    }
-
-    # 3. Create and store the coordinator
-    coordinator = SolarWindowDataUpdateCoordinator(hass, entry, config_data)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-
-    # 4. Initial data refresh
-    await coordinator.async_config_entry_first_refresh()
-
-    # 5. Set up platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    hass.data[DOMAIN]["loaded_platforms"] = set(PLATFORMS)
-
-    # 6. Set up listeners and services
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
-    if not hass.services.has_service(DOMAIN, "update_now"):
-        _LOGGER.info("Registering service solar_window_system.update_now")
-
-        async def handle_update_now(call: ServiceCall):
-            """Handle the service call."""
-            _LOGGER.info("Service 'update_now' called. Forcing data refresh.")
-            await coordinator.async_request_refresh()
-
-        hass.services.async_register(DOMAIN, "update_now", handle_update_now)
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    # Get update interval from global config
+    update_interval_minutes = 1
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        if config_entry.data.get("entry_type") == "global_config":
+            update_interval_minutes = config_entry.options.get(
+                "update_interval", config_entry.data.get("update_interval", 1)
+            )
+            break
+
+    # Register recalculate service (only once)
+    if not hass.services.has_service(DOMAIN, "recalculate"):
+
+        async def handle_recalculate_service(call: ServiceCall) -> None:
+            """Service to trigger recalculation for all or a specific window."""
+            window_id = call.data.get("window_id")
+            # Recalculate for all window_configs coordinators
+            for config_entry in hass.config_entries.async_entries(DOMAIN):
+                if config_entry.data.get("entry_type") == "window_configs":
+                    coordinator = hass.data[DOMAIN][config_entry.entry_id][
+                        "coordinator"
+                    ]
+                    await coordinator.async_refresh()
+                    # If a specific window_id is given, optionally filter or log
+                    if window_id:
+                        # Optionally, you could implement per-window recalculation logic here
+                        _LOGGER.info(f"Recalculation triggered for window: {window_id}")
+                    else:
+                        _LOGGER.info("Recalculation triggered for all windows.")
+
+        hass.services.async_register(DOMAIN, "recalculate", handle_recalculate_service)
     """Set up Solar Window System from a config entry."""
-    if hass.state is CoreState.running:
-        await _setup_integration(hass, entry, is_delayed=False)
-    else:
-        _LOGGER.info("Home Assistant not started yet, delaying setup.")
+    _LOGGER.debug("Setting up entry: %s", entry.title)
+    _LOGGER.debug("Entry data: %s", entry.data)
+    _LOGGER.debug("Entry ID: %s", entry.entry_id)
 
-        async def delayed_setup(event):
-            _LOGGER.info("Delayed setup started after Home Assistant start event")
-            fresh_entry = hass.config_entries.async_get_entry(entry.entry_id)
-            if fresh_entry:
-                await _setup_integration(hass, fresh_entry, is_delayed=True)
-            else:
-                _LOGGER.error(
-                    "Could not find config entry %s during delayed setup",
-                    entry.entry_id,
-                )
+    device_registry = dr.async_get(hass)
 
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, delayed_setup)
+    # Create device for global config
+    if entry.title == "Solar Window System":
+        _LOGGER.debug("Creating device for global config")
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, "global_config")},
+            name="Solar Window System",
+            manufacturer="SolarWindowSystem",
+            model="GlobalConfig",
+        )
 
+        # Set up all platforms for this entry
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["sensor", "number", "text", "select", "switch"]
+        )
+
+    # Handle group configurations entry (subentry parent)
+    elif entry.data.get("entry_type") == "group_configs":
+        # Create devices for existing subentries
+        await _create_subentry_devices(hass, entry)
+
+        # Initialize coordinator for group configurations as well
+        coordinator = SolarWindowSystemCoordinator(hass, entry, update_interval_minutes)
+
+        # Store coordinator per entry to support multiple entries
+        hass.data.setdefault(DOMAIN, {})
+        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+        # Start coordinator updates
+        await coordinator.async_config_entry_first_refresh()
+
+        # Set up platforms for group configurations
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["select", "sensor"]
+        )
+
+        # Add update listener to handle new subentries
+        entry.add_update_listener(_handle_config_entry_update)
+
+    # Handle window configurations entry (subentry parent)
+    elif entry.data.get("entry_type") == "window_configs":
+        # Create devices for existing subentries
+        await _create_subentry_devices(hass, entry)
+
+        # Initialize coordinator for calculation updates
+        coordinator = SolarWindowSystemCoordinator(hass, entry, update_interval_minutes)
+
+        # Store coordinator in hass.data for access by binary sensors
+        hass.data.setdefault(DOMAIN, {})
+        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+        # Start coordinator updates
+        await coordinator.async_config_entry_first_refresh()
+
+        # Set up platforms for window configurations
+        await hass.config_entries.async_forward_entry_setups(
+            entry, ["select", "sensor", "binary_sensor", "number", "text", "switch"]
+        )
+
+        # Add update listener to handle new subentries
+        entry.add_update_listener(_handle_config_entry_update)
+
+    # Register service for manual device creation (only once)
+    if not hass.services.has_service(DOMAIN, "create_subentry_devices"):
+
+        async def create_subentry_devices_service(
+            _call: ServiceCall,
+        ) -> None:
+            """Service to manually create subentry devices."""
+            for config_entry in hass.config_entries.async_entries(DOMAIN):
+                if config_entry.data.get("entry_type") in [
+                    "group_configs",
+                    "window_configs",
+                ]:
+                    await _create_subentry_devices(hass, config_entry)
+
+        hass.services.async_register(
+            DOMAIN, "create_subentry_devices", create_subentry_devices_service
+        )
+
+    _LOGGER.debug("Setup completed for: %s", entry.title)
     return True
+
+
+@callback
+async def _handle_config_entry_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle config entry updates to create devices for new subentries."""
+    _LOGGER.debug("Config entry update detected for: %s", entry.title)
+    if entry.data.get("entry_type") in ["group_configs", "window_configs"]:
+        await _create_subentry_devices(hass, entry)
+
+        # Reconfigure coordinator if this entry manages flows
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+            await coordinator.async_reconfigure()
+
+        # Reload select platform to pick up new entities for new subentries
+        _LOGGER.debug("Reloading platforms for updated entry: %s", entry.title)
+        if entry.data.get("entry_type") in ("group_configs", "window_configs"):
+            # Reload platforms to pick up entities for new subentries
+            platforms = ["select", "sensor"]
+            if entry.data.get("entry_type") == "window_configs":
+                platforms.append("binary_sensor")
+            await hass.config_entries.async_unload_platforms(entry, platforms)
+            await hass.config_entries.async_forward_entry_setups(entry, platforms)
+
+
+async def _create_subentry_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Create devices for all subentries using proper Device Registry API."""
+    device_registry = dr.async_get(hass)
+
+    # The correct way to access subentries is through entry.subentries
+    # This is a dict where keys are subentry IDs and values are ConfigSubentry objects
+
+    if getattr(entry, "subentries", None):
+        for subentry_id, subentry in entry.subentries.items():
+            if subentry.subentry_type == "group":
+                group_name = subentry.title
+                _LOGGER.debug("Creating device for group subentry: %s", group_name)
+
+                # This is the key: use config_subentry_id parameter
+                # to link device to subentry
+                device = device_registry.async_get_or_create(
+                    config_entry_id=entry.entry_id,
+                    config_subentry_id=subentry_id,  # Links device to subentry!
+                    identifiers={(DOMAIN, f"group_{subentry_id}")},
+                    name=group_name,
+                    manufacturer="SolarWindowSystem",
+                    model="GroupConfig",
+                )
+                _LOGGER.debug(
+                    "Device created for subentry: %s (%s)", device.name, device.id
+                )
+            elif subentry.subentry_type == "window":
+                window_name = subentry.title
+                _LOGGER.debug("Creating device for window subentry: %s", window_name)
+
+                # Create device for window subentry
+                device = device_registry.async_get_or_create(
+                    config_entry_id=entry.entry_id,
+                    config_subentry_id=subentry_id,  # Links device to subentry!
+                    identifiers={(DOMAIN, f"window_{subentry_id}")},
+                    name=window_name,
+                    manufacturer="SolarWindowSystem",
+                    model="WindowConfig",
+                )
+                _LOGGER.debug(
+                    "Device created for subentry: %s (%s)", device.name, device.id
+                )
+                _LOGGER.debug(
+                    "Device config_entries_subentries: %s",
+                    device.config_entries_subentries,
+                )
+            else:
+                _LOGGER.debug(
+                    "Skipping subentry (unknown type): %s", subentry.subentry_type
+                )
+    else:
+        _LOGGER.debug("No subentries found in entry")
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.info(f"Unloading entry {entry.entry_id}")
+    _LOGGER.debug("Unloading entry: %s", entry.title)
 
-    domain_data = hass.data.get(DOMAIN)
-    if not domain_data:
-        return True  # Nothing to unload
+    # Unload platforms if this is the global config entry
+    if entry.title == "Solar Window System":
+        return await hass.config_entries.async_unload_platforms(
+            entry, ["sensor", "number", "text", "select", "switch"]
+        )
 
-    loaded_platforms = domain_data.get("loaded_platforms", set())
-    _LOGGER.info(f"Platforms to unload: {loaded_platforms}")
+    # Handle window_configs entry unloading
+    if entry.data.get("entry_type") == "window_configs":
+        # Clean up coordinator
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            del hass.data[DOMAIN][entry.entry_id]
 
-    unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, list(loaded_platforms)
-    )
+        return await hass.config_entries.async_unload_platforms(
+            entry, ["select", "sensor", "binary_sensor"]
+        )
 
-    if unload_ok:
-        domain_data.pop(entry.entry_id, None)
-        domain_data.pop("loaded_platforms", None)
-        if not domain_data:
-            hass.data.pop(DOMAIN)
+    # Handle group_configs entry unloading
+    if entry.data.get("entry_type") == "group_configs":
+        # Clean up coordinator
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            del hass.data[DOMAIN][entry.entry_id]
+        return await hass.config_entries.async_unload_platforms(
+            entry, ["select", "sensor"]
+        )
 
-    if not hass.config_entries.async_entries(DOMAIN):
-        if hass.services.has_service(DOMAIN, "update_now"):
-            hass.services.async_remove(DOMAIN, "update_now")
-            _LOGGER.info("Unregistered service solar_window_system.update_now")
-
-    return unload_ok
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle a reload request from the UI."""
-    _LOGGER.info("Reloading Solar Window System integration.")
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    return True

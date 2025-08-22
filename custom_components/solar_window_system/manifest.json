@@ -4,13 +4,9 @@
   "codeowners": [
     "@jmerifjKriwe"
   ],
-  "dependencies": [
-    "input_number",
-    "template",
-    "sun"
-  ],
+  "config_flow": true,
   "documentation": "https://github.com/jmerifjKriwe/hass-solar-window-system",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jmerifjKriwe/hass-solar-window-system/issues",
-  "version": "1.0.0"
+  "version": "0.2"
 }
