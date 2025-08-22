@@ -1,5 +1,11 @@
+![GitHub Release](https://img.shields.io/github/v/release/jmerifjKriwe/hass-solar-window-system)
+![Static Badge](https://img.shields.io/badge/HomeAssistant-2025.07-blue)
+
+
 [![HACS+Hassfest validation](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml)
 [![Run Tests](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml)
+
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
 
 Short introduction
@@ -160,15 +166,6 @@ Best practices to avoid flutter (rapid on/off)
 - If a specific window toggles often, consider grouping it with similar
 	windows or adding a small automation delay before actuators move.
 
-Verification of implementation (what I inspected)
--------------------------------------------------
-
-I reviewed the following integration files to derive defaults and behaviour:
-- `calculator.py` (solar calculation, shadow factor, scenario checks)
-- `config_flow.py` and `options_flow.py` (UI flows, validation, inheritance)
-- `global_config.py` (global helper entities)
-- `sensor.py`, `binary_sensor.py`, `number.py`, `select.py` (entities created)
-- `helpers.py` and `coordinator.py` (selectors, coordinator behaviour)
 
 Quick Start — minimal working example
 ------------------------------------
@@ -263,3 +260,7 @@ condition:
 		entity_id: sensor.solar_radiation_filtered
 		above: 50
 ```
+
+Licence
+------------------------------------
+This project is licensed under the Mozilla Public License 2.0. See the LICENSE file for details.
