@@ -7,10 +7,11 @@ on:
 
 jobs:
   release:
+    needs: [lint, test, validate]
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write   # erlaubt semantic-release, Änderungen zu committen und Releases anzulegen
+      contents: write
 
     steps:
       # Checkout mit allen Commits und Tags
@@ -32,6 +33,8 @@ jobs:
       # Release ausführen
       - name: Release
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}         # für GitHub Release
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # für Commit & Push ins Repo
-        run: semantic-release publish
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -x
+          semantic-release publish
