@@ -1,6 +1,13 @@
+"""
+Pytest configuration and shared fixtures for the test suite.
+
+This module configures pytest for Home Assistant custom component tests and
+exposes commonly used fixtures used across the `tests/` directory.
+"""
+
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -23,15 +30,21 @@ from tests.test_data import VALID_WINDOW_DATA
 # Ensure custom integrations are enabled for all tests
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
-    """Enable custom integrations defined in the test dir."""
-    return
+    """
+    Enable custom integrations defined in the test dir.
 
+    The parameter `enable_custom_integrations` is provided by the
+    `pytest_homeassistant_custom_component` plugin; referencing it here
+    ensures linters do not flag the argument as unused.
+    """
+    _ = enable_custom_integrations
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
 
 # Fixtures for Home Assistant test environment
-pytest_plugins = "pytest_homeassistant_custom_component"
+pytest_plugins = (
+    "pytest_homeassistant_custom_component",
+    "tests.helpers.fixtures_helpers",
+)
 
 
 @pytest.fixture
