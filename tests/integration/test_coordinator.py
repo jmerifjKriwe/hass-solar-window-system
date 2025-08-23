@@ -27,8 +27,8 @@ from tests.helpers.fixtures_helpers import fake_hass_magicmock, window_entry
 async def test_coordinator_initialization(fake_hass_magicmock, window_entry):
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
-    assert coordinator.hass == mock_hass
-    assert coordinator.entry == mock_entry
+    assert coordinator.hass == fake_hass_magicmock
+    assert coordinator.entry == window_entry
     assert coordinator.calculator is not None
     assert isinstance(coordinator.calculator, SolarWindowCalculator)
 
@@ -36,7 +36,7 @@ async def test_coordinator_initialization(fake_hass_magicmock, window_entry):
 @pytest.mark.asyncio
 async def test_coordinator_update_data(fake_hass_magicmock, window_entry):
     # Use SimpleNamespace to match attribute access and provide all required window fields
-    mock_entry.subentries = {
+    window_entry.subentries = {
         "window_1": types.SimpleNamespace(
             title="Living Room Window",
             subentry_type="window",
@@ -150,7 +150,7 @@ def test_coordinator_with_missing_calculator(fake_hass_magicmock):
 
     # Calculator should be None if initialization fails
     # But coordinator should still be created
-    assert coordinator.hass == mock_hass
+    assert coordinator.hass == fake_hass_magicmock
     assert coordinator.entry == entry
 
 
