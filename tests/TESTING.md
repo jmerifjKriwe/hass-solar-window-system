@@ -251,15 +251,40 @@ assert "Schema validation failed" in str(excinfo.value)
 - Use `syrupy` for diagnostics and entity state snapshots.
 - Assert against the `snapshot` fixture.
 
+Short notes for contributors:
+
+- Location: syrupy snapshot files are stored next to the tests under `tests/**/__snapshots__/`.
+- Initial generation: run the specific test that uses snapshots with pytest and the `--snapshot-update` flag. Example:
+
+```bash
+pytest tests/diagnostics/test_diagnostics.py --snapshot-update
+```
+
+- Updating snapshots: only update snapshots when the change to the diagnostics (or other snapshot target) is intentional. Review the diff and commit the updated snapshot(s) alongside the code change.
+
+- Commit message guidance: use a Conventional Commit format. Example:
+
+```
+chore(tests): update diagnostics snapshots
+```
+
+- CI guidance: do NOT run tests under CI with `--snapshot-update`. CI should run plain `pytest` and fail if snapshots differ from the committed versions. This ensures snapshot regressions are caught in PRs.
+
 ### Example
 ```python
 async def test_diagnostics(hass, hass_client, init_integration, snapshot):
-        """Test diagnostics output matches snapshot."""
-        assert (
-                await get_diagnostics_for_config_entry(hass, hass_client, init_integration)
-                == snapshot
-        )
+  """Test diagnostics output matches the committed snapshot."""
+  assert (
+    await get_diagnostics_for_config_entry(hass, hass_client, init_integration)
+    == snapshot
+  )
 ```
+
+Quick checklist when changing diagnostics output:
+1. Run the tests locally with `--snapshot-update` to generate the new snapshot.
+2. Inspect the generated files under `tests/**/__snapshots__/` to confirm intended changes.
+3. Commit code + snapshots together with an appropriate Conventional Commit message.
+
 
 ## Running & Debugging Tests
 
