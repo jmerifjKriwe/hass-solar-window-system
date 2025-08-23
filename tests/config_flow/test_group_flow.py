@@ -93,6 +93,7 @@ async def test_group_subentry_flow_add_and_invalid(
         assert errors
         assert "diffuse_factor" in errors
 
+
 from __future__ import annotations
 
 """Tests for the Group subentry config flow steps.

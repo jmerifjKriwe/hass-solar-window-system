@@ -91,7 +91,9 @@ async def test_setup_group_power_sensors_creation(
     # Track added entities
     added_entities = []
 
-    def mock_add_entities(entities, update_before_add=False, config_subentry_id=None) -> None:
+    def mock_add_entities(
+        entities, update_before_add=False, config_subentry_id=None
+    ) -> None:
         added_entities.extend(list(entities))
 
     await async_setup_entry(hass, mock_group_config_entry, mock_add_entities)
@@ -153,7 +155,9 @@ async def test_setup_window_power_sensors_creation(
 
     added_entities = []
 
-    def mock_add_entities(entities, update_before_add=False, config_subentry_id=None) -> None:
+    def mock_add_entities(
+        entities, update_before_add=False, config_subentry_id=None
+    ) -> None:
         added_entities.extend(list(entities))
 
     await async_setup_entry(hass, mock_window_config_entry, mock_add_entities)

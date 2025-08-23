@@ -41,7 +41,12 @@ async def test_coordinator_update_data(fake_hass_magicmock, window_entry) -> Non
                 "azimuth_min": -90,
                 "azimuth_max": 90,
                 "elevation_min": 0,
-                "elevation_max": 90,
+                """Tests for the coordinator integrations and update behavior.
+
+            Assertions are used intentionally; disable the assertion lint (S101) for this
+            test module.
+            """
+                # ruff: noqa: S101
                 "window_width": 1.2,
                 "window_height": 1.5,
                 "shadow_depth": 0.2,
@@ -92,7 +97,9 @@ async def test_coordinator_update_data(fake_hass_magicmock, window_entry) -> Non
 
 
 @pytest.mark.asyncio
-async def test_coordinator_window_data_access(fake_hass_magicmock, window_entry) -> None:
+async def test_coordinator_window_data_access(
+    fake_hass_magicmock, window_entry
+) -> None:
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Perform first update

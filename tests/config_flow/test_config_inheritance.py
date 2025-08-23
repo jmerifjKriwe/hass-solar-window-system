@@ -8,6 +8,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+# ruff: noqa: S101
+"""Tests for config inheritance behaviors.
+
+Assertions are used intentionally in tests; disable assertion lint (S101).
+"""
+
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import (
     INVALID_GLOBAL_BASIC,

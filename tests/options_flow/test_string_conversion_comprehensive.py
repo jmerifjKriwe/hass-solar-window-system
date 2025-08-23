@@ -1,4 +1,9 @@
-"""Migrated comprehensive string conversion tests."""
+"""Migrated comprehensive string conversion tests.
+
+Assertions are used intentionally in tests; disable assertion lint (S101).
+"""
+
+# ruff: noqa: S101
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 

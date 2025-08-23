@@ -1,4 +1,10 @@
-"""Test to verify string conversion handling in config flows."""
+"""Test to verify string conversion handling in config flows.
+
+Assertions are used intentionally in tests; disable assertion lint (S101) for this
+module.
+"""
+
+# ruff: noqa: S101
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 

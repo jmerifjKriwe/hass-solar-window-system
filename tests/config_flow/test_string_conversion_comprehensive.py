@@ -1,4 +1,9 @@
-"""Comprehensive tests for string-conversion fixes in config flows."""
+"""Comprehensive tests for string-conversion fixes in config flows.
+
+Assertions are used intentionally in tests; disable assertion lint (S101).
+"""
+
+# ruff: noqa: S101
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 
