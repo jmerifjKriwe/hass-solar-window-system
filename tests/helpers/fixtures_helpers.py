@@ -14,6 +14,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from tests.constants import GLOBAL_DEVICE_NAME, GLOBAL_DEVICE_MANUFACTURER, GLOBAL_DEVICE_MODEL
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
@@ -38,10 +39,10 @@ def ensure_global_device(hass: HomeAssistant, entry: MockConfigEntry):
     device_registry = dr.async_get(hass)
     return device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, "global_config")},
-        name="Solar Window System Global Configuration",
-        manufacturer="Solar Window System",
-        model="Global Configuration",
+    identifiers={(DOMAIN, "global_config")},
+    name=GLOBAL_DEVICE_NAME,
+    manufacturer=GLOBAL_DEVICE_MANUFACTURER,
+    model=GLOBAL_DEVICE_MODEL,
     )
 
 
@@ -63,6 +64,24 @@ async def collect_entities_for_setup(
 
     await module.async_setup_entry(hass, entry, _mock_async_add_entities)
     return added_entities
+
+
+async def collect_entities_for_setup_with_assert(
+    hass: HomeAssistant, module: Any, entry: MockConfigEntry
+) -> tuple[list[Any], callable]:
+    """Collect entities via module.async_setup_entry and return them plus a small assert helper.
+
+    Returns (added_entities, assert_non_empty) where `assert_non_empty()` will raise
+    a clear AssertionError when no entities were added — useful to reduce boilerplate
+    in platform tests.
+    """
+    added_entities = await collect_entities_for_setup(hass, module, entry)
+
+    def assert_non_empty(message: str | None = None) -> None:
+        if not added_entities:
+            raise AssertionError(message or "No entities were registered by the platform")
+
+    return added_entities, assert_non_empty
 
 
 @pytest.fixture
