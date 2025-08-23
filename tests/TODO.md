@@ -2,19 +2,19 @@
 
 Diese Datei enthält die 11 Schritte, die als To‑Do Liste für die Reorganisation und Verbesserung der Tests im Projekt festgelegt wurden.
 
-Status: Offen (markiere einzelne Punkte als erledigt, wenn umgesetzt)
+Status: Teilweise erledigt — 1–4 umgesetzt (siehe Commits auf branch `refactor/tests-reorg`)
 
-1. Konsolidierung doppelter Tests
+1. Konsolidierung doppelter Tests — Done
    - Zusammenführen von duplizierten Tests in parametrisierte Tests (z. B. Services, Plattformen).
 
-2. Zentralisierung gemeinsamer Fixtures
+2. Zentralisierung gemeinsamer Fixtures — Done
    - Auslagern wiederverwendbarer Fixtures in `tests/helpers/fixtures_helpers.py`.
 
-3. Exponieren der Helper als pytest‑Plugins
+3. Exponieren der Helper als pytest‑Plugins — Done
    - `tests/conftest.py` so anpassen, dass die Helper‑Module über `pytest_plugins` geladen werden.
 
-4. Parametrisierung von Plattform‑Tests
-   - Plattformtests über eine `PLATFORMS`‑Liste parametrieren und `collect_entities_for_setup` verwenden.
+4. Parametrisierung von Plattform‑Tests — Done
+   - Plattformtests über eine `PLATFORMS`‑Liste parametrieren und `collect_entities_for_setup` verwenden. Mehrere legacy platform test files wurden als konsolidiert markiert.
 
 5. Nutzung öffentlicher Home‑Assistant APIs in Tests
    - Tests so umschreiben, dass sie nur die öffentlichen HA‑APIs verwenden (z. B. `MockConfigEntry`, `entry.add_to_hass`, `async_setup_entry`) und keine privaten internals manipulieren.
