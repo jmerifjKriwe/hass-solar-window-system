@@ -15,7 +15,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 # Ensure custom_components is in sys.path for Home Assistant test discovery
 sys.path.insert(0, str((Path(__file__).parent.parent).resolve()))
@@ -85,7 +84,8 @@ def valid_group_input() -> dict[str, str]:
 
 @pytest.fixture
 def mock_device_registry() -> Mock:
-    """Return a mock device registry.
+    """
+    Return a mock device registry.
 
     Tests may still depend on a mocked device registry for unit tests; keep a
     thin shim here while production fixtures are provided by helpers.
@@ -110,8 +110,11 @@ def mock_entity_registry() -> Mock:
 
 
 @pytest.fixture
-async def setup_global_config_device(hass: HomeAssistant, global_config_entry: Mock) -> dr.DeviceEntry:
-    """Set up a global configuration device in the device registry.
+async def setup_global_config_device(
+    hass: HomeAssistant, global_config_entry: Mock
+) -> dr.DeviceEntry:
+    """
+    Set up a global configuration device in the device registry.
 
     Delegate to the helper `ensure_global_device` from
     `tests.helpers.fixtures_helpers` to maintain a single source of truth

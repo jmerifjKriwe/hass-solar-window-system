@@ -14,10 +14,14 @@ import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from tests.constants import GLOBAL_DEVICE_NAME, GLOBAL_DEVICE_MANUFACTURER, GLOBAL_DEVICE_MODEL
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
+from tests.constants import (
+    GLOBAL_DEVICE_MANUFACTURER,
+    GLOBAL_DEVICE_MODEL,
+    GLOBAL_DEVICE_NAME,
+)
 
 
 def create_global_config_entry(
@@ -86,7 +90,8 @@ async def collect_entities_for_setup(
 async def collect_entities_for_setup_with_assert(
     hass: HomeAssistant, module: Any, entry: MockConfigEntry
 ) -> tuple[list[Any], callable]:
-    """Collect entities via module.async_setup_entry and return them plus a small assert helper.
+    """
+    Collect entities via module.async_setup_entry and return them plus a small assert helper.
 
     Returns (added_entities, assert_non_empty) where `assert_non_empty()` will raise
     a clear AssertionError when no entities were added — useful to reduce boilerplate
@@ -96,7 +101,9 @@ async def collect_entities_for_setup_with_assert(
 
     def assert_non_empty(message: str | None = None) -> None:
         if not added_entities:
-            raise AssertionError(message or "No entities were registered by the platform")
+            raise AssertionError(
+                message or "No entities were registered by the platform"
+            )
 
     return added_entities, assert_non_empty
 
@@ -110,7 +117,8 @@ def global_entry(hass: HomeAssistant) -> MockConfigEntry:
 # Canonical fixture name used across the test-suite
 @pytest.fixture
 def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
-    """Canonical fixture alias for historical `global_entry`.
+    """
+    Canonical fixture alias for historical `global_entry`.
 
     Many tests reference `global_config_entry`; expose it from the helper
     to provide a single, consistent source of truth.
@@ -180,7 +188,8 @@ def window_entry() -> MagicMock:
 # Canonical fixture name used by platform and integration tests
 @pytest.fixture
 def window_config_entry() -> MagicMock:
-    """Canonical fixture alias for historical `window_entry`.
+    """
+    Canonical fixture alias for historical `window_entry`.
 
     Returns a MagicMock mimicking a ConfigEntry for window subentries.
     """

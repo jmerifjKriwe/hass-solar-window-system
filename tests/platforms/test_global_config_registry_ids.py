@@ -45,7 +45,7 @@ async def test_entity_attributes_have_sws_global_prefix() -> None:
             # allow friendly-name-like suggestions
             assert suggested == entity.name or suggested == expected_suggested_object_id
     else:
-        assert getattr(entity, "_attr_suggested_object_id") == expected_suggested_object_id
+        assert entity._attr_suggested_object_id == expected_suggested_object_id
 
     expected_temp_name = f"SWS_GLOBAL {config['name']}"
     assert entity.name == expected_temp_name

@@ -22,7 +22,8 @@ from custom_components.solar_window_system.text import GlobalConfigTextEntity
 async def test_global_config_entity_id_and_unique_id_format(
     hass: HomeAssistant, global_config_entry: ConfigEntry
 ) -> None:
-    """Ensure entities expose the expected unique_id and entity_id formats.
+    """
+    Ensure entities expose the expected unique_id and entity_id formats.
 
     The test uses the `global_config_entry` fixture which registers a
     MockConfigEntry via the public `add_to_hass` API so the test does not

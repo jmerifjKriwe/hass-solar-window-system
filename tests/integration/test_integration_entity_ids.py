@@ -87,7 +87,12 @@ class TestEntityIDIntegration:
 
         # Verify specific entity unique_ids by deriving keys from unique_id
         entity_unique_ids = {
-            (entity.unique_id.split(f"{ENTITY_PREFIX}_global_", 1)[1] if entity.unique_id and f"{ENTITY_PREFIX}_global_" in entity.unique_id else None): entity.unique_id for entity in added_entities
+            (
+                entity.unique_id.split(f"{ENTITY_PREFIX}_global_", 1)[1]
+                if entity.unique_id and f"{ENTITY_PREFIX}_global_" in entity.unique_id
+                else None
+            ): entity.unique_id
+            for entity in added_entities
         }
 
         for entity_key in expected_sensor_entities:

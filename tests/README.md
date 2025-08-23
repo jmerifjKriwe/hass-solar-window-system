@@ -295,6 +295,41 @@ Quick checklist when changing diagnostics output:
 - Coverage: `pytest --cov=custom_components.solar_window_system --cov-report term-missing`
 - Update snapshots: `pytest --snapshot-update`
 
+## Linting & Formatting
+
+- Run the project's lint script (formats then applies safe ruff fixes):
+
+```bash
+./scripts/lint
+```
+
+- Run checks without auto-fixing:
+
+```bash
+ruff check .
+```
+
+- To apply more aggressive automated fixes (use with caution and review diffs):
+
+```bash
+ruff check . --fix --unsafe-fixes
+```
+
+Common lint issues you'll see and how to address them:
+- TRY003 / EM102: long error messages or f-strings passed directly into exceptions — assign the message to a variable and raise the exception with that variable.
+- S101 (use of `assert`) appears in tests when linters expect explicit test helpers; in pytest tests `assert` is normal. If your CI flags S101 for tests, update `pyproject.toml`/ruff config to ignore S101 under the `tests/` path, or selectively replace complex assertions with `pytest` helpers.
+- SLF001: accessing private attributes (e.g., `_attr_suggested_object_id`) — prefer public properties or public APIs on entities.
+- ANN### / ARG###: missing type annotations on fixtures and test helpers — add annotations where helpful. Tests can also be excluded from strict typing if desired.
+- E501: line too long — wrap strings or split long expressions across lines.
+
+Workflow recommendation:
+1. Run `./scripts/lint` locally and inspect the output.
+2. Address high-value failures (private attribute access, incorrect public API usage) first; these are often actual test fragility issues.
+3. Fix stylistic/annotation issues next or add targeted ignores in the project's ruff config for tests.
+4. Re-run `pytest -q` to ensure tests still pass after fixes.
+
+CI note: Do not run `--snapshot-update` in CI. Ensure linter and tests pass locally before opening a PR.
+
 ## Quality Scale Requirements
 
 - **Bronze:** Full config flow test coverage required.

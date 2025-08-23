@@ -11,3 +11,30 @@ upload_to_release = true
 allowed_tags = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "style", "refactor", "test"]
 minor_tags = ["feat"]
 patch_tags = ["fix", "perf"]
+
+[tool.ruff]
+# Relax a few rules for tests to reduce false-positives from pytest-style assertions
+extend-ignore = ["S101", "TRY003", "EM101", "EM102", "PLC0415"]
+per-file-ignores = {
+	"tests/**": [
+		"S101",
+		"D100",
+		"D101",
+		"D102",
+		"D103",
+		"ANN201",
+		"ANN001",
+		"ARG001",
+		"ANN202",
+		"TRY003",
+		"EM101",
+		"EM102",
+		"PLC0415",
+		"ANN001",
+		"ANN202",
+		"ARG001",
+		"ARG002",
+	]
+}
+line-length = 88
+exclude = ["tests/**"]

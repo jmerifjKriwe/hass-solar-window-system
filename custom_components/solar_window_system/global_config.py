@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.components.sensor import SensorEntity
 
-from .const import ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES, DOMAIN
+from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

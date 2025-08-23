@@ -88,9 +88,28 @@ class TestGlobalConfigEntityCreation:
             assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
             # Name is initially set with SWS_GLOBAL prefix; HA will adjust via registry later
             assert entity.name.endswith(config["name"])  # prefix tolerated
-            assert getattr(entity, "native_min_value", getattr(entity, "_attr_native_min_value", None)) == config["min"]
-            assert getattr(entity, "native_max_value", getattr(entity, "_attr_native_max_value", None)) == config["max"]
-            assert getattr(entity, "native_step", getattr(entity, "_attr_native_step", None)) == config["step"]
+            assert (
+                getattr(
+                    entity,
+                    "native_min_value",
+                    getattr(entity, "_attr_native_min_value", None),
+                )
+                == config["min"]
+            )
+            assert (
+                getattr(
+                    entity,
+                    "native_max_value",
+                    getattr(entity, "_attr_native_max_value", None),
+                )
+                == config["max"]
+            )
+            assert (
+                getattr(
+                    entity, "native_step", getattr(entity, "_attr_native_step", None)
+                )
+                == config["step"]
+            )
 
     async def test_text_entities_creation(
         self,
@@ -121,8 +140,16 @@ class TestGlobalConfigEntityCreation:
             entity = added_entities[i]
             assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
             assert entity.name.endswith(config["name"])  # prefix tolerated
-            assert getattr(entity, "native_max", getattr(entity, "_attr_native_max", None)) == config["max"]
-            assert getattr(entity, "native_value", getattr(entity, "_attr_native_value", None)) == config["default"]
+            assert (
+                getattr(entity, "native_max", getattr(entity, "_attr_native_max", None))
+                == config["max"]
+            )
+            assert (
+                getattr(
+                    entity, "native_value", getattr(entity, "_attr_native_value", None)
+                )
+                == config["default"]
+            )
 
     async def test_select_entities_creation(
         self,
@@ -187,7 +214,10 @@ class TestGlobalConfigEntityCreation:
             entity = added_entities[i]
             assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
             assert entity.name.endswith(config["name"])  # prefix tolerated
-            assert getattr(entity, "is_on", getattr(entity, "_attr_is_on", None)) == config["default"]
+            assert (
+                getattr(entity, "is_on", getattr(entity, "_attr_is_on", None))
+                == config["default"]
+            )
 
     async def test_sensor_entities_creation(
         self,
@@ -254,9 +284,14 @@ class TestGlobalConfigEntityCreation:
 
             if entity_key in debug_entities:
                 debug_found.append(entity_key)
-                assert getattr(entity, "entity_category", getattr(entity, "_attr_entity_category", None)) == EntityCategory.DIAGNOSTIC, (
-                    f"Debug entity {entity_key} should have DIAGNOSTIC category"
-                )
+                assert (
+                    getattr(
+                        entity,
+                        "entity_category",
+                        getattr(entity, "_attr_entity_category", None),
+                    )
+                    == EntityCategory.DIAGNOSTIC
+                ), f"Debug entity {entity_key} should have DIAGNOSTIC category"
 
         # Ensure we found all debug entities
         assert set(debug_found) == set(debug_entities), (

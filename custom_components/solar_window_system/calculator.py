@@ -1,18 +1,19 @@
-"""This Source Code Form is subject to the terms of the Mozilla Public
+"""
+This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
 import logging
-import time
-from datetime import datetime, UTC
 import math
-from typing import Any, NamedTuple
+import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any, NamedTuple
 
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,14 +91,13 @@ class SolarWindowCalculator:
         window_height = 1.0
         if effective_shadow <= 0:
             return 1.0  # no shadow
-        elif effective_shadow >= window_height:
+        if effective_shadow >= window_height:
             return 0.1  # full shadow (minimum factor)
-        else:
-            # Linear interpolation between 1.0 (no shadow) and 0.1 (full shadow)
-            factor = 1.0 - 0.9 * (effective_shadow / window_height)
-            # Angle dependency: more shadow if sun is direct, less if angled
-            factor = factor * az_factor + (1.0 - az_factor)
-            return max(0.1, min(1.0, factor))
+        # Linear interpolation between 1.0 (no shadow) and 0.1 (full shadow)
+        factor = 1.0 - 0.9 * (effective_shadow / window_height)
+        # Angle dependency: more shadow if sun is direct, less if angled
+        factor = factor * az_factor + (1.0 - az_factor)
+        return max(0.1, min(1.0, factor))
 
     def __init__(
         self, hass, defaults_config=None, groups_config=None, windows_config=None
@@ -535,6 +535,7 @@ class SolarWindowCalculator:
 
         Returns:
             WindowCalculationResult with calculated values
+
         """
 
         def safe_float(val, default=0.0):
@@ -803,7 +804,7 @@ class SolarWindowCalculator:
                 window_set = {
                     k: v
                     for k, v in flat_window.items()
-                    if not (v in ("-1", -1, "", None, "inherit"))
+                    if v not in ("-1", -1, "", None, "inherit")
                 }
                 # Welche Werte werden aus Gruppe geerbt?
                 group_inherited = {

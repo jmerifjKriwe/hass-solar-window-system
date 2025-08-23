@@ -1,10 +1,11 @@
 """
 Config flow for Solar Window System integration.
 
-NOTE:
+Note:
 All logic for creating and reconfiguring group and window subentries,
 including default value handling and inheritance (-1 marker), is implemented here.
 The options_flow.py is only responsible for the global configuration entry.
+
 """
 
 from __future__ import annotations
@@ -59,7 +60,8 @@ def _get_global_data_merged(hass: Any) -> dict[str, Any]:
 
 
 def _convert_inherit_value(v: Any) -> Any:
-    """Convert UI inherit marker '-1' to storage empty string.
+    """
+    Convert UI inherit marker '-1' to storage empty string.
 
     Accepts int or str '-1' and returns "" for persistence. Otherwise returns v.
     """

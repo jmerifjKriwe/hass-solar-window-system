@@ -52,7 +52,9 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
 
     fake_subentries = {"1": DummySub("My Test Group")}
     # Dynamically add a subentries property to the group_parent_entry instance
-    group_parent_entry.subentries = property(lambda self: fake_subentries).__get__(group_parent_entry, type(group_parent_entry))
+    group_parent_entry.subentries = property(lambda self: fake_subentries).__get__(
+        group_parent_entry, type(group_parent_entry)
+    )
     # Try to create a second group with the same name
     handler2 = __import__(
         "custom_components.solar_window_system.config_flow",

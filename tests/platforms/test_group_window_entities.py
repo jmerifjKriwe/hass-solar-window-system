@@ -110,7 +110,9 @@ async def test_setup_group_power_sensors_creation(
         assert entity.device_info is not None
         identifiers = entity.device_info.get("identifiers", set())
         # Find the domain-specific identifier for the group
-        domain_ids = [i for i in identifiers if i[0] == DOMAIN and i[1].startswith("group_")]
+        domain_ids = [
+            i for i in identifiers if i[0] == DOMAIN and i[1].startswith("group_")
+        ]
         assert domain_ids, "Expected a domain/group identifier in device_info"
         # Extract and validate the subentry id
     _, full_id = domain_ids[0]
@@ -178,7 +180,9 @@ async def test_setup_window_power_sensors_creation(
         assert isinstance(entity, GroupWindowPowerSensor)
         assert entity.device_info is not None
         identifiers = entity.device_info.get("identifiers", set())
-        domain_ids = [i for i in identifiers if i[0] == DOMAIN and i[1].startswith("window_")]
+        domain_ids = [
+            i for i in identifiers if i[0] == DOMAIN and i[1].startswith("window_")
+        ]
         assert domain_ids, "Expected a domain/window identifier in device_info"
     _, full_id = domain_ids[0]
     assert any(k in full_id for k in mock_window_config_entry.subentries.keys())

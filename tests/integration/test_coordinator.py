@@ -11,7 +11,6 @@ import types
 from unittest.mock import MagicMock
 
 import pytest
-from homeassistant.config_entries import ConfigEntry
 
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
 from custom_components.solar_window_system.coordinator import (
@@ -135,7 +134,8 @@ async def test_coordinator_reconfigure(fake_hass_magicmock, window_entry):
 
 
 def test_coordinator_with_missing_calculator(fake_hass_magicmock, window_entry):
-    """Create an entry with missing subentries to trigger calculator init failure.
+    """
+    Create an entry with missing subentries to trigger calculator init failure.
 
     Use the canonical `window_entry` fixture and mutate `subentries` to None
     instead of assigning `entry_id` manually.
