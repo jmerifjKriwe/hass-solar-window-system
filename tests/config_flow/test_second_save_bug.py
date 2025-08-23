@@ -21,7 +21,7 @@ async def test_group_options_second_save_expected_str_error(
     1. Create group parent and global config entries
     2. Create a group subentry with numeric values (as strings)
     3. Reconfigure the group subentry (simulate second save)
-    4. Ensure no 'expected str' error occurs
+    4. Ensure no 'expected str' error occurs.
     """
     # Setup parent and global config entries
     parent_entry = MockConfigEntry(

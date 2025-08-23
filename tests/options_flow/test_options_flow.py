@@ -46,7 +46,8 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
         result["flow_id"], user_input=user_input
     )
     if result2.get("type") not in ("form", "create_entry"):
-        raise AssertionError(f"Expected form or create_entry, got: {result2}")
+        msg = f"Expected form or create_entry, got: {result2}"
+        raise AssertionError(msg)
 
     if result2.get("type") == "form":
         enhanced_user_input = VALID_GLOBAL_ENHANCED.copy()
@@ -64,16 +65,19 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
                 result3["flow_id"], user_input=scenarios_user_input
             )
             if result4.get("type") != "create_entry":
-                raise AssertionError(f"Expected create_entry, got: {result4}")
+                msg = f"Expected create_entry, got: {result4}"
+                raise AssertionError(msg)
 
     updated_entry = hass.config_entries.async_get_entry(entry.entry_id)
     if updated_entry is None:
-        raise AssertionError("Entry not found after options update")
+        msg = "Entry not found after options update"
+        raise AssertionError(msg)
 
     actual = updated_entry.options.get("window_width")
     expected = "1.5"
     if actual != expected:
-        raise AssertionError(f"Expected window_width '{expected}', got '{actual}'")
+        msg = f"Expected window_width '{expected}', got '{actual}'"
+        raise AssertionError(msg)
 
 
 """Options flow tests for the Solar Window System integration."""
@@ -113,7 +117,8 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
         result["flow_id"], user_input=user_input
     )
     if result2.get("type") not in ("form", "create_entry"):
-        raise AssertionError(f"Expected form or create_entry, got: {result2}")
+        msg = f"Expected form or create_entry, got: {result2}"
+        raise AssertionError(msg)
 
     if result2.get("type") == "form":
         enhanced_user_input = VALID_GLOBAL_ENHANCED.copy()
@@ -131,16 +136,19 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
                 result3["flow_id"], user_input=scenarios_user_input
             )
             if result4.get("type") != "create_entry":
-                raise AssertionError(f"Expected create_entry, got: {result4}")
+                msg = f"Expected create_entry, got: {result4}"
+                raise AssertionError(msg)
 
     updated_entry = hass.config_entries.async_get_entry(entry.entry_id)
     if updated_entry is None:
-        raise AssertionError("Entry not found after options update")
+        msg = "Entry not found after options update"
+        raise AssertionError(msg)
 
     actual = updated_entry.options.get("window_width")
     expected = "1.5"
     if actual != expected:
-        raise AssertionError(f"Expected window_width '{expected}', got '{actual}'")
+        msg = f"Expected window_width '{expected}', got '{actual}'"
+        raise AssertionError(msg)
 
 
 """Options flow tests migrated from legacy suite."""
@@ -199,13 +207,16 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
                 result3["flow_id"], user_input=scenarios_user_input
             )
             if result4.get("type") != "create_entry":
-                raise AssertionError(f"Expected create_entry, got: {result4}")
+                msg = f"Expected create_entry, got: {result4}"
+                raise AssertionError(msg)
 
     updated_entry = hass.config_entries.async_get_entry(entry.entry_id)
     if updated_entry is None:
-        raise AssertionError("Entry not found after options update")
+        msg = "Entry not found after options update"
+        raise AssertionError(msg)
 
     actual = updated_entry.options.get("window_width")
     expected = "1.5"
     if actual != expected:
-        raise AssertionError(f"Expected window_width '{expected}', got '{actual}'")
+        msg = f"Expected window_width '{expected}', got '{actual}'"
+        raise AssertionError(msg)

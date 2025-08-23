@@ -122,7 +122,8 @@ async def test_group_subentry_flow_basic_step(
 
         # Should show a form for basic group configuration
         if result["type"] != FlowResultType.FORM:
-            raise AssertionError(f"Expected form, got {result['type']}")
+            msg = f"Expected form, got {result['type']}"
+            raise AssertionError(msg)
 
         assert result["step_id"] == "user"
         assert "data_schema" in result
@@ -142,8 +143,9 @@ async def test_group_subentry_flow_basic_step(
 
         # Should proceed to enhanced step
         if result2["type"] != FlowResultType.FORM:
+            msg = f"Expected form for enhanced step, got {result2['type']}"
             raise AssertionError(
-                f"Expected form for enhanced step, got {result2['type']}"
+                msg
             )
 
         assert result2["step_id"] == "enhanced"
@@ -221,7 +223,8 @@ async def test_group_subentry_flow_complete(
 
         # Should create the entry
         if result2["type"] != FlowResultType.CREATE_ENTRY:
-            raise AssertionError(f"Expected create_entry, got {result2['type']}")
+            msg = f"Expected create_entry, got {result2['type']}"
+            raise AssertionError(msg)
 
         assert result2["title"] == "Test Group"
 
@@ -271,8 +274,9 @@ async def test_group_subentry_flow_inheritance(
 
         # Should proceed to enhanced step even with inheritance values
         if result["type"] != FlowResultType.FORM:
+            msg = f"Expected form for enhanced step, got {result['type']}"
             raise AssertionError(
-                f"Expected form for enhanced step, got {result['type']}"
+                msg
             )
 
         assert result["step_id"] == "enhanced"

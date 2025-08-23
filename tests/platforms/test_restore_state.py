@@ -10,7 +10,7 @@ from custom_components.solar_window_system.sensor import (
 
 
 @pytest.mark.asyncio
-async def test_restore_state_on_restart(hass):
+async def test_restore_state_on_restart(hass) -> None:
     old_state = Mock()
     old_state.state = 99
     old_state.attributes = {}
@@ -31,7 +31,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 
 @pytest.mark.asyncio
-async def test_restore_state_on_restart(hass):
+async def test_restore_state_on_restart(hass) -> None:
     """Test that Solar Window System sensor restores its state after restart."""
     # Simulate a previous state
     old_state = Mock()
@@ -43,4 +43,5 @@ async def test_restore_state_on_restart(hass):
         entity = SolarWindowSystemGroupDummySensor("group1", "Test Group")
         await entity.async_added_to_hass()
         if entity.state != 99:
-            raise AssertionError(f"Expected restored state 99, got {entity.state}")
+            msg = f"Expected restored state 99, got {entity.state}"
+            raise AssertionError(msg)

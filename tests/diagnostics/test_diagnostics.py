@@ -6,15 +6,19 @@ This file contains a snapshot test for the config entry diagnostics output.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
-from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from syrupy.assertion import SnapshotAssertion
 
 from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from syrupy.assertion import SnapshotAssertion
 
 
 @pytest.mark.asyncio

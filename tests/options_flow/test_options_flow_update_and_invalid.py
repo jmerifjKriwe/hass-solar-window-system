@@ -88,4 +88,5 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
     actual = updated_entry.options.get("window_width")
     expected = "1.5"
     if actual != expected:
-        raise AssertionError(f"Expected window_width '{expected}', got '{actual}'")
+        msg = f"Expected window_width '{expected}', got '{actual}'"
+        raise AssertionError(msg)

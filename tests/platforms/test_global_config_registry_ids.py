@@ -43,7 +43,7 @@ async def test_entity_attributes_have_sws_global_prefix() -> None:
     if suggested is not None:
         if suggested != expected_suggested_object_id:
             # allow friendly-name-like suggestions
-            assert suggested == entity.name or suggested == expected_suggested_object_id
+            assert suggested in (entity.name, expected_suggested_object_id)
     else:
         assert entity._attr_suggested_object_id == expected_suggested_object_id
 

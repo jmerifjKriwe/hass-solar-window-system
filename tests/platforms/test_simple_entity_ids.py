@@ -19,7 +19,7 @@ class TestEntityIDGenerationSimple:
         }
 
         class MockDevice:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.identifiers = {("solar_window_system", "global_config")}
                 self.name = "Test Device"
                 self.manufacturer = "Test"

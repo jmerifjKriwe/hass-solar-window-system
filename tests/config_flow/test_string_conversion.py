@@ -20,7 +20,7 @@ class TestSecondSaveBugFix:
 
     async def test_group_reconfigure_with_numeric_values_second_save(
         self, hass, global_config_entry
-    ):
+    ) -> None:
         flow = config_flow.GroupSubentryFlowHandler()
         flow.hass = hass
         flow.init_step = "user"
@@ -97,7 +97,7 @@ class TestSecondSaveBugFix:
 
     async def test_window_reconfigure_with_numeric_values_second_save(
         self, hass, global_config_entry
-    ):
+    ) -> None:
         flow = config_flow.WindowSubentryFlowHandler()
         flow.hass = hass
         flow.init_step = "user"
@@ -182,7 +182,7 @@ class TestSecondSaveBugFix:
                 else:
                     pass
 
-    def test_voluptuous_schema_with_numeric_defaults_fails_without_fix(self):
+    def test_voluptuous_schema_with_numeric_defaults_fails_without_fix(self) -> None:
         with pytest.raises(vol.Invalid, match="expected str"):
             schema = vol.Schema({vol.Optional("test_field", default=123): str})
             schema({})
@@ -191,7 +191,7 @@ class TestSecondSaveBugFix:
         result = schema_fixed({})
         assert result["test_field"] == "123"
 
-    def test_ui_default_string_conversion(self):
+    def test_ui_default_string_conversion(self) -> None:
         test_defaults = {
             "string_val": "test",
             "int_val": 123,

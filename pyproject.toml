@@ -17,24 +17,21 @@ patch_tags = ["fix", "perf"]
 extend-ignore = ["S101", "TRY003", "EM101", "EM102", "PLC0415"]
 per-file-ignores = {
 	"tests/**": [
-		"S101",
-		"D100",
-		"D101",
-		"D102",
-		"D103",
-		"ANN201",
-		"ANN001",
-		"ARG001",
-		"ANN202",
-		"TRY003",
-		"EM101",
-		"EM102",
-		"PLC0415",
-		"ANN001",
-		"ANN202",
-		"ARG001",
-		"ARG002",
-	]
+	"S101",
+	"D100",
+	"D101",
+	"D102",
+	"D103",
+	"ANN201",
+	"ANN001",
+	"ARG001",
+	"ARG002",
+	"ANN202",
+	"TRY003",
+	"EM101",
+	"EM102",
+	"PLC0415",
+]
 }
 line-length = 88
-exclude = ["tests/**"]
+# Do not exclude tests from ruff; we control noisy rules via per-file-ignores.

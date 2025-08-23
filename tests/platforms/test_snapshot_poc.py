@@ -1,4 +1,5 @@
-"""PoC snapshot test for Solar Window System entities.
+"""
+PoC snapshot test for Solar Window System entities.
 
 This test demonstrates using the snapshot helper to capture a small,
 serialisable representation of a single entity's defining attributes.
@@ -8,6 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from tests.helpers import normalize_entity_snapshot
 from tests.helpers.serializer import serialize_entity
 from tests.helpers.snapshot import assert_matches_snapshot
 
@@ -27,6 +29,9 @@ async def test_entity_snapshot_minimal() -> None:
 
     example = serialize_entity(raw, normalize_numbers=True)
 
+    # Normalize transient fields before snapshot assertion.
+    normalize_entity_snapshot(example)
+
     # Compare against the stored snapshot (created previously).
     assert_matches_snapshot("entity_snapshot_minimal", example)
 
@@ -39,6 +44,7 @@ async def test_entity_snapshot_minimal() -> None:
     mock_state.unique_id = "sws_global_example_power"
 
     example2 = serialize_entity(mock_state, normalize_numbers=True)
+    normalize_entity_snapshot(example2)
     if example2 != example:
         msg = "Serializer output for Mock state should match mapping-based output"
         raise AssertionError(msg)

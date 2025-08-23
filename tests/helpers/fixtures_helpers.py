@@ -82,9 +82,7 @@ async def collect_entities_for_setup(
     """
     added_entities: list[Any] = []
 
-    def _mock_async_add_entities(
-        new_entities: Iterable, *_args: Any
-    ) -> None:
+    def _mock_async_add_entities(new_entities: Iterable, *_args: Any) -> None:
         # materialize iterator
         added_entities.extend(list(new_entities))
 

@@ -8,6 +8,11 @@ from unittest.mock import Mock
 
 import pytest
 
+from tests.helpers import (
+    normalize_entity_snapshot,
+    normalize_timestamps,
+    trim_name_prefix,
+)
 from tests.helpers.serializer import serialize_entity
 from tests.helpers.snapshot import assert_matches_snapshot
 
@@ -23,6 +28,9 @@ async def test_switch_snapshot_minimal() -> None:
     }
 
     example = serialize_entity(raw, normalize_numbers=True)
+    normalize_entity_snapshot(example)
+    normalize_timestamps(example)
+    trim_name_prefix(example)
     assert_matches_snapshot("switch_snapshot_minimal", example)
 
     mock_state = Mock()
@@ -32,6 +40,9 @@ async def test_switch_snapshot_minimal() -> None:
     mock_state.unique_id = "sws_global_example_outlet"
 
     example2 = serialize_entity(mock_state, normalize_numbers=True)
+    normalize_entity_snapshot(example2)
+    normalize_timestamps(example2)
+    trim_name_prefix(example2)
     if example2 != example:
         msg = "Serializer output for Mock state should match mapping-based output"
         raise AssertionError(msg)

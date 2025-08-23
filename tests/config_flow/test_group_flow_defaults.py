@@ -76,7 +76,7 @@ async def test_group_subentry_form_defaults_and_suggestions(
         assert result["type"] == FlowResultType.FORM
         schema = result["data_schema"].schema
 
-        for key, expected in (
+        for key, _expected in (
             ("diffuse_factor", "0.2"),
             ("threshold_direct", "250"),
             ("temperature_indoor_base", "22.0"),
@@ -97,4 +97,5 @@ async def test_group_subentry_form_defaults_and_suggestions(
                 assert default_value == "-1"
                 found = True
         if not found:
-            raise AssertionError("Schema key for 'indoor_temperature_sensor' not found")
+            msg = "Schema key for 'indoor_temperature_sensor' not found"
+            raise AssertionError(msg)

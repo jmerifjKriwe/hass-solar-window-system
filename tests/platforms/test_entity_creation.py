@@ -1,12 +1,16 @@
-"""Tests for entity ID generation and global configuration entity creation."""
+"""Tests for entity ID generation and global configuration entity creation.
+
+Assertions are used intentionally in tests; disable the S101 rule for this module.
+"""
+
+# ruff: noqa: S101
 
 from __future__ import annotations
 
-from unittest.mock import Mock
+from typing import TYPE_CHECKING
 
 import pytest
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.solar_window_system.const import (
@@ -15,6 +19,11 @@ from custom_components.solar_window_system.const import (
     GLOBAL_CONFIG_ENTITIES,
 )
 from tests.helpers.fixtures_helpers import ensure_global_device
+
+if TYPE_CHECKING:
+    from unittest.mock import Mock
+
+    from homeassistant.core import HomeAssistant
 
 
 @pytest.mark.asyncio
@@ -73,7 +82,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities: list = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -110,6 +119,36 @@ class TestGlobalConfigEntityCreation:
                 )
                 == config["step"]
             )
+            # Snapshot the first number entity to lock down serialization shape
+            # and important attributes. This is a lightweight PoC to demonstrate
+            # use of the serializer + snapshot helpers.
+            if i == 0:
+                from tests.helpers.serializer import serialize_entity
+                from tests.helpers.snapshot import assert_matches_snapshot
+
+                serialized = serialize_entity(
+                    {
+                        "entity_id": (
+                            entity.entity_id
+                            or f"number.{ENTITY_PREFIX}_global_{entity_key}"
+                        ),
+                        "unique_id": entity.unique_id,
+                        "state": getattr(entity, "native_value", None)
+                        or getattr(entity, "_attr_native_value", None),
+                        "attributes": {
+                            "unit_of_measurement": getattr(
+                                entity, "native_unit_of_measurement", None
+                            )
+                            or getattr(
+                                entity, "_attr_native_unit_of_measurement", None
+                            ),
+                            "name": entity.name,
+                        },
+                    },
+                    normalize_numbers=True,
+                )
+
+                assert_matches_snapshot("entity_number_example_minimal", serialized)
 
     async def test_text_entities_creation(
         self,
@@ -126,7 +165,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -166,7 +205,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -200,7 +239,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -234,7 +273,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -268,7 +307,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -313,7 +352,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call the setup function
@@ -337,7 +376,7 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities):
+        def mock_async_add_entities(entities) -> None:
             added_entities.extend(entities)
 
         # Call setup with window entry (should not create entities)

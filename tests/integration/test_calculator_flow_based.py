@@ -25,17 +25,17 @@ def calculator(hass, window_entry):
     return SolarWindowCalculator(hass, window_entry)
 
 
-def test_shadow_factor_no_shadow(calculator):
+def test_shadow_factor_no_shadow(calculator) -> None:
     factor = calculator._calculate_shadow_factor(45, 180, 180, 0, 0)
     assert factor == 1.0
 
 
-def test_shadow_factor_complete_shadow(calculator):
+def test_shadow_factor_complete_shadow(calculator) -> None:
     factor = calculator._calculate_shadow_factor(10, 180, 180, 2.0, 0.0)
     assert factor == 0.1
 
 
-def test_entity_cache_hit(calculator):
+def test_entity_cache_hit(calculator) -> None:
     mock_state = Mock()
     mock_state.state = "42.5"
     with patch(
@@ -56,7 +56,7 @@ These tests focus on flow inheritance, triggers, calculation correctness, and pe
 import pytest
 
 
-def test_scenario_b_c_inheritance(monkeypatch, hass):
+def test_scenario_b_c_inheritance(monkeypatch, hass) -> None:
     """Test scenario B/C enable inheritance and override logic (window > group > global)."""
     mock_entry = Mock(spec=ConfigEntry)
     mock_entry.data = {"entry_type": "window_configs"}
@@ -115,7 +115,7 @@ def test_scenario_b_c_inheritance(monkeypatch, hass):
     assert c is False  # window disables
 
 
-def test_recalculation_triggered_on_weather_warning(monkeypatch):
+def test_recalculation_triggered_on_weather_warning(monkeypatch) -> None:
     """If weather warning sensor goes to true, calculation should be triggered immediately."""
     mock_entry = Mock(spec=ConfigEntry)
     mock_entry.data = {"entry_type": "window_configs"}
@@ -194,28 +194,28 @@ def calculator(hass, window_entry):
     return SolarWindowCalculator(hass, window_entry)
 
 
-def test_shadow_factor_no_shadow(calculator):
+def test_shadow_factor_no_shadow(calculator) -> None:
     factor = calculator._calculate_shadow_factor(45, 180, 180, 0, 0)
     assert factor == 1.0
 
 
-def test_shadow_factor_complete_shadow(calculator):
+def test_shadow_factor_complete_shadow(calculator) -> None:
     factor = calculator._calculate_shadow_factor(10, 180, 180, 2.0, 0.0)
     assert factor == 0.1
 
 
-def test_shadow_factor_partial_shadow(calculator):
+def test_shadow_factor_partial_shadow(calculator) -> None:
     factor = calculator._calculate_shadow_factor(30, 180, 180, 0.5, 0.2)
     assert 0.1 < factor < 1.0
 
 
-def test_shadow_factor_low_sun(calculator):
+def test_shadow_factor_low_sun(calculator) -> None:
     factor_low = calculator._calculate_shadow_factor(10, 180, 180, 0.5, 0)
     factor_high = calculator._calculate_shadow_factor(60, 180, 180, 0.5, 0)
     assert factor_low < factor_high
 
 
-def test_shadow_factor_angle_dependency(calculator):
+def test_shadow_factor_angle_dependency(calculator) -> None:
     factor_direct = calculator._calculate_shadow_factor(45, 180, 180, 1.0, 0)
     factor_angled = calculator._calculate_shadow_factor(45, 135, 180, 1.0, 0)
     assert factor_direct <= factor_angled

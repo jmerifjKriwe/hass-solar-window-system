@@ -73,11 +73,12 @@ async def test_group_subentry_form_defaults_and_suggestions(
         # Step: show form with no user input (defaults)
         result = await flow_handler.async_step_user()
         if result["type"] != FlowResultType.FORM:
-            raise AssertionError(f"Expected form, got {result['type']}")
+            msg = f"Expected form, got {result['type']}"
+            raise AssertionError(msg)
         schema = result["data_schema"].schema
 
         # Numeric fields should have empty default but suggested_value from global
-        for key, expected in (
+        for key, _expected in (
             ("diffuse_factor", "0.2"),
             ("threshold_direct", "250"),
             ("temperature_indoor_base", "22.0"),
@@ -85,18 +86,18 @@ async def test_group_subentry_form_defaults_and_suggestions(
             field = schema[key]
             # default should be empty string
             if getattr(field, "default", "") not in ("", None, ""):
-                raise AssertionError("Expected empty default")
+                msg = "Expected empty default"
+                raise AssertionError(msg)
 
         # Sensor selector: default is "-1" (inherit), and global value is suggested
         found = False
         for key in schema:
             if hasattr(key, "schema") and key.schema == "indoor_temperature_sensor":
-                if callable(key.default):
-                    default_value = key.default()
-                else:
-                    default_value = key.default
+                default_value = key.default() if callable(key.default) else key.default
                 if default_value != "-1":
-                    raise AssertionError("Expected default '-1'")
+                    msg = "Expected default '-1'"
+                    raise AssertionError(msg)
                 found = True
         if not found:
-            raise AssertionError("Schema key for 'indoor_temperature_sensor' not found")
+            msg = "Schema key for 'indoor_temperature_sensor' not found"
+            raise AssertionError(msg)

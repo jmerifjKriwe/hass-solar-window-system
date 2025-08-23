@@ -19,10 +19,12 @@ async def test_config_flow_invalid_value(hass: "HomeAssistant") -> None:
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     if result.get("type") != "form":
-        raise AssertionError(f"Expected form, got: {result}")
+        msg = f"Expected form, got: {result}"
+        raise AssertionError(msg)
     if result.get("step_id") != "global_basic":
+        msg = f"Expected global_basic step, got: {result.get('step_id')}"
         raise AssertionError(
-            f"Expected global_basic step, got: {result.get('step_id')}"
+            msg
         )
 
     user_input = INVALID_GLOBAL_BASIC.copy()
@@ -31,7 +33,9 @@ async def test_config_flow_invalid_value(hass: "HomeAssistant") -> None:
         result["flow_id"], user_input=user_input
     )
     if result2.get("type") != "form":
-        raise AssertionError(f"Expected form with errors, got: {result2}")
+        msg = f"Expected form with errors, got: {result2}"
+        raise AssertionError(msg)
     errors = result2.get("errors")
     if not errors or "window_width" not in errors:
-        raise AssertionError(f"Expected error for window_width, got: {errors}")
+        msg = f"Expected error for window_width, got: {errors}"
+        raise AssertionError(msg)

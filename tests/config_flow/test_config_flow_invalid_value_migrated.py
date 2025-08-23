@@ -6,7 +6,7 @@ from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import INVALID_GLOBAL_BASIC
 
 
-async def test_config_flow_invalid_value(hass):
+async def test_config_flow_invalid_value(hass) -> None:
     """Test that invalid numeric values are rejected in the config flow."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}

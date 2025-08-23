@@ -20,7 +20,7 @@ class TestEntityIDIntegration:
     """Test actual entity ID generation in integration."""
 
     @pytest.mark.asyncio
-    async def test_sensor_entity_unique_id_format(self, hass):
+    async def test_sensor_entity_unique_id_format(self, hass) -> None:
         """Test that sensor entities get correct unique_id format."""
         # Create a proper mock config entry for global configuration
         config_entry = MockConfigEntry(
@@ -33,7 +33,7 @@ class TestEntityIDIntegration:
 
         # Create device registry and add global device
         device_registry = dr.async_get(hass)
-        global_device = device_registry.async_get_or_create(
+        device_registry.async_get_or_create(
             config_entry_id=config_entry.entry_id,
             identifiers={(DOMAIN, "global_config")},
             name="Solar Window System Global Configuration",
@@ -49,7 +49,7 @@ class TestEntityIDIntegration:
             update_before_add: bool = False,
             *,
             config_subentry_id=None,
-        ):
+        ) -> None:
             added_entities.extend(list(new_entities))
 
         # Set up sensors for global entities
@@ -102,7 +102,7 @@ class TestEntityIDIntegration:
             )
 
     @pytest.mark.asyncio
-    async def test_entity_registry_integration(self, hass):
+    async def test_entity_registry_integration(self, hass) -> None:
         """Test that entities registered with entity registry get correct entity_id."""
         # Create config entry
         config_entry = MockConfigEntry(

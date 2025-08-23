@@ -130,12 +130,15 @@ async def test_group_subentry_flow_basic_step(
 
         # Should show a form for basic group configuration
         if result["type"] != FlowResultType.FORM:
-            raise AssertionError(f"Expected form, got {result['type']}")
+            msg = f"Expected form, got {result['type']}"
+            raise AssertionError(msg)
 
         if result["step_id"] != "user":
-            raise AssertionError("Expected step_id 'user'")
+            msg = "Expected step_id 'user'"
+            raise AssertionError(msg)
         if "data_schema" not in result:
-            raise AssertionError("Expected data_schema in result")
+            msg = "Expected data_schema in result"
+            raise AssertionError(msg)
 
         # Test form submission with valid data
         user_input = {
@@ -156,9 +159,11 @@ async def test_group_subentry_flow_basic_step(
 
         # Should proceed to enhanced step
         if result2["type"] != FlowResultType.FORM:
+            msg = f"Expected form for enhanced step, got {result2['type']}"
             raise AssertionError(
-                f"Expected form for enhanced step, got {result2['type']}"
+                msg
             )
 
         if result2["step_id"] != "enhanced":
-            raise AssertionError("Expected step_id 'enhanced'")
+            msg = "Expected step_id 'enhanced'"
+            raise AssertionError(msg)

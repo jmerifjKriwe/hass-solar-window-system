@@ -1,11 +1,16 @@
-"""Tests for group and window related entities."""
+"""Tests for group and window related entities.
+
+Assertions are used intentionally; disable S101 for this module.
+"""
+
+# ruff: noqa: S101
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -16,6 +21,9 @@ from custom_components.solar_window_system.sensor import (
     async_setup_entry,
 )
 from tests.test_data import MOCK_GROUP_SUBENTRIES, MOCK_WINDOW_SUBENTRIES
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 
 @pytest.fixture
@@ -57,7 +65,7 @@ def mock_window_config_entry(mock_coordinator):
 @pytest.mark.asyncio
 async def test_setup_group_power_sensors_creation(
     hass: HomeAssistant, mock_group_config_entry: MockConfigEntry, mock_coordinator
-):
+) -> None:
     """Test that group power sensors are created correctly."""
     # Add the config entry to hass (public API).
     mock_group_config_entry.add_to_hass(hass)
@@ -83,7 +91,7 @@ async def test_setup_group_power_sensors_creation(
     # Track added entities
     added_entities = []
 
-    def mock_add_entities(entities, update_before_add=False, config_subentry_id=None):
+    def mock_add_entities(entities, update_before_add=False, config_subentry_id=None) -> None:
         added_entities.extend(list(entities))
 
     await async_setup_entry(hass, mock_group_config_entry, mock_add_entities)
@@ -117,13 +125,13 @@ async def test_setup_group_power_sensors_creation(
         # Extract and validate the subentry id
     _, full_id = domain_ids[0]
     # Accept any configured subentry key embedded in the identifier string
-    assert any(k in full_id for k in mock_group_config_entry.subentries.keys())
+    assert any(k in full_id for k in mock_group_config_entry.subentries)
 
 
 @pytest.mark.asyncio
 async def test_setup_window_power_sensors_creation(
     hass: HomeAssistant, mock_window_config_entry: MockConfigEntry, mock_coordinator
-):
+) -> None:
     """Test that window power sensors are created correctly."""
     mock_window_config_entry.add_to_hass(hass)
 
@@ -145,7 +153,7 @@ async def test_setup_window_power_sensors_creation(
 
     added_entities = []
 
-    def mock_add_entities(entities, update_before_add=False, config_subentry_id=None):
+    def mock_add_entities(entities, update_before_add=False, config_subentry_id=None) -> None:
         added_entities.extend(list(entities))
 
     await async_setup_entry(hass, mock_window_config_entry, mock_add_entities)
@@ -185,4 +193,4 @@ async def test_setup_window_power_sensors_creation(
         ]
         assert domain_ids, "Expected a domain/window identifier in device_info"
     _, full_id = domain_ids[0]
-    assert any(k in full_id for k in mock_window_config_entry.subentries.keys())
+    assert any(k in full_id for k in mock_window_config_entry.subentries)

@@ -7,8 +7,9 @@ and reopen as empty in the first options step.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
-from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
@@ -17,6 +18,9 @@ from tests.test_data import (
     VALID_GLOBAL_ENHANCED,
     VALID_GLOBAL_SCENARIOS,
 )
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 
 @pytest.mark.asyncio

@@ -19,7 +19,7 @@ from custom_components.solar_window_system.coordinator import (
 
 
 @pytest.mark.asyncio
-async def test_coordinator_initialization(fake_hass_magicmock, window_entry):
+async def test_coordinator_initialization(fake_hass_magicmock, window_entry) -> None:
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     assert coordinator.hass == fake_hass_magicmock
@@ -29,7 +29,7 @@ async def test_coordinator_initialization(fake_hass_magicmock, window_entry):
 
 
 @pytest.mark.asyncio
-async def test_coordinator_update_data(fake_hass_magicmock, window_entry):
+async def test_coordinator_update_data(fake_hass_magicmock, window_entry) -> None:
     # Use SimpleNamespace to match attribute access and provide all required window fields
     window_entry.subentries = {
         "window_1": types.SimpleNamespace(
@@ -92,7 +92,7 @@ async def test_coordinator_update_data(fake_hass_magicmock, window_entry):
 
 
 @pytest.mark.asyncio
-async def test_coordinator_window_data_access(fake_hass_magicmock, window_entry):
+async def test_coordinator_window_data_access(fake_hass_magicmock, window_entry) -> None:
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Perform first update
@@ -115,12 +115,11 @@ async def test_coordinator_window_data_access(fake_hass_magicmock, window_entry)
 
 
 @pytest.mark.asyncio
-async def test_coordinator_reconfigure(fake_hass_magicmock, window_entry):
+async def test_coordinator_reconfigure(fake_hass_magicmock, window_entry) -> None:
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
-    initial_data = coordinator.data
 
     # Reconfigure
     await coordinator.async_reconfigure()
@@ -133,7 +132,7 @@ async def test_coordinator_reconfigure(fake_hass_magicmock, window_entry):
     assert coordinator.calculator is not None
 
 
-def test_coordinator_with_missing_calculator(fake_hass_magicmock, window_entry):
+def test_coordinator_with_missing_calculator(fake_hass_magicmock, window_entry) -> None:
     """
     Create an entry with missing subentries to trigger calculator init failure.
 
@@ -152,7 +151,7 @@ def test_coordinator_with_missing_calculator(fake_hass_magicmock, window_entry):
 
 
 @pytest.mark.asyncio
-async def test_flow_based_calculation_called(fake_hass_magicmock, window_entry):
+async def test_flow_based_calculation_called(fake_hass_magicmock, window_entry) -> None:
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Mock the calculate_all_windows_from_flows method to verify it's called
