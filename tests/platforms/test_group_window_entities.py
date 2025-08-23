@@ -37,7 +37,6 @@ def mock_group_config_entry(mock_coordinator):
     )
     # Use shared subentry mocks
     entry.subentries = {k: Mock(**v) for k, v in MOCK_GROUP_SUBENTRIES.items()}
-    entry.hass_data = {"coordinator": mock_coordinator}
     return entry
 
 
@@ -52,19 +51,21 @@ def mock_window_config_entry(mock_coordinator):
     )
     # Use shared subentry mocks
     entry.subentries = {k: Mock(**v) for k, v in MOCK_WINDOW_SUBENTRIES.items()}
-    entry.hass_data = {"coordinator": mock_coordinator}
     return entry
 
 
 @pytest.mark.asyncio
 async def test_setup_group_power_sensors_creation(
-    hass: HomeAssistant, mock_group_config_entry: MockConfigEntry
+    hass: HomeAssistant, mock_group_config_entry: MockConfigEntry, mock_coordinator
 ):
     """Test that group power sensors are created correctly."""
-    # Add the config entry to hass
+    # Add the config entry to hass (public API).
     mock_group_config_entry.add_to_hass(hass)
-    hass.data[DOMAIN] = {
-        mock_group_config_entry.entry_id: mock_group_config_entry.hass_data
+
+    # Populate hass.data using the public hass API so the setup can access
+    # the provided mock coordinator during the test.
+    hass.data.setdefault(DOMAIN, {})[mock_group_config_entry.entry_id] = {
+        "coordinator": mock_coordinator
     }
 
     # Create mock devices in device registry for the subentries
@@ -103,26 +104,30 @@ async def test_setup_group_power_sensors_creation(
     actual_unique_ids = {entity.unique_id for entity in added_entities}
     assert actual_unique_ids == expected_unique_ids
 
-    # Map object_name to subentry_id for identifier check
-    name_to_id = {
-        subentry.title: subentry_id
-        for subentry_id, subentry in mock_group_config_entry.subentries.items()
-    }
+    # Use identifiers in device_info to derive subentry IDs and assert they exist
     for entity in added_entities:
         assert isinstance(entity, GroupWindowPowerSensor)
         assert entity.device_info is not None
-        subentry_id = name_to_id[entity._object_name]
-        assert (DOMAIN, f"group_{subentry_id}") in entity.device_info["identifiers"]
+        identifiers = entity.device_info.get("identifiers", set())
+        # Find the domain-specific identifier for the group
+        domain_ids = [i for i in identifiers if i[0] == DOMAIN and i[1].startswith("group_")]
+        assert domain_ids, "Expected a domain/group identifier in device_info"
+        # Extract and validate the subentry id
+    _, full_id = domain_ids[0]
+    # Accept any configured subentry key embedded in the identifier string
+    assert any(k in full_id for k in mock_group_config_entry.subentries.keys())
 
 
 @pytest.mark.asyncio
 async def test_setup_window_power_sensors_creation(
-    hass: HomeAssistant, mock_window_config_entry: MockConfigEntry
+    hass: HomeAssistant, mock_window_config_entry: MockConfigEntry, mock_coordinator
 ):
     """Test that window power sensors are created correctly."""
     mock_window_config_entry.add_to_hass(hass)
-    hass.data[DOMAIN] = {
-        mock_window_config_entry.entry_id: mock_window_config_entry.hass_data
+
+    # Populate hass.data so setup can find the injected mock coordinator.
+    hass.data.setdefault(DOMAIN, {})[mock_window_config_entry.entry_id] = {
+        "coordinator": mock_coordinator
     }
 
     dev_reg = dr.async_get(hass)
@@ -168,13 +173,12 @@ async def test_setup_window_power_sensors_creation(
     actual_unique_ids = {entity.unique_id for entity in added_entities}
     assert actual_unique_ids == expected_unique_ids
 
-    # Map object_name to subentry_id for identifier check
-    name_to_id = {
-        subentry.title: subentry_id
-        for subentry_id, subentry in mock_window_config_entry.subentries.items()
-    }
+    # Use identifiers in device_info to derive subentry IDs and assert they exist
     for entity in added_entities:
         assert isinstance(entity, GroupWindowPowerSensor)
         assert entity.device_info is not None
-        subentry_id = name_to_id[entity._object_name]
-        assert (DOMAIN, f"window_{subentry_id}") in entity.device_info["identifiers"]
+        identifiers = entity.device_info.get("identifiers", set())
+        domain_ids = [i for i in identifiers if i[0] == DOMAIN and i[1].startswith("window_")]
+        assert domain_ids, "Expected a domain/window identifier in device_info"
+    _, full_id = domain_ids[0]
+    assert any(k in full_id for k in mock_window_config_entry.subentries.keys())

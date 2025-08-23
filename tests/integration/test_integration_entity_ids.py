@@ -76,7 +76,8 @@ class TestEntityIDIntegration:
 
         # Verify each entity has correct unique_id format
         for entity in added_entities:
-            unique_id = entity._attr_unique_id
+            unique_id = entity.unique_id
+            assert unique_id is not None
             assert unique_id.startswith(ENTITY_PREFIX), (
                 f"Entity unique_id '{unique_id}' should start with '{ENTITY_PREFIX}'"
             )
@@ -84,19 +85,15 @@ class TestEntityIDIntegration:
                 f"Entity unique_id '{unique_id}' should contain '_global_'"
             )
 
-        # Verify specific entity unique_ids
+        # Verify specific entity unique_ids by deriving keys from unique_id
         entity_unique_ids = {
-            entity._entity_key: entity._attr_unique_id for entity in added_entities
+            (entity.unique_id.split(f"{ENTITY_PREFIX}_global_", 1)[1] if entity.unique_id and f"{ENTITY_PREFIX}_global_" in entity.unique_id else None): entity.unique_id for entity in added_entities
         }
 
         for entity_key in expected_sensor_entities:
             expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity_key in entity_unique_ids, (
-                f"Entity {entity_key} not found in created entities"
-            )
-            assert entity_unique_ids[entity_key] == expected_unique_id, (
-                f"Entity {entity_key} has unique_id '{entity_unique_ids[entity_key]}', "
-                f"expected '{expected_unique_id}'"
+            assert entity_unique_ids.get(entity_key) == expected_unique_id, (
+                f"Entity {entity_key} has unique_id '{entity_unique_ids.get(entity_key)}', expected '{expected_unique_id}'"
             )
 
     @pytest.mark.asyncio

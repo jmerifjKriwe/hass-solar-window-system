@@ -134,12 +134,13 @@ async def test_coordinator_reconfigure(fake_hass_magicmock, window_entry):
     assert coordinator.calculator is not None
 
 
-def test_coordinator_with_missing_calculator(fake_hass_magicmock):
-    # Create entry without subentries to trigger calculator initialization failure
-    entry = MagicMock(spec=ConfigEntry)
-    entry.entry_id = "test_entry_id"
-    entry.title = "Test Window Configs"
-    entry.data = {"entry_type": "window_configs"}
+def test_coordinator_with_missing_calculator(fake_hass_magicmock, window_entry):
+    """Create an entry with missing subentries to trigger calculator init failure.
+
+    Use the canonical `window_entry` fixture and mutate `subentries` to None
+    instead of assigning `entry_id` manually.
+    """
+    entry = window_entry
     entry.subentries = None
 
     coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, entry, 1)

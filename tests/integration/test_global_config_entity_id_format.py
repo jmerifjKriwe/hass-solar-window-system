@@ -1,6 +1,6 @@
 """Test that global config entities have correct entity_id and unique_id format."""
 
-from unittest.mock import Mock
+"""Tests for global config entity id / unique id format."""
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
@@ -20,21 +20,21 @@ from custom_components.solar_window_system.text import GlobalConfigTextEntity
 
 @pytest.mark.asyncio
 async def test_global_config_entity_id_and_unique_id_format(
-    hass: HomeAssistant,
+    hass: HomeAssistant, global_config_entry: ConfigEntry
 ) -> None:
-    # Create and add a mock config entry
-    config_entry = Mock(spec=ConfigEntry)
-    config_entry.entry_id = "test_entry"
-    config_entry.domain = "solar_window_system"
-    config_entry.title = "Solar Window System"
-    config_entry.data = {}
-    config_entry.unique_id = "test_unique_id"
-    config_entry.state = "loaded"
-    hass.config_entries._entries[config_entry.entry_id] = config_entry
+    """Ensure entities expose the expected unique_id and entity_id formats.
+
+    The test uses the `global_config_entry` fixture which registers a
+    MockConfigEntry via the public `add_to_hass` API so the test does not
+    manipulate internal hass state directly.
+    """
+    # Use the provided fixture which creates and adds a MockConfigEntry via
+    # the public API (`add_to_hass`) so tests don't touch internals.
+    global_config_entry.add_to_hass(hass)
 
     device_registry = dr.async_get(hass)
     device = device_registry.async_get_or_create(
-        config_entry_id="test_entry",
+        config_entry_id=global_config_entry.entry_id,
         identifiers={("solar_window_system", "global_config")},
         name="Solar Window System Global Configuration",
         manufacturer="Solar Window System",
@@ -58,6 +58,8 @@ async def test_global_config_entity_id_and_unique_id_format(
         switch = GlobalConfigSwitchEntity(entity_key, config, device)
 
         for entity in [sensor, number, select, text, switch]:
-            unique_id = getattr(entity, "_attr_unique_id", None)
+            # Use the public property `unique_id` instead of reading private
+            # `_attr_unique_id`.
+            unique_id = entity.unique_id
             expected_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
             assert unique_id == expected_unique_id

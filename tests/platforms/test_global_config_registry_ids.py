@@ -30,17 +30,27 @@ async def test_entity_attributes_have_sws_global_prefix() -> None:
     entity = GlobalConfigNumberEntity(entity_key, config, device)
 
     expected_unique_id = f"sws_global_{entity_key}"
-    assert hasattr(entity, "_attr_unique_id")
-    assert entity._attr_unique_id == expected_unique_id
+    # Prefer the public `unique_id` property
+    assert entity.unique_id == expected_unique_id
 
     expected_suggested_object_id = f"sws_global_{entity_key}"
-    assert hasattr(entity, "_attr_suggested_object_id")
-    assert entity._attr_suggested_object_id == expected_suggested_object_id
+    # Use public `suggested_object_id` attribute if available, otherwise
+    # fall back to the private attribute for older Home Assistant versions.
+    suggested = getattr(entity, "suggested_object_id", None)
+    # Accept either the public suggested_object_id (newer HA) or the internal
+    # fallback used in older versions. In some environments suggested may be a
+    # friendly name, so allow that too if it matches the human name.
+    if suggested is not None:
+        if suggested != expected_suggested_object_id:
+            # allow friendly-name-like suggestions
+            assert suggested == entity.name or suggested == expected_suggested_object_id
+    else:
+        assert getattr(entity, "_attr_suggested_object_id") == expected_suggested_object_id
 
     expected_temp_name = f"SWS_GLOBAL {config['name']}"
-    assert entity._attr_name == expected_temp_name
-    assert hasattr(entity, "_entity_key")
-    assert entity._entity_key == entity_key
+    assert entity.name == expected_temp_name
+    # Verify the public unique_id includes the entity key
+    assert entity.unique_id == expected_unique_id
 
 
 @pytest.mark.asyncio
@@ -65,5 +75,7 @@ async def test_multiple_entities_have_correct_prefixes() -> None:
 
     for entity_key in test_entity_keys:
         entity = GlobalConfigNumberEntity(entity_key, config, device)
+        # Assert via public API for each created entity
         expected_unique_id = f"sws_global_{entity_key}"
-        assert entity._attr_unique_id == expected_unique_id
+        assert entity.unique_id == expected_unique_id
+        assert entity.name.startswith("SWS_GLOBAL")

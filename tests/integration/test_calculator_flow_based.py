@@ -20,10 +20,9 @@ from tests.test_data import (
 
 
 @pytest.fixture
-def calculator(hass):
-    mock_entry = Mock(spec=ConfigEntry)
-    mock_entry.entry_id = "test_entry"
-    return SolarWindowCalculator(hass, mock_entry)
+def calculator(hass, window_entry):
+    """Provide a SolarWindowCalculator using the canonical `window_entry` fixture."""
+    return SolarWindowCalculator(hass, window_entry)
 
 
 def test_shadow_factor_no_shadow(calculator):
@@ -190,10 +189,9 @@ def test_recalculation_triggered_on_weather_warning(monkeypatch):
 
 
 @pytest.fixture
-def calculator(hass):
-    mock_entry = Mock(spec=ConfigEntry)
-    mock_entry.entry_id = "test_entry"
-    return SolarWindowCalculator(hass, mock_entry)
+def calculator(hass, window_entry):
+    """Duplicate fixture replaced by using `window_entry` to avoid manual entry_id."""
+    return SolarWindowCalculator(hass, window_entry)
 
 
 def test_shadow_factor_no_shadow(calculator):

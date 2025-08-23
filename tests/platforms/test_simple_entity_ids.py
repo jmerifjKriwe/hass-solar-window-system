@@ -28,8 +28,8 @@ class TestEntityIDGenerationSimple:
         device = MockDevice()
         entity = GlobalConfigNumberEntity(entity_key, config, device)
         expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
-        assert entity._attr_unique_id == expected_unique_id
-        assert entity._attr_unique_id.startswith(ENTITY_PREFIX)
+        assert entity.unique_id == expected_unique_id
+        assert entity.unique_id.startswith(ENTITY_PREFIX)
         expected_entity_id = f"number.{expected_unique_id}"
         assert expected_entity_id.startswith(f"number.{ENTITY_PREFIX}_")
 

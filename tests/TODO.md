@@ -16,13 +16,13 @@ Status: Teilweise erledigt — 1–4 umgesetzt (siehe Commits auf branch `refact
 4. Parametrisierung von Plattform‑Tests — Done
    - Plattformtests über eine `PLATFORMS`‑Liste parametrieren und `collect_entities_for_setup` verwenden. Mehrere legacy platform test files wurden als konsolidiert markiert.
 
-5. Nutzung öffentlicher Home‑Assistant APIs in Tests
+5. Nutzung öffentlicher Home‑Assistant APIs in Tests — Done
    - Tests so umschreiben, dass sie nur die öffentlichen HA‑APIs verwenden (z. B. `MockConfigEntry`, `entry.add_to_hass`, `async_setup_entry`) und keine privaten internals manipulieren.
 
 6. Entfernen/Refaktorieren von Tests, die interne Zustände manipulieren
    - Tests entfernen oder umschreiben, die direkt auf private Attribute zugreifen (z. B. `_reconfigure_mode`) statt `async_step_reconfigure` zu verwenden.
 
-7. Konsolidierung von Geräte‑Fixtures
+7. Konsolidierung von Geräte‑Fixtures — Done
    - Eine standardisierte `global_device`‑Fixture bereitstellen, die überall verwendet wird.
 
 8. Helfer: Rückgabe hinzugefügter Entitäten + einfacher Assert

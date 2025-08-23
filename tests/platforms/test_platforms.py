@@ -39,5 +39,6 @@ async def test_platform_setup_minimal(hass, platform_name: str, module_path: str
     # If the integration defines entities for this platform, ensure they expose unique_id
     if added:
         for entity in added:
-            if not hasattr(entity, "_attr_unique_id"):
-                raise AssertionError("Entity must expose unique_id attr")
+            # Prefer public property `unique_id`. If not present, this is a failure
+            if not getattr(entity, "unique_id", None):
+                raise AssertionError("Entity must expose unique_id property")

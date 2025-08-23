@@ -30,19 +30,36 @@ def create_global_config_entry(
         data={"entry_type": "global_config"},
         entry_id=entry_id,
     )
-    entry.add_to_hass(hass)
+
+    # Idempotently register the created MockConfigEntry in hass. Some tests
+    # expect the config entry to exist so devices can be linked to it; other
+    # tests call this helper multiple times with the same entry id. Checking
+    # for an existing entry avoids duplicate-registration warnings.
+    existing = hass.config_entries.async_get_entry(entry_id)
+    if existing is None:
+        entry.add_to_hass(hass)
+
     return entry
 
 
 def ensure_global_device(hass: HomeAssistant, entry: MockConfigEntry):
     """Ensure the global device is present in the device registry and return it."""
     device_registry = dr.async_get(hass)
+    # Ensure the config entry is added to hass so the device registry can
+    # link devices to it. Some tests call `create_global_config_entry()` but
+    # don't register the entry; register it here if missing.
+    existing = hass.config_entries.async_get_entry(entry.entry_id)
+
+    if existing is None:
+        # Safe to call add_to_hass; MockConfigEntry handles idempotency in tests.
+        entry.add_to_hass(hass)
+
     return device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-    identifiers={(DOMAIN, "global_config")},
-    name=GLOBAL_DEVICE_NAME,
-    manufacturer=GLOBAL_DEVICE_MANUFACTURER,
-    model=GLOBAL_DEVICE_MODEL,
+        identifiers={(DOMAIN, "global_config")},
+        name=GLOBAL_DEVICE_NAME,
+        manufacturer=GLOBAL_DEVICE_MANUFACTURER,
+        model=GLOBAL_DEVICE_MODEL,
     )
 
 

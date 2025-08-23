@@ -14,6 +14,7 @@ from custom_components.solar_window_system.const import (
     ENTITY_PREFIX,
     GLOBAL_CONFIG_ENTITIES,
 )
+from tests.helpers.fixtures_helpers import ensure_global_device
 
 
 @pytest.mark.asyncio
@@ -66,18 +67,11 @@ class TestGlobalConfigEntityCreation:
         """Test that number entities are created correctly."""
         from custom_components.solar_window_system.number import async_setup_entry
 
-        # Set up device registry with global config device
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=global_config_entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System Global Configuration",
-            manufacturer="Solar Window System",
-            model="Global Configuration",
-        )
+        # Ensure the global device exists and is linked to the config entry
+        ensure_global_device(hass, global_config_entry)
 
         # Track added entities
-        added_entities = []
+        added_entities: list = []
 
         def mock_async_add_entities(entities):
             added_entities.extend(entities)
@@ -91,12 +85,12 @@ class TestGlobalConfigEntityCreation:
 
         for i, (entity_key, config) in enumerate(number_configs):
             entity = added_entities[i]
-            assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
+            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
             # Name is initially set with SWS_GLOBAL prefix; HA will adjust via registry later
-            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
-            assert entity._attr_native_min_value == config["min"]
-            assert entity._attr_native_max_value == config["max"]
-            assert entity._attr_native_step == config["step"]
+            assert entity.name.endswith(config["name"])  # prefix tolerated
+            assert getattr(entity, "native_min_value", getattr(entity, "_attr_native_min_value", None)) == config["min"]
+            assert getattr(entity, "native_max_value", getattr(entity, "_attr_native_max_value", None)) == config["max"]
+            assert getattr(entity, "native_step", getattr(entity, "_attr_native_step", None)) == config["step"]
 
     async def test_text_entities_creation(
         self,
@@ -107,15 +101,8 @@ class TestGlobalConfigEntityCreation:
         """Test that text entities are created correctly."""
         from custom_components.solar_window_system.text import async_setup_entry
 
-        # Set up device registry with global config device
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=global_config_entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System Global Configuration",
-            manufacturer="Solar Window System",
-            model="Global Configuration",
-        )
+        # Ensure the global device exists and is linked to the config entry
+        ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
@@ -132,10 +119,10 @@ class TestGlobalConfigEntityCreation:
 
         for i, (entity_key, config) in enumerate(text_configs):
             entity = added_entities[i]
-            assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
-            assert entity._attr_native_max == config["max"]
-            assert entity._attr_native_value == config["default"]
+            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
+            assert entity.name.endswith(config["name"])  # prefix tolerated
+            assert getattr(entity, "native_max", getattr(entity, "_attr_native_max", None)) == config["max"]
+            assert getattr(entity, "native_value", getattr(entity, "_attr_native_value", None)) == config["default"]
 
     async def test_select_entities_creation(
         self,
@@ -146,15 +133,9 @@ class TestGlobalConfigEntityCreation:
         """Test that select entities are created correctly."""
         from custom_components.solar_window_system.select import async_setup_entry
 
-        # Set up device registry with global config device
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=global_config_entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System Global Configuration",
-            manufacturer="Solar Window System",
-            model="Global Configuration",
-        )
+        # Ensure the global device exists and is linked to the config entry
+        ensure_global_device(hass, global_config_entry)
+
         # Track added entities
         added_entities = []
 
@@ -170,11 +151,12 @@ class TestGlobalConfigEntityCreation:
 
         for i, (entity_key, config) in enumerate(select_configs):
             entity = added_entities[i]
-            assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
+            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
+            assert entity.name.endswith(config["name"])  # prefix tolerated
             # Options are dynamic; we ensure an empty placeholder is present as first option
-            assert isinstance(entity._attr_options, list)
-            assert entity._attr_options[0] == ""
+            options = getattr(entity, "options", getattr(entity, "_attr_options", None))
+            assert isinstance(options, list)
+            assert options[0] == ""
 
     async def test_switch_entities_creation(
         self,
@@ -185,15 +167,8 @@ class TestGlobalConfigEntityCreation:
         """Test that switch entities are created correctly."""
         from custom_components.solar_window_system.switch import async_setup_entry
 
-        # Set up device registry with global config device
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=global_config_entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System Global Configuration",
-            manufacturer="Solar Window System",
-            model="Global Configuration",
-        )
+        # Ensure the global device exists and is linked to the config entry
+        ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
@@ -210,9 +185,9 @@ class TestGlobalConfigEntityCreation:
 
         for i, (entity_key, config) in enumerate(switch_configs):
             entity = added_entities[i]
-            assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
-            assert entity._attr_is_on == config["default"]
+            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
+            assert entity.name.endswith(config["name"])  # prefix tolerated
+            assert getattr(entity, "is_on", getattr(entity, "_attr_is_on", None)) == config["default"]
 
     async def test_sensor_entities_creation(
         self,
@@ -223,15 +198,8 @@ class TestGlobalConfigEntityCreation:
         """Test that sensor entities are created correctly."""
         from custom_components.solar_window_system.sensor import async_setup_entry
 
-        # Set up device registry with global config device
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=global_config_entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System Global Configuration",
-            manufacturer="Solar Window System",
-            model="Global Configuration",
-        )
+        # Ensure the global device exists and is linked to the config entry
+        ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
@@ -248,8 +216,8 @@ class TestGlobalConfigEntityCreation:
 
         for i, (entity_key, config) in enumerate(sensor_configs):
             entity = added_entities[i]
-            assert entity._attr_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity._attr_name.endswith(config["name"])  # prefix tolerated
+            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
+            assert entity.name.endswith(config["name"])  # prefix tolerated
 
     async def test_diagnostic_entities_have_correct_category(
         self, hass: HomeAssistant, debug_entities: list[str], global_config_entry: Mock
@@ -279,10 +247,14 @@ class TestGlobalConfigEntityCreation:
         # Find debug entities and verify their category
         debug_found = []
         for entity in added_entities:
-            entity_key = entity._entity_key
+            # Derive entity_key from unique_id instead of relying on internals.
+            entity_key = None
+            if entity.unique_id and f"{ENTITY_PREFIX}_global_" in entity.unique_id:
+                entity_key = entity.unique_id.split(f"{ENTITY_PREFIX}_global_", 1)[1]
+
             if entity_key in debug_entities:
                 debug_found.append(entity_key)
-                assert entity._attr_entity_category == EntityCategory.DIAGNOSTIC, (
+                assert getattr(entity, "entity_category", getattr(entity, "_attr_entity_category", None)) == EntityCategory.DIAGNOSTIC, (
                     f"Debug entity {entity_key} should have DIAGNOSTIC category"
                 )
 
@@ -300,15 +272,8 @@ class TestGlobalConfigEntityCreation:
         """Test that all entities have proper device info."""
         from custom_components.solar_window_system.number import async_setup_entry
 
-        # Set up device registry with global config device
-        device_registry = dr.async_get(hass)
-        expected_device = device_registry.async_get_or_create(
-            config_entry_id=global_config_entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System Global Configuration",
-            manufacturer="Solar Window System",
-            model="Global Configuration",
-        )
+        # Ensure the global device exists and is linked to the config entry
+        expected_device = ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
@@ -321,7 +286,7 @@ class TestGlobalConfigEntityCreation:
 
         # Verify all entities have correct device info
         for entity in added_entities:
-            device_info = entity._attr_device_info
+            device_info = entity.device_info
             assert device_info is not None
             assert device_info["identifiers"] == expected_device.identifiers
             assert device_info["name"] == expected_device.name
