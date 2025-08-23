@@ -1,11 +1,11 @@
 """
-Helpers to serialize a Home Assistant entity/state into a minimal,
-JSON-serialisable representation suitable for snapshot testing.
+Serialize a Home Assistant entity/state into a compact JSON snapshot.
 
 The functions accept either mapping-like objects (dicts) or objects with
 ``entity_id``, ``state`` and ``attributes`` attributes (Home Assistant
 ``State`` objects). They optionally normalise numeric-looking state strings
 into numbers which makes snapshots more stable.
+
 """
 
 from collections.abc import Mapping

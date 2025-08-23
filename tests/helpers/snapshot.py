@@ -14,18 +14,17 @@ SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "__snapshots__"
 
 
 def _snapshot_path(name: str) -> Path:
-    """Return the target Path for the named snapshot.
+    """
+    Return the target Path for the named snapshot.
 
     The snapshot file is stored as JSON with the given name and the `.json`
     suffix.
     """
-
     return SNAPSHOT_DIR / (name + ".json")
 
 
 def save_snapshot(name: str, data: Any) -> None:
     """Write the provided data as a deterministic JSON snapshot."""
-
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
     path = _snapshot_path(name)
     with path.open("w", encoding="utf-8") as fh:
@@ -33,11 +32,11 @@ def save_snapshot(name: str, data: Any) -> None:
 
 
 def load_snapshot(name: str) -> Any:
-    """Load and return the JSON snapshot for the given name.
+    """
+    Load and return the JSON snapshot for the given name.
 
     Raises FileNotFoundError if the snapshot does not exist.
     """
-
     path = _snapshot_path(name)
     if not path.exists():
         msg = f"Snapshot not found: {path}"
@@ -47,12 +46,12 @@ def load_snapshot(name: str) -> Any:
 
 
 def assert_matches_snapshot(name: str, data: Any) -> None:
-    """Compare `data` against a stored snapshot named `name`.
+    """
+    Compare `data` against a stored snapshot named `name`.
 
     If no snapshot exists it will be written and the test will fail with an
     instructive message so the developer can inspect the generated snapshot.
     """
-
     path = _snapshot_path(name)
 
     # If snapshot does not exist, create it and instruct the developer to
