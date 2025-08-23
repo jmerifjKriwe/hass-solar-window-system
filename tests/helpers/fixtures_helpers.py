@@ -71,6 +71,17 @@ def global_entry(hass: HomeAssistant) -> MockConfigEntry:
     return create_global_config_entry(hass)
 
 
+# Canonical fixture name used across the test-suite
+@pytest.fixture
+def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Canonical fixture alias for historical `global_entry`.
+
+    Many tests reference `global_config_entry`; expose it from the helper
+    to provide a single, consistent source of truth.
+    """
+    return create_global_config_entry(hass, entry_id="global_config_entry_id")
+
+
 @pytest.fixture
 def fake_hass_magicmock():
     """
@@ -128,3 +139,13 @@ def create_window_config_entry(entry_id: str = "test_window_entry") -> MagicMock
 def window_entry() -> MagicMock:
     """Fixture returning a MagicMock window config entry for unit tests."""
     return create_window_config_entry()
+
+
+# Canonical fixture name used by platform and integration tests
+@pytest.fixture
+def window_config_entry() -> MagicMock:
+    """Canonical fixture alias for historical `window_entry`.
+
+    Returns a MagicMock mimicking a ConfigEntry for window subentries.
+    """
+    return create_window_config_entry(entry_id="window_config_entry_id")

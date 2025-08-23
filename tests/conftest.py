@@ -78,28 +78,9 @@ def valid_group_input() -> dict[str, str]:
     }
 
 
-@pytest.fixture
-def global_config_entry(hass: HomeAssistant, global_entry: MockConfigEntry) -> MockConfigEntry:
-    """Return a registered global config entry.
-
-    Delegates to `tests.helpers.fixtures_helpers.create_global_config_entry`
-    via the `global_entry` fixture to avoid duplicated setup logic.
-    """
-    # The helper already adds the entry to hass; ensure the id matches tests' expectations
-    global_entry.entry_id = "global_config_entry_id"
-    return global_entry
-
-
-@pytest.fixture
-def window_config_entry(hass: HomeAssistant, window_entry: MockConfigEntry) -> MockConfigEntry:
-    """Return a registered window config entry.
-
-    Use the centralized `window_entry` helper when possible to ensure
-    consistent test data across the suite.
-    """
-    window_entry.entry_id = "window_config_entry_id"
-    # The MockConfigEntry helper returns a MockConfigEntry and already calls add_to_hass
-    return window_entry
+# Note: canonical fixtures `global_config_entry` and `window_config_entry` are
+# provided by `tests.helpers.fixtures_helpers`. Avoid redefining them here to
+# prevent fixture override and accidental mutation of frozen attributes.
 
 
 @pytest.fixture
