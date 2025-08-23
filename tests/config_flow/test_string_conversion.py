@@ -1,17 +1,17 @@
 """Test to verify string conversion handling in config flows."""
 
+from unittest.mock import AsyncMock, PropertyMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, PropertyMock
 import voluptuous as vol
 from homeassistant import config_entries
 
 from custom_components.solar_window_system import config_flow
-
 from tests.test_data import (
+    VALID_GLOBAL_ENHANCED,
+    VALID_GLOBAL_SCENARIOS,
     VALID_GROUP_OPTIONS_NUMERIC,
     VALID_WINDOW_OPTIONS_NUMERIC,
-    VALID_GLOBAL_SCENARIOS,
-    VALID_GLOBAL_ENHANCED,
 )
 
 

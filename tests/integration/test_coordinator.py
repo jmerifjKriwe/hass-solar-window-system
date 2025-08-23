@@ -1,4 +1,5 @@
-"""Integration/unit tests for the SolarWindowSystemCoordinator.
+"""
+Integration/unit tests for the SolarWindowSystemCoordinator.
 
 Consolidated from previous duplicated test files. These are unit-style coordinator
 tests that operate against a MagicMock hass object.
@@ -10,17 +11,12 @@ import types
 from unittest.mock import MagicMock
 
 import pytest
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 
+from custom_components.solar_window_system.calculator import SolarWindowCalculator
 from custom_components.solar_window_system.coordinator import (
     SolarWindowSystemCoordinator,
 )
-from custom_components.solar_window_system.calculator import SolarWindowCalculator
-
-
-from tests.helpers.fixtures_helpers import fake_hass_magicmock, window_entry
 
 
 @pytest.mark.asyncio

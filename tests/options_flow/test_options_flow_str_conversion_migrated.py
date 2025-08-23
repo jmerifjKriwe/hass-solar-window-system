@@ -1,13 +1,15 @@
 """Migrated: Verify numeric-to-string conversion in options flows."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from custom_components.solar_window_system.const import DOMAIN
+
 from custom_components.solar_window_system.config_flow import (
     GroupSubentryFlowHandler,
     WindowSubentryFlowHandler,
 )
+from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import VALID_GROUP_OPTIONS_NUMERIC, VALID_WINDOW_OPTIONS_NUMERIC
 
 

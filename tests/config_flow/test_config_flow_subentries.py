@@ -13,7 +13,6 @@ from custom_components.solar_window_system.config_flow import (
 )
 from custom_components.solar_window_system.const import DOMAIN
 
-
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 

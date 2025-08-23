@@ -1,7 +1,6 @@
 """Test for clean import and presence of main config flow class."""
 
 import importlib
-import pytest
 
 
 def test_config_flow_imports_cleanly():

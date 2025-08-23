@@ -1,4 +1,5 @@
-"""Test helper fixtures for the Solar Window System tests.
+"""
+Test helper fixtures for the Solar Window System tests.
 
 Place reusable fixtures and helpers here so platform tests can be concise.
 """
@@ -6,16 +7,16 @@ Place reusable fixtures and helpers here so platform tests can be concise.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, List
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
-from unittest.mock import MagicMock
-from homeassistant.config_entries import ConfigEntry
 
 
 def create_global_config_entry(
@@ -46,12 +47,13 @@ def ensure_global_device(hass: HomeAssistant, entry: MockConfigEntry):
 
 async def collect_entities_for_setup(
     hass: HomeAssistant, module: Any, entry: MockConfigEntry
-) -> List[Any]:
-    """Call module.async_setup_entry and return a list of added entities.
+) -> list[Any]:
+    """
+    Call module.async_setup_entry and return a list of added entities.
 
     The module is expected to expose `async_setup_entry(hass, entry, async_add_entities)`.
     """
-    added_entities: List[Any] = []
+    added_entities: list[Any] = []
 
     def _mock_async_add_entities(
         new_entities: Iterable, update_before_add: bool = False, **kwargs
@@ -71,12 +73,14 @@ def global_entry(hass: HomeAssistant) -> MockConfigEntry:
 
 @pytest.fixture
 def fake_hass_magicmock():
-    """Return a MagicMock mimicking HomeAssistant for pure unit tests.
+    """
+    Return a MagicMock mimicking HomeAssistant for pure unit tests.
 
     Use this fixture for tests that should not rely on the real `hass` event loop
     or its helpers (unit tests for coordinator, calculator, etc.).
     """
     from unittest.mock import MagicMock
+
     from homeassistant.core import HomeAssistant
 
     hass = MagicMock(spec=HomeAssistant)
@@ -93,7 +97,8 @@ def fake_hass_magicmock():
 
 
 def create_window_config_entry(entry_id: str = "test_window_entry") -> MagicMock:
-    """Create a MagicMock that mimics a ConfigEntry with window subentries.
+    """
+    Create a MagicMock that mimics a ConfigEntry with window subentries.
 
     This is intended for unit tests that don't require a real MockConfigEntry
     (e.g., coordinator unit tests using MagicMock for hass).

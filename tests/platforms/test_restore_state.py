@@ -1,7 +1,8 @@
 """Test state restoration for Solar Window System entities after restart."""
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
 
 from custom_components.solar_window_system.sensor import (
     SolarWindowSystemGroupDummySensor,
@@ -26,11 +27,7 @@ async def test_restore_state_on_restart(hass):
 """Migrated: Test state restoration for Solar Window System entities after Home Assistant restart."""
 
 import pytest
-from unittest.mock import patch, Mock
 from homeassistant.helpers.restore_state import RestoreEntity
-from custom_components.solar_window_system.sensor import (
-    SolarWindowSystemGroupDummySensor,
-)
 
 
 @pytest.mark.asyncio

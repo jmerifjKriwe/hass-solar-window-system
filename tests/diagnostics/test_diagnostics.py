@@ -1,4 +1,5 @@
-"""Test diagnostics endpoint for Solar Window System integration.
+"""
+Test diagnostics endpoint for Solar Window System integration.
 
 This file contains a snapshot test for the config entry diagnostics output.
 """
@@ -10,17 +11,18 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from syrupy.assertion import SnapshotAssertion
 
+from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.diagnostics import (
     async_get_config_entry_diagnostics,
 )
-from custom_components.solar_window_system.const import DOMAIN
 
 
 @pytest.mark.asyncio
 async def test_diagnostics_config_entry_snapshot(
     hass: HomeAssistant, snapshot: SnapshotAssertion
 ) -> None:
-    """Snapshot test for config entry diagnostics output.
+    """
+    Snapshot test for config entry diagnostics output.
 
     This will create the initial snapshot when run with `--snapshot-update`.
     """

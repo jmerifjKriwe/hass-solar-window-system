@@ -8,7 +8,6 @@ from homeassistant import config_entries
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import INVALID_GLOBAL_BASIC
 
-
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 

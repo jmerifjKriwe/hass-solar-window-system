@@ -7,8 +7,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.config_flow import GroupSubentryFlowHandler
+from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import VALID_GLOBAL_BASIC, VALID_GLOBAL_ENHANCED
 
 
@@ -57,11 +57,11 @@ async def test_group_flow_basic_to_enhanced(hass: HomeAssistant) -> None:
         try:
             flow.handler = DOMAIN
         except Exception:
-            setattr(flow, "handler", DOMAIN)
+            flow.handler = DOMAIN
         try:
             flow.parent_entry_id = parent.entry_id
         except Exception:
-            setattr(flow, "parent_entry_id", parent.entry_id)
+            flow.parent_entry_id = parent.entry_id
 
         user_input = {
             "name": "Group A",

@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from unittest.mock import patch, PropertyMock
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from homeassistant import config_entries
 
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import (
@@ -15,7 +13,6 @@ from tests.test_data import (
     VALID_GLOBAL_ENHANCED,
     VALID_GLOBAL_SCENARIOS,
 )
-
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -25,7 +22,8 @@ if TYPE_CHECKING:
 async def test_global_config_reconfigure_flow(
     hass: HomeAssistant, enable_custom_integrations: None
 ) -> None:
-    """Reconfiguring an existing global entry should show the options flow and accept new values.
+    """
+    Reconfiguring an existing global entry should show the options flow and accept new values.
 
     The global configuration is exposed via the OptionsFlow (not a ConfigFlow reconfigure
     handler). Use the options API to exercise the three option pages.

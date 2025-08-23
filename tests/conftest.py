@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from homeassistant.core import HomeAssistant
 from unittest.mock import Mock
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry

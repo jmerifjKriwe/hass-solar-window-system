@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import PropertyMock, patch
 
 import pytest
-from unittest.mock import PropertyMock, patch
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import VALID_GROUP_OPTIONS_NUMERIC
-
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

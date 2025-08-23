@@ -1,4 +1,5 @@
-"""Minimal integration-level tests for setup.
+"""
+Minimal integration-level tests for setup.
 
 This file was migrated from tests/old/test_integration_setup.py which was empty
 in the legacy copy. Create a minimal smoke test that ensures the integration

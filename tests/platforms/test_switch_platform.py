@@ -1,9 +1,11 @@
 """Test the switch platform setup for Solar Window System (migrated)."""
 
-import pytest
 from collections.abc import Iterable
+
+import pytest
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.switch import async_setup_entry
 
@@ -49,12 +51,7 @@ async def test_switch_platform_setup(hass) -> None:
 """Test the Switch platform setup for Solar Window System integration."""
 
 import pytest
-from collections.abc import Iterable
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-from custom_components.solar_window_system.const import DOMAIN
-from custom_components.solar_window_system.switch import async_setup_entry
 
 
 @pytest.mark.asyncio

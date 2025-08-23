@@ -1,10 +1,12 @@
 """Test Window Options for the 'expected str' error on second save."""
 
+from unittest.mock import patch
+
 import pytest
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-from unittest.mock import patch
 from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.solar_window_system.config_flow import WindowSubentryFlowHandler
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import VALID_GLOBAL_BASIC, VALID_GLOBAL_ENHANCED

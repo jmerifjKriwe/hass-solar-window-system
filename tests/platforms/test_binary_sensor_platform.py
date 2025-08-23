@@ -1,12 +1,14 @@
 """Test the setup of the BinarySensor platform for the Solar Window System integration."""
 
-import pytest
 from collections.abc import Iterable
+
+import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from custom_components.solar_window_system.const import DOMAIN
+
 from custom_components.solar_window_system.binary_sensor import async_setup_entry
+from custom_components.solar_window_system.const import DOMAIN
 
 
 @pytest.mark.asyncio

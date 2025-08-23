@@ -80,15 +80,6 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
 
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.solar_window_system.const import DOMAIN
-from tests.test_data import (
-    VALID_GLOBAL_BASIC,
-    VALID_GLOBAL_ENHANCED,
-    VALID_GLOBAL_SCENARIOS,
-)
 
 
 @pytest.mark.asyncio
@@ -156,15 +147,6 @@ async def test_options_flow_update_and_invalid(hass: HomeAssistant) -> None:
 
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.solar_window_system.const import DOMAIN
-from tests.test_data import (
-    VALID_GLOBAL_BASIC,
-    VALID_GLOBAL_ENHANCED,
-    VALID_GLOBAL_SCENARIOS,
-)
 
 
 @pytest.mark.asyncio

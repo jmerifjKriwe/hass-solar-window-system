@@ -1,4 +1,5 @@
-"""Parametrized platform tests PoC for Solar Window System.
+"""
+Parametrized platform tests PoC for Solar Window System.
 
 This file demonstrates how platform tests can be consolidated and
 parametrized to reduce duplication.
@@ -7,7 +8,6 @@ parametrized to reduce duplication.
 from __future__ import annotations
 
 import importlib
-from typing import Tuple
 
 import pytest
 
@@ -17,8 +17,7 @@ from tests.helpers.fixtures_helpers import (
     ensure_global_device,
 )
 
-
-PLATFORMS: list[Tuple[str, str]] = [
+PLATFORMS: list[tuple[str, str]] = [
     ("number", "custom_components.solar_window_system.number"),
     ("text", "custom_components.solar_window_system.text"),
     ("select", "custom_components.solar_window_system.select"),

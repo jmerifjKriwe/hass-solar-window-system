@@ -34,8 +34,10 @@ class TestEntityIDGenerationSimple:
         assert expected_entity_id.startswith(f"number.{ENTITY_PREFIX}_")
 
     def test_all_global_config_entities_have_prefix(self) -> None:
-        from custom_components.solar_window_system.const import GLOBAL_CONFIG_ENTITIES
-        from custom_components.solar_window_system.const import ENTITY_PREFIX
+        from custom_components.solar_window_system.const import (
+            ENTITY_PREFIX,
+            GLOBAL_CONFIG_ENTITIES,
+        )
 
         for entity_key, config in GLOBAL_CONFIG_ENTITIES.items():
             platform = config["platform"]

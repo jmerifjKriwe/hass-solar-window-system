@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solar_window_system.const import DOMAIN, ENTITY_PREFIX
-from tests.test_data import MOCK_GROUP_SUBENTRIES, MOCK_WINDOW_SUBENTRIES
+from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.sensor import (
-    async_setup_entry,
     GroupWindowPowerSensor,
-    SolarWindowSystemGroupDummySensor,
+    async_setup_entry,
 )
+from tests.test_data import MOCK_GROUP_SUBENTRIES, MOCK_WINDOW_SUBENTRIES
 
 
 @pytest.fixture
@@ -94,12 +92,12 @@ async def test_setup_group_power_sensors_creation(
 
     # Verify unique IDs and device info for created sensors
     expected_unique_ids = {
-        f"sws_group_living_room_group_total_power",
-        f"sws_group_living_room_group_total_power_direct",
-        f"sws_group_living_room_group_total_power_diffuse",
-        f"sws_group_bedroom_group_total_power",
-        f"sws_group_bedroom_group_total_power_direct",
-        f"sws_group_bedroom_group_total_power_diffuse",
+        "sws_group_living_room_group_total_power",
+        "sws_group_living_room_group_total_power_direct",
+        "sws_group_living_room_group_total_power_diffuse",
+        "sws_group_bedroom_group_total_power",
+        "sws_group_bedroom_group_total_power_direct",
+        "sws_group_bedroom_group_total_power_diffuse",
     }
 
     actual_unique_ids = {entity.unique_id for entity in added_entities}
@@ -149,22 +147,22 @@ async def test_setup_window_power_sensors_creation(
     assert len(added_entities) == 16
 
     expected_unique_ids = {
-        f"sws_window_kitchen_window_total_power",
-        f"sws_window_kitchen_window_total_power_direct",
-        f"sws_window_kitchen_window_total_power_diffuse",
-        f"sws_window_kitchen_window_power_m2_total",
-        f"sws_window_kitchen_window_power_m2_diffuse",
-        f"sws_window_kitchen_window_power_m2_direct",
-        f"sws_window_kitchen_window_power_m2_raw",
-        f"sws_window_kitchen_window_total_power_raw",
-        f"sws_window_office_window_total_power",
-        f"sws_window_office_window_total_power_direct",
-        f"sws_window_office_window_total_power_diffuse",
-        f"sws_window_office_window_power_m2_total",
-        f"sws_window_office_window_power_m2_diffuse",
-        f"sws_window_office_window_power_m2_direct",
-        f"sws_window_office_window_power_m2_raw",
-        f"sws_window_office_window_total_power_raw",
+        "sws_window_kitchen_window_total_power",
+        "sws_window_kitchen_window_total_power_direct",
+        "sws_window_kitchen_window_total_power_diffuse",
+        "sws_window_kitchen_window_power_m2_total",
+        "sws_window_kitchen_window_power_m2_diffuse",
+        "sws_window_kitchen_window_power_m2_direct",
+        "sws_window_kitchen_window_power_m2_raw",
+        "sws_window_kitchen_window_total_power_raw",
+        "sws_window_office_window_total_power",
+        "sws_window_office_window_total_power_direct",
+        "sws_window_office_window_total_power_diffuse",
+        "sws_window_office_window_power_m2_total",
+        "sws_window_office_window_power_m2_diffuse",
+        "sws_window_office_window_power_m2_direct",
+        "sws_window_office_window_power_m2_raw",
+        "sws_window_office_window_total_power_raw",
     }
 
     actual_unique_ids = {entity.unique_id for entity in added_entities}

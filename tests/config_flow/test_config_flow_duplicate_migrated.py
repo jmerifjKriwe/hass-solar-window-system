@@ -1,10 +1,12 @@
 """Test that creating entities with duplicate names is handled by subentry flows."""
 
+from unittest.mock import PropertyMock, patch
+
 import pytest
-from unittest.mock import patch, PropertyMock
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.solar_window_system.const import DOMAIN
 
 ENTRY_TYPE_GROUPS = "group_configs"
@@ -55,13 +57,7 @@ async def test_create_group_duplicate_name(hass: HomeAssistant) -> None:
 
     fake_subentries = {"1": DummySub("My Test Group")}
     # Dynamically add a subentries property to the group_parent_entry instance
-    setattr(
-        group_parent_entry,
-        "subentries",
-        property(lambda self: fake_subentries).__get__(
-            group_parent_entry, type(group_parent_entry)
-        ),
-    )
+    group_parent_entry.subentries = property(lambda self: fake_subentries).__get__(group_parent_entry, type(group_parent_entry))
     # Try to create a second group with the same name
     handler2 = __import__(
         "custom_components.solar_window_system.config_flow",

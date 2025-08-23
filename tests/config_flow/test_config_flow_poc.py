@@ -1,4 +1,5 @@
-"""PoC tests for config flow refactor.
+"""
+PoC tests for config flow refactor.
 
 This file demonstrates the approach for testing config flows using the
 Home Assistant test helpers and project fixtures.

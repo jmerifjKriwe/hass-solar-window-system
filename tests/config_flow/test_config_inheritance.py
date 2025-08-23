@@ -1,24 +1,19 @@
 """Tests for the configuration inheritance logic of Solar Window System."""
 
-from typing import Any
-from unittest.mock import patch, PropertyMock, AsyncMock
+from unittest.mock import patch
 
 import pytest
-import voluptuous as vol
-from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_USER
-from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solar_window_system import config_flow
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import (
+    INVALID_GLOBAL_BASIC,
     VALID_GLOBAL_BASIC,
     VALID_GLOBAL_ENHANCED,
     VALID_GLOBAL_SCENARIOS,
-    INVALID_GLOBAL_BASIC,
 )
 
 

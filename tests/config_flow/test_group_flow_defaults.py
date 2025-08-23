@@ -6,9 +6,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.solar_window_system.config_flow import GroupSubentryFlowHandler
 from custom_components.solar_window_system.const import DOMAIN
 from tests.test_data import VALID_GLOBAL_BASIC, VALID_GLOBAL_ENHANCED
-from custom_components.solar_window_system.config_flow import GroupSubentryFlowHandler
 
 
 def mock_group_parent_entry() -> MockConfigEntry:
@@ -66,11 +66,11 @@ async def test_group_subentry_form_defaults_and_suggestions(
             flow_handler.handler = DOMAIN
         except Exception:
             # older handler versions may not expose this attr in type hints
-            setattr(flow_handler, "handler", DOMAIN)
+            flow_handler.handler = DOMAIN
         try:
             flow_handler.parent_entry_id = parent.entry_id
         except Exception:
-            setattr(flow_handler, "parent_entry_id", parent.entry_id)
+            flow_handler.parent_entry_id = parent.entry_id
 
         result = await flow_handler.async_step_user()
         assert result["type"] == FlowResultType.FORM

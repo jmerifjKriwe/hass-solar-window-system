@@ -5,17 +5,17 @@ This file contains unit tests for geometric shadow calculation, cache
 behaviour, effective configuration merging, and solar power calculations.
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from custom_components.solar_window_system.calculator import SolarWindowCalculator
+import pytest
 from homeassistant.config_entries import ConfigEntry
+
+from custom_components.solar_window_system.calculator import SolarWindowCalculator
 from tests.test_data import (
-    VALID_WINDOW_DATA,
-    VALID_WINDOW_DATA_ALT,
     VALID_PHYSICAL,
-    VALID_THRESHOLDS,
     VALID_TEMPERATURES,
+    VALID_THRESHOLDS,
+    VALID_WINDOW_DATA,
 )
 
 
@@ -55,18 +55,6 @@ These tests focus on flow inheritance, triggers, calculation correctness, and pe
 """
 
 import pytest
-from unittest.mock import Mock, patch
-from custom_components.solar_window_system.calculator import (
-    SolarWindowCalculator,
-)
-from tests.test_data import (
-    VALID_WINDOW_DATA,
-    VALID_WINDOW_DATA_ALT,
-    VALID_PHYSICAL,
-    VALID_THRESHOLDS,
-    VALID_TEMPERATURES,
-)
-from homeassistant.config_entries import ConfigEntry
 
 
 def test_scenario_b_c_inheritance(monkeypatch, hass):

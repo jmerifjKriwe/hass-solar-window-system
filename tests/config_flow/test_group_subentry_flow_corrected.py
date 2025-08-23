@@ -12,16 +12,15 @@ Key Points:
 """
 
 import logging
-import pytest
 from unittest.mock import patch
 
+import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.config_flow import GroupSubentryFlowHandler
-
+from custom_components.solar_window_system.const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

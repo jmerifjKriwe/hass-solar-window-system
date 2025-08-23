@@ -1,4 +1,5 @@
-"""Test Options Flow for Solar Window System integration.
+"""
+Test Options Flow for Solar Window System integration.
 
 This verifies the options flow updates options, handles invalid input by
 presenting additional steps, and persists values as expected.

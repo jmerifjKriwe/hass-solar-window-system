@@ -1,10 +1,12 @@
 """Test the Select platform setup for Solar Window System integration."""
 
-import pytest
 from collections.abc import Iterable
+
+import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.solar_window_system.const import DOMAIN, GLOBAL_CONFIG_ENTITIES
 from custom_components.solar_window_system.select import async_setup_entry
 
@@ -51,8 +53,7 @@ async def test_select_platform_setup(hass: HomeAssistant) -> None:
         for entity in added_entities:
             if not hasattr(entity, "_attr_unique_id"):
                 raise AssertionError("Entity missing unique_id")
-    else:
-        if len(added_entities) != 0:
-            raise AssertionError(
-                "Select entities were registered but none expected by GLOBAL_CONFIG_ENTITIES"
-            )
+    elif len(added_entities) != 0:
+        raise AssertionError(
+            "Select entities were registered but none expected by GLOBAL_CONFIG_ENTITIES"
+        )

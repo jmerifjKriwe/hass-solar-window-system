@@ -1,19 +1,20 @@
-"""Minimal tests for GroupSubentryFlowHandler (clean copy).
+"""
+Minimal tests for GroupSubentryFlowHandler (clean copy).
 
 This file provides a small set of sanity tests to ensure the flow can be
 imported and basic steps return forms. It is intentionally minimal so it
 can be migrated safely and expanded later.
 """
 
-import pytest
 from unittest.mock import patch
 
+import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.config_flow import GroupSubentryFlowHandler
+from custom_components.solar_window_system.const import DOMAIN
 
 
 @pytest.fixture
@@ -65,11 +66,11 @@ async def test_group_subentry_flow_basic_step(
         try:
             flow.handler = DOMAIN
         except Exception:
-            setattr(flow, "handler", DOMAIN)
+            flow.handler = DOMAIN
         try:
             flow.parent_entry_id = mock_group_parent_entry.entry_id
         except Exception:
-            setattr(flow, "parent_entry_id", mock_group_parent_entry.entry_id)
+            flow.parent_entry_id = mock_group_parent_entry.entry_id
 
         result = await flow.async_step_user()
         assert result["type"] == FlowResultType.FORM
@@ -106,11 +107,11 @@ async def test_group_subentry_flow_complete(
         try:
             flow.handler = DOMAIN
         except Exception:
-            setattr(flow, "handler", DOMAIN)
+            flow.handler = DOMAIN
         try:
             flow.parent_entry_id = mock_group_parent_entry.entry_id
         except Exception:
-            setattr(flow, "parent_entry_id", mock_group_parent_entry.entry_id)
+            flow.parent_entry_id = mock_group_parent_entry.entry_id
 
         res1 = await flow.async_step_user(
             {"name": "Test Group", "indoor_temperature_sensor": "sensor.indoor_temp"}

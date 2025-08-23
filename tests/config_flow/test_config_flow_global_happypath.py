@@ -15,7 +15,6 @@ from tests.test_data import (
     VALID_GLOBAL_SCENARIOS,
 )
 
-
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
