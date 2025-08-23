@@ -14,6 +14,8 @@ from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import DOMAIN
+from unittest.mock import MagicMock
+from homeassistant.config_entries import ConfigEntry
 
 
 def create_global_config_entry(
@@ -65,3 +67,59 @@ async def collect_entities_for_setup(
 def global_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Pytest fixture that creates and returns a global MockConfigEntry."""
     return create_global_config_entry(hass)
+
+
+@pytest.fixture
+def fake_hass_magicmock():
+    """Return a MagicMock mimicking HomeAssistant for pure unit tests.
+
+    Use this fixture for tests that should not rely on the real `hass` event loop
+    or its helpers (unit tests for coordinator, calculator, etc.).
+    """
+    from unittest.mock import MagicMock
+    from homeassistant.core import HomeAssistant
+
+    hass = MagicMock(spec=HomeAssistant)
+
+    states_mock = MagicMock()
+    hass.states = states_mock
+
+    def _mock_get_state(entity_id: str):
+        # Minimal default mapping; tests can override hass.states.get.side_effect.
+        return None
+
+    states_mock.get.side_effect = _mock_get_state
+    return hass
+
+
+def create_window_config_entry(entry_id: str = "test_window_entry") -> MagicMock:
+    """Create a MagicMock that mimics a ConfigEntry with window subentries.
+
+    This is intended for unit tests that don't require a real MockConfigEntry
+    (e.g., coordinator unit tests using MagicMock for hass).
+    """
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = entry_id
+    entry.title = "Test Window Configs"
+    entry.data = {"entry_type": "window_configs"}
+
+    entry.subentries = {
+        "window_1": MagicMock(
+            title="Living Room Window",
+            subentry_type="window",
+            data={"room_temperature_sensor": "sensor.room_temp_living"},
+        ),
+        "window_2": MagicMock(
+            title="Bedroom Window",
+            subentry_type="window",
+            data={"room_temperature_sensor": "sensor.room_temp_bedroom"},
+        ),
+    }
+
+    return entry
+
+
+@pytest.fixture
+def window_entry() -> MagicMock:
+    """Fixture returning a MagicMock window config entry for unit tests."""
+    return create_window_config_entry()

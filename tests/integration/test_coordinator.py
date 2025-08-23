@@ -20,67 +20,12 @@ from custom_components.solar_window_system.coordinator import (
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
 
 
-@pytest.fixture
-def mock_hass() -> MagicMock:
-    """Mock HomeAssistant instance for unit coordinator tests."""
-    hass = MagicMock(spec=HomeAssistant)
-
-    states_mock = MagicMock()
-    hass.states = states_mock
-
-    def mock_get_state(entity_id: str):
-        state_values = {
-            # Global entities
-            "sensor.solar_window_power_direct": MagicMock(state="900"),
-            "sensor.solar_window_power_diffuse": MagicMock(state="100"),
-            "sensor.solar_window_solar_radiation_sensor": MagicMock(state="800"),
-            "sensor.solar_window_outdoor_temperature_sensor": MagicMock(state="28"),
-            "select.solar_window_scenario_a_enable": MagicMock(state="enable"),
-            "select.solar_window_scenario_b_enable": MagicMock(state="enable"),
-            "select.solar_window_scenario_c_enable": MagicMock(state="enable"),
-            "number.solar_window_scenario_a_threshold": MagicMock(state="300"),
-            "number.solar_window_scenario_b_threshold": MagicMock(state="250"),
-            "number.solar_window_scenario_c_threshold": MagicMock(state="200"),
-            "sensor.solar_window_weather_forecast_max_temp": MagicMock(state="32"),
-            "binary_sensor.solar_window_weather_warning": MagicMock(state="off"),
-            "switch.solar_window_maintenance_mode": MagicMock(state="off"),
-            # Room temperature for windows
-            "sensor.room_temp_living": MagicMock(state="24"),
-            "sensor.room_temp_bedroom": MagicMock(state="22"),
-        }
-        return state_values.get(entity_id)
-
-    states_mock.get.side_effect = mock_get_state
-    return hass
-
-
-@pytest.fixture
-def mock_entry() -> MagicMock:
-    """Mock ConfigEntry with window subentries for coordinator tests."""
-    entry = MagicMock(spec=ConfigEntry)
-    entry.entry_id = "test_entry_id"
-    entry.title = "Test Window Configs"
-    entry.data = {"entry_type": "window_configs"}
-
-    entry.subentries = {
-        "window_1": MagicMock(
-            title="Living Room Window",
-            subentry_type="window",
-            data={"room_temperature_sensor": "sensor.room_temp_living"},
-        ),
-        "window_2": MagicMock(
-            title="Bedroom Window",
-            subentry_type="window",
-            data={"room_temperature_sensor": "sensor.room_temp_bedroom"},
-        ),
-    }
-
-    return entry
+from tests.helpers.fixtures_helpers import fake_hass_magicmock, window_entry
 
 
 @pytest.mark.asyncio
-async def test_coordinator_initialization(mock_hass, mock_entry):
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
+async def test_coordinator_initialization(fake_hass_magicmock, window_entry):
+    coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     assert coordinator.hass == mock_hass
     assert coordinator.entry == mock_entry
@@ -89,7 +34,7 @@ async def test_coordinator_initialization(mock_hass, mock_entry):
 
 
 @pytest.mark.asyncio
-async def test_coordinator_update_data(mock_hass, mock_entry):
+async def test_coordinator_update_data(fake_hass_magicmock, window_entry):
     # Use SimpleNamespace to match attribute access and provide all required window fields
     mock_entry.subentries = {
         "window_1": types.SimpleNamespace(
@@ -128,9 +73,9 @@ async def test_coordinator_update_data(mock_hass, mock_entry):
         ),
     }
     # Patch hass.config_entries.async_entries to return [mock_entry]
-    mock_hass.config_entries.async_entries.return_value = [mock_entry]
+    fake_hass_magicmock.config_entries.async_entries.return_value = [window_entry]
 
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
+    coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
@@ -152,8 +97,8 @@ async def test_coordinator_update_data(mock_hass, mock_entry):
 
 
 @pytest.mark.asyncio
-async def test_coordinator_window_data_access(mock_hass, mock_entry):
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
+async def test_coordinator_window_data_access(fake_hass_magicmock, window_entry):
+    coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
@@ -175,8 +120,8 @@ async def test_coordinator_window_data_access(mock_hass, mock_entry):
 
 
 @pytest.mark.asyncio
-async def test_coordinator_reconfigure(mock_hass, mock_entry):
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
+async def test_coordinator_reconfigure(fake_hass_magicmock, window_entry):
+    coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Perform first update
     await coordinator.async_refresh()
@@ -193,7 +138,7 @@ async def test_coordinator_reconfigure(mock_hass, mock_entry):
     assert coordinator.calculator is not None
 
 
-def test_coordinator_with_missing_calculator(mock_hass):
+def test_coordinator_with_missing_calculator(fake_hass_magicmock):
     # Create entry without subentries to trigger calculator initialization failure
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry_id"
@@ -201,7 +146,7 @@ def test_coordinator_with_missing_calculator(mock_hass):
     entry.data = {"entry_type": "window_configs"}
     entry.subentries = None
 
-    coordinator = SolarWindowSystemCoordinator(mock_hass, entry, 1)
+    coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, entry, 1)
 
     # Calculator should be None if initialization fails
     # But coordinator should still be created
@@ -210,8 +155,8 @@ def test_coordinator_with_missing_calculator(mock_hass):
 
 
 @pytest.mark.asyncio
-async def test_flow_based_calculation_called(mock_hass, mock_entry):
-    coordinator = SolarWindowSystemCoordinator(mock_hass, mock_entry, 1)
+async def test_flow_based_calculation_called(fake_hass_magicmock, window_entry):
+    coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
     # Mock the calculate_all_windows_from_flows method to verify it's called
     coordinator.calculator.calculate_all_windows_from_flows = MagicMock(
