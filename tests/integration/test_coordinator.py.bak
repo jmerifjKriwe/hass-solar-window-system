@@ -35,8 +35,7 @@ async def test_coordinator_initialization(fake_hass_magicmock, window_entry) -> 
 
 @pytest.mark.asyncio
 async def test_coordinator_update_data(fake_hass_magicmock, window_entry) -> None:
-    # Use SimpleNamespace to match attribute access and provide
-    # all required window fields
+    # Use SimpleNamespace to match attribute access and provide all required window fields
     window_entry.subentries = {
         "window_1": types.SimpleNamespace(
             title="Living Room Window",
@@ -180,7 +179,7 @@ async def test_flow_based_calculation_called(fake_hass_magicmock, window_entry) 
     coordinator.calculator.calculate_all_windows_from_flows.assert_called_once()
 
     # Verify data is correct
-    assert coordinator.data["summary"]["window_count"] == 2  # noqa: PLR2004
+    assert coordinator.data["summary"]["window_count"] == 2
     assert coordinator.get_window_shading_status("Living Room Window") is True
     assert coordinator.get_window_shading_status("Bedroom Window") is False
 

@@ -1,4 +1,10 @@
-"""Test to specifically verify the str conversion fix."""
+"""Test to specifically verify the str conversion fix.
+
+Type annotations and docstrings in tests can be noisy; disable ANN001 and
+D103 for this test module.
+"""
+
+# ruff: noqa: ANN001,D103,S101
 
 from unittest.mock import patch
 

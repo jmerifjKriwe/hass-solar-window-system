@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 import pytest
+
+"""Integration tests for entity id behavior and generation.
+
+Type annotations and docstrings in tests can be noisy; disable ANN001 and
+D103 for this test module.
+"""
+
+# ruff: noqa: ANN001,D103,S101
+
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry

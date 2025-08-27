@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from homeassistant import config_entries
 
 from custom_components.solar_window_system.const import DOMAIN
-from homeassistant import config_entries
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -24,5 +24,5 @@ async def test_global_config_flow_init_shows_basic_step(hass: HomeAssistant) -> 
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     # ConfigFlowResult behaves like a mapping for our checks
-    assert result.get("type") == "form"  # noqa: S101
-    assert result.get("step_id") == "global_basic"  # noqa: S101
+    assert result.get("type") == "form"
+    assert result.get("step_id") == "global_basic"

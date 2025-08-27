@@ -1,9 +1,10 @@
 """Tests for group and window related entities.
 
-Assertions are used intentionally; disable S101 for this module.
+Assertions are used intentionally; disable S101 for this module. Also disable
+ANN001 and D103 which are noisy for test modules.
 """
 
-# ruff: noqa: S101
+# ruff: noqa: ANN001,D103,S101
 
 from __future__ import annotations
 

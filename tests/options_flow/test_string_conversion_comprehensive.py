@@ -3,7 +3,7 @@
 Assertions are used intentionally in tests; disable assertion lint (S101).
 """
 
-# ruff: noqa: S101
+# ruff: noqa: ANN001,D103,S101
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 

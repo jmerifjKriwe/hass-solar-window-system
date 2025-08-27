@@ -39,13 +39,18 @@ def test_shadow_factor_no_shadow(calculator):
 
 
 def test_shadow_factor_complete_shadow(calculator):
-    assert calculator._calculate_shadow_factor(10, 180, 180, 2.0, 0.0) == EXPECTED_COMPLETE_SHADOW
+    assert (
+        calculator._calculate_shadow_factor(10, 180, 180, 2.0, 0.0)
+        == EXPECTED_COMPLETE_SHADOW
+    )
 
 
 def test_entity_cache_hit(calculator):
     mock_state = Mock()
     mock_state.state = "42.5"
-    with patch("homeassistant.core.StateMachine.get", return_value=mock_state) as mock_get:
+    with patch(
+        "homeassistant.core.StateMachine.get", return_value=mock_state
+    ) as mock_get:
         r1 = calculator._get_cached_entity_state("sensor.test", 0)
         r2 = calculator._get_cached_entity_state("sensor.test", 0)
         assert r1 == "42.5"
@@ -71,8 +76,16 @@ def test_scenario_b_c_inheritance(monkeypatch, hass):
     }
     groups = {
         "g1": {"name": "Group1"},
-        "g2": {"name": "Group2", "scenario_b_enable": "disable", "scenario_c_enable": "enable"},
-        "g3": {"name": "Group3", "scenario_b_enable": "disable", "scenario_c_enable": "enable"},
+        "g2": {
+            "name": "Group2",
+            "scenario_b_enable": "disable",
+            "scenario_c_enable": "enable",
+        },
+        "g3": {
+            "name": "Group3",
+            "scenario_b_enable": "disable",
+            "scenario_c_enable": "enable",
+        },
     }
 
     def _subentries_scenario(t):
@@ -123,17 +136,27 @@ def test_recalculation_triggered_on_weather_warning(monkeypatch):
 
     monkeypatch.setattr(calc, "_get_cached_entity_state", lambda *a, **kw: 0)
     monkeypatch.setattr(calc, "get_safe_attr", lambda *a, **kw: 0)
-    def _get_effective_config_from_flows(_w):
-        return ({
-            "physical": VALID_PHYSICAL,
-            "thresholds": VALID_THRESHOLDS,
-            "temperatures": VALID_TEMPERATURES,
-        }, {})
 
-    monkeypatch.setattr(calc, "get_effective_config_from_flows", _get_effective_config_from_flows)
+    def _get_effective_config_from_flows(_w):
+        return (
+            {
+                "physical": VALID_PHYSICAL,
+                "thresholds": VALID_THRESHOLDS,
+                "temperatures": VALID_TEMPERATURES,
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        calc, "get_effective_config_from_flows", _get_effective_config_from_flows
+    )
     monkeypatch.setattr(calc, "apply_global_factors", lambda c, g, e: c)
-    monkeypatch.setattr(calc, "_should_shade_window_from_flows", lambda req: (True, "Should shade"))
-    monkeypatch.setattr(calc, "_get_scenario_enables_from_flows", lambda w, e: (False, False))
+    monkeypatch.setattr(
+        calc, "_should_shade_window_from_flows", lambda req: (True, "Should shade")
+    )
+    monkeypatch.setattr(
+        calc, "_get_scenario_enables_from_flows", lambda w, e: (False, False)
+    )
 
     call_count = {"count": 0}
     orig_calc = calc.calculate_all_windows_from_flows
@@ -150,4 +173,3 @@ def test_recalculation_triggered_on_weather_warning(monkeypatch):
     calc.calculate_all_windows_from_flows()
 
     assert call_count["count"] == EXPECTED_TRIGGER_COUNT
-

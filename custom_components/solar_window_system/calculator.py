@@ -1048,24 +1048,20 @@ class SolarWindowCalculator:
 
         # Get indoor temperature from window, group, or global config
         try:
+
+            def is_inherit_marker(val: Any) -> bool:
+                return val in ("-1", -1, "", None, "inherit")
+
             # 1. Window-specific - prefer new key, but accept legacy key
             indoor_temp_entity = shade_request.window_data.get(
                 "indoor_temperature_sensor", ""
             ) or shade_request.window_data.get("room_temp_entity", "")
-            # 2. Group (effective_config['group'] if present)
-            if not indoor_temp_entity:
-                group_cfg = shade_request.effective_config.get("group", {})
-                # group may contain either the new or legacy key
-                indoor_temp_entity = ""
-                if isinstance(group_cfg, dict):
-                    indoor_temp_entity = group_cfg.get(
-                        "indoor_temperature_sensor", ""
-                    ) or group_cfg.get("room_temp_entity", "")
-            # 3. Global
-            if not indoor_temp_entity:
+            # 2. If not found or is inheritance marker, use effective config
+            if not indoor_temp_entity or is_inherit_marker(indoor_temp_entity):
                 indoor_temp_entity = shade_request.effective_config.get(
                     "indoor_temperature_sensor", ""
-                )
+                ) or shade_request.effective_config.get("room_temp_entity", "")
+
             if not indoor_temp_entity:
                 _LOGGER.warning(
                     "No room temperature sensor for window %s "
@@ -1118,14 +1114,20 @@ class SolarWindowCalculator:
         # --- Scenario B: Diffuse heat ---
         scenario_b_config = shade_request.effective_config.get("scenario_b", {})
         if shade_request.scenario_b_enabled and scenario_b_config.get("enabled", True):
-            return self._check_scenario_b(
+            result_b, reason_b = self._check_scenario_b(
                 shade_request, scenario_b_config, indoor_temp, outdoor_temp
             )
+            if result_b:
+                return result_b, reason_b
 
         # --- Scenario C: Heatwave forecast ---
         scenario_c_config = shade_request.effective_config.get("scenario_c", {})
         if shade_request.scenario_c_enabled and scenario_c_config.get("enabled", True):
-            return self._check_scenario_c(shade_request, scenario_c_config, indoor_temp)
+            result_c, reason_c = self._check_scenario_c(
+                shade_request, scenario_c_config, indoor_temp
+            )
+            if result_c:
+                return result_c, reason_c
 
         _LOGGER.debug("[SHADE-FLOW] Result: OFF (No scenario triggered)")
         return False, "No shading required"

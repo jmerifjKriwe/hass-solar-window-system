@@ -1,9 +1,10 @@
 """Tests for entity ID generation and global configuration entity creation.
 
 Assertions are used intentionally in tests; disable the S101 rule for this module.
+Also disable ANN001 and D103 which are noisy for test modules.
 """
 
-# ruff: noqa: S101
+# ruff: noqa: ANN001,D103,S101
 
 from __future__ import annotations
 
