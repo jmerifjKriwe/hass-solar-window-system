@@ -1,19 +1,9 @@
-"""Tests for Solar Window System entity ID integration."""
+"""Tests for Solar Window System entity ID integration using framework."""
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
-"""Integration tests for entity id behavior and generation.
-
-Type annotations and docstrings in tests can be noisy; disable ANN001 and
-D103 for this test module.
-"""
-
-# ruff: noqa: ANN001,D103,S101
-
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.const import (
@@ -21,15 +11,21 @@ from custom_components.solar_window_system.const import (
     ENTITY_PREFIX,
     GLOBAL_CONFIG_ENTITIES,
 )
+from custom_components.solar_window_system.sensor import (
+    async_setup_entry as sensor_setup,
+)
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from tests.helpers.test_framework import IntegrationTestCase
 
-# No longer using number setup for global numbers (pruned)
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 
-class TestEntityIDIntegration:
+class TestEntityIDIntegration(IntegrationTestCase):
     """Test actual entity ID generation in integration."""
 
-    @pytest.mark.asyncio
-    async def test_sensor_entity_unique_id_format(self, hass) -> None:
+    async def test_sensor_entity_unique_id_format(self, hass: HomeAssistant) -> None:
         """Test that sensor entities get correct unique_id format."""
         # Create a proper mock config entry for global configuration
         config_entry = MockConfigEntry(
@@ -54,22 +50,20 @@ class TestEntityIDIntegration:
         added_entities = []
 
         def mock_add_entities(
-            new_entities,
-            update_before_add: bool = False,
+            new_entities,  # type: ignore[no-untyped-def]
+            update_before_add: bool = False,  # noqa: FBT001
             *,
-            config_subentry_id=None,
+            config_subentry_id=None,  # noqa: ARG001
         ) -> None:
             added_entities.extend(list(new_entities))
 
         # Set up sensors for global entities
-        from custom_components.solar_window_system.sensor import (
-            async_setup_entry as sensor_setup,
-        )
-
         await sensor_setup(hass, config_entry, mock_add_entities)
 
         # Verify entities were created
-        assert len(added_entities) > 0, "No sensor entities were created"
+        if len(added_entities) == 0:
+            msg = "No sensor entities were created"
+            raise AssertionError(msg)
 
         # Check entity unique_id format
         expected_sensor_entities = [
@@ -78,21 +72,28 @@ class TestEntityIDIntegration:
             if config["platform"] == "sensor"
         ]
 
-        assert len(added_entities) == len(expected_sensor_entities), (
-            f"Expected {len(expected_sensor_entities)} sensor entities, "
-            f"got {len(added_entities)}"
-        )
+        if len(added_entities) != len(expected_sensor_entities):
+            msg = (
+                f"Expected {len(expected_sensor_entities)} sensor entities, "
+                f"got {len(added_entities)}"
+            )
+            raise AssertionError(msg)
 
         # Verify each entity has correct unique_id format
         for entity in added_entities:
             unique_id = entity.unique_id
-            assert unique_id is not None
-            assert unique_id.startswith(ENTITY_PREFIX), (
-                f"Entity unique_id '{unique_id}' should start with '{ENTITY_PREFIX}'"
-            )
-            assert "_global_" in unique_id, (
-                f"Entity unique_id '{unique_id}' should contain '_global_'"
-            )
+            if unique_id is None:
+                msg = "Entity unique_id should not be None"
+                raise AssertionError(msg)
+            if not unique_id.startswith(ENTITY_PREFIX):
+                msg = (
+                    f"Entity unique_id '{unique_id}' should start with "
+                    f"'{ENTITY_PREFIX}'"
+                )
+                raise AssertionError(msg)
+            if "_global_" not in unique_id:
+                msg = f"Entity unique_id '{unique_id}' should contain '_global_'"
+                raise AssertionError(msg)
 
         # Verify specific entity unique_ids by deriving keys from unique_id
         entity_unique_ids = {
@@ -106,12 +107,15 @@ class TestEntityIDIntegration:
 
         for entity_key in expected_sensor_entities:
             expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity_unique_ids.get(entity_key) == expected_unique_id, (
-                f"Entity {entity_key} has unique_id '{entity_unique_ids.get(entity_key)}', expected '{expected_unique_id}'"
-            )
+            if entity_unique_ids.get(entity_key) != expected_unique_id:
+                msg = (
+                    f"Entity {entity_key} has unique_id "
+                    f"'{entity_unique_ids.get(entity_key)}', "
+                    f"expected '{expected_unique_id}'"
+                )
+                raise AssertionError(msg)
 
-    @pytest.mark.asyncio
-    async def test_entity_registry_integration(self, hass) -> None:
+    async def test_entity_registry_integration(self, hass: HomeAssistant) -> None:
         """Test that entities registered with entity registry get correct entity_id."""
         # Create config entry
         config_entry = MockConfigEntry(
@@ -155,9 +159,11 @@ class TestEntityIDIntegration:
         )
 
         # Verify entity_id follows expected pattern
-        assert entity_entry.entity_id == entity_id, (
-            f"Entity ID '{entity_entry.entity_id}' should be '{entity_id}'"
-        )
+        if entity_entry.entity_id != entity_id:
+            msg = f"Entity ID '{entity_entry.entity_id}' should be '{entity_id}'"
+            raise AssertionError(msg)
 
         # Also verify it contains the unique part
-        assert entity_entry.entity_id.endswith(unique_id)
+        if not entity_entry.entity_id.endswith(unique_id):
+            msg = "Entity ID should end with unique_id"
+            raise AssertionError(msg)

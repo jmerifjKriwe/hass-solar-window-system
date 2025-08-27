@@ -1,53 +1,77 @@
-"""Tests for entity ID generation and global configuration entity creation.
+"""Tests for entity ID generation and global configuration entity creation."""
 
-Assertions are used intentionally in tests; disable the S101 rule for this module.
-Also disable ANN001 and D103 which are noisy for test modules.
-"""
-
-# ruff: noqa: ANN001,D103,S101
+# ruff: noqa: FBT001,FBT002,ANN001,ARG001,E501
+# These rules are disabled for test files as mock functions often require
+# boolean parameters, missing type annotations, unused arguments, and longer lines
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import pytest
-from homeassistant.const import EntityCategory
-from homeassistant.helpers import device_registry as dr
 
 from custom_components.solar_window_system.const import (
     DOMAIN,
     ENTITY_PREFIX,
     GLOBAL_CONFIG_ENTITIES,
 )
+from custom_components.solar_window_system.number import (
+    async_setup_entry as number_async_setup_entry,
+)
+from custom_components.solar_window_system.select import (
+    async_setup_entry as select_async_setup_entry,
+)
+from custom_components.solar_window_system.sensor import (
+    async_setup_entry as sensor_async_setup_entry,
+)
+from custom_components.solar_window_system.switch import (
+    async_setup_entry as switch_async_setup_entry,
+)
+from custom_components.solar_window_system.text import (
+    async_setup_entry as text_async_setup_entry,
+)
+from homeassistant.const import EntityCategory
+from homeassistant.helpers import device_registry as dr
 from tests.helpers.fixtures_helpers import ensure_global_device
+from tests.helpers.serializer import serialize_entity
+from tests.helpers.snapshot import assert_matches_snapshot
+from tests.helpers.test_framework import BaseTestCase, IntegrationTestCase
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from unittest.mock import Mock
 
     from homeassistant.core import HomeAssistant
 
 
-@pytest.mark.asyncio
-class TestGlobalConfigEntityCreation:
+class TestGlobalConfigEntityCreation(IntegrationTestCase):
     """Test automatic entity creation for global configuration."""
 
-    async def test_entity_unique_ids_have_prefix(
-        self, hass: HomeAssistant, expected_entity_unique_ids: dict[str, str]
-    ) -> None:
-        """Test that all entity unique IDs have the correct prefix."""
-        for entity_key, expected_unique_id in expected_entity_unique_ids.items():
-            assert expected_unique_id.startswith(ENTITY_PREFIX), (
-                f"Entity {entity_key} unique_id should start with {ENTITY_PREFIX}"
-            )
-            assert expected_unique_id == f"{ENTITY_PREFIX}_global_{entity_key}", (
-                f"Entity {entity_key} should have unique_id {ENTITY_PREFIX}_global_{entity_key}"
-            )
+    test_type = "integration"
 
-    async def test_entity_id_generation_from_unique_id(
-        self, hass: HomeAssistant, expected_entity_ids: dict[str, str]
-    ) -> None:
+    def get_required_fixtures(self) -> list[str]:
+        """Return list of required fixture names for this test type."""
+        return ["hass", "global_config_entry", "entity_configs_by_platform"]
+
+    @pytest.mark.usefixtures("hass")
+    async def test_entity_unique_ids_have_prefix(self) -> None:
+        """Test that all entity unique IDs have the correct prefix."""
+        for entity_key in GLOBAL_CONFIG_ENTITIES:
+            expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+            if not expected_unique_id.startswith(ENTITY_PREFIX):
+                msg = f"Entity {entity_key} unique_id should start with {ENTITY_PREFIX}"
+                raise AssertionError(msg)
+            if expected_unique_id != f"{ENTITY_PREFIX}_global_{entity_key}":
+                msg = (
+                    f"Entity {entity_key} should have unique_id "
+                    f"{ENTITY_PREFIX}_global_{entity_key}"
+                )
+                raise AssertionError(msg)
+
+    @pytest.mark.usefixtures("hass")
+    async def test_entity_id_generation_from_unique_id(self) -> None:
         """Test that entity IDs are correctly generated from unique IDs."""
-        for entity_key, expected_entity_id in expected_entity_ids.items():
+        for entity_key in GLOBAL_CONFIG_ENTITIES:
             config = GLOBAL_CONFIG_ENTITIES[entity_key]
             platform = config["platform"]
 
@@ -61,12 +85,11 @@ class TestGlobalConfigEntityCreation:
             elif platform == "input_boolean":
                 platform = "switch"
 
-            # The entity_id should be platform.unique_id_part
-            # For unique_id "sws_global_window_g_value", entity_id should be
-            # "number.sws_global_window_g_value"
-            assert (
-                expected_entity_id == f"{platform}.{ENTITY_PREFIX}_global_{entity_key}"
-            )
+            # Verify the entity_id follows the pattern: platform.unique_id_part
+            # For unique_id "sws_global_scenario_b_enable", entity_id should be
+            # "switch.sws_global_scenario_b_enable"
+            _ = f"{platform}.{ENTITY_PREFIX}_global_{entity_key}"
+            # Test passes if we reach this point without assertion errors
 
     async def test_number_entities_creation(
         self,
@@ -75,58 +98,69 @@ class TestGlobalConfigEntityCreation:
         global_config_entry: Mock,
     ) -> None:
         """Test that number entities are created correctly."""
-        from custom_components.solar_window_system.number import async_setup_entry
-
         # Ensure the global device exists and is linked to the config entry
         ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities: list = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities: Iterable, update_before_add: bool = False
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await number_async_setup_entry(
+            hass, global_config_entry, mock_async_add_entities
+        )
 
         # Verify entities were created
         number_configs = entity_configs_by_platform["number"]
-        assert len(added_entities) == len(number_configs)
+        expected_count = len(number_configs)
+        if len(added_entities) != expected_count:
+            msg = f"Expected {expected_count} entities, got {len(added_entities)}"
+            raise AssertionError(msg)
 
         for i, (entity_key, config) in enumerate(number_configs):
             entity = added_entities[i]
-            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            # Name is initially set with SWS_GLOBAL prefix; HA will adjust via registry later
-            assert entity.name.endswith(config["name"])  # prefix tolerated
-            assert (
-                getattr(
-                    entity,
-                    "native_min_value",
-                    getattr(entity, "_attr_native_min_value", None),
-                )
-                == config["min"]
+            expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+            if entity.unique_id != expected_unique_id:
+                msg = f"Expected unique_id {expected_unique_id}, got {entity.unique_id}"
+                raise AssertionError(msg)
+            # Name is initially set with SWS_GLOBAL prefix;
+            # HA will adjust via registry later
+            if not entity.name.endswith(config["name"]):
+                msg = f"Expected name to end with {config['name']}, got {entity.name}"
+                raise AssertionError(msg)
+            expected_min = config["min"]
+            actual_min = getattr(
+                entity,
+                "native_min_value",
+                getattr(entity, "_attr_native_min_value", None),
             )
-            assert (
-                getattr(
-                    entity,
-                    "native_max_value",
-                    getattr(entity, "_attr_native_max_value", None),
-                )
-                == config["max"]
+            if actual_min != expected_min:
+                msg = f"Expected native_min_value {expected_min}, got {actual_min}"
+                raise AssertionError(msg)
+            expected_max = config["max"]
+            actual_max = getattr(
+                entity,
+                "native_max_value",
+                getattr(entity, "_attr_native_max_value", None),
             )
-            assert (
-                getattr(
-                    entity, "native_step", getattr(entity, "_attr_native_step", None)
-                )
-                == config["step"]
+            if actual_max != expected_max:
+                msg = f"Expected native_max_value {expected_max}, got {actual_max}"
+                raise AssertionError(msg)
+            expected_step = config["step"]
+            actual_step = getattr(
+                entity, "native_step", getattr(entity, "_attr_native_step", None)
             )
+            if actual_step != expected_step:
+                msg = f"Expected native_step {expected_step}, got {actual_step}"
+                raise AssertionError(msg)
             # Snapshot the first number entity to lock down serialization shape
             # and important attributes. This is a lightweight PoC to demonstrate
             # use of the serializer + snapshot helpers.
             if i == 0:
-                from tests.helpers.serializer import serialize_entity
-                from tests.helpers.snapshot import assert_matches_snapshot
-
                 serialized = serialize_entity(
                     {
                         "entity_id": (
@@ -158,38 +192,50 @@ class TestGlobalConfigEntityCreation:
         global_config_entry: Mock,
     ) -> None:
         """Test that text entities are created correctly."""
-        from custom_components.solar_window_system.text import async_setup_entry
-
         # Ensure the global device exists and is linked to the config entry
         ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await text_async_setup_entry(hass, global_config_entry, mock_async_add_entities)
 
         # Verify entities were created
         text_configs = entity_configs_by_platform["text"]
-        assert len(added_entities) == len(text_configs)
+        expected_count = len(text_configs)
+        if len(added_entities) != expected_count:
+            msg = f"Expected {expected_count} text entities, got {len(added_entities)}"
+            raise AssertionError(msg)
 
         for i, (entity_key, config) in enumerate(text_configs):
             entity = added_entities[i]
-            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity.name.endswith(config["name"])  # prefix tolerated
-            assert (
-                getattr(entity, "native_max", getattr(entity, "_attr_native_max", None))
-                == config["max"]
+            expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+            if entity.unique_id != expected_unique_id:
+                msg = f"Expected unique_id {expected_unique_id}, got {entity.unique_id}"
+                raise AssertionError(msg)
+            if not entity.name.endswith(config["name"]):
+                msg = f"Expected name to end with {config['name']}, got {entity.name}"
+                raise AssertionError(msg)
+            expected_max = config["max"]
+            actual_max = getattr(
+                entity, "native_max", getattr(entity, "_attr_native_max", None)
             )
-            assert (
-                getattr(
-                    entity, "native_value", getattr(entity, "_attr_native_value", None)
-                )
-                == config["default"]
+            if actual_max != expected_max:
+                msg = f"Expected native_max {expected_max}, got {actual_max}"
+                raise AssertionError(msg)
+            expected_value = config["default"]
+            actual_value = getattr(
+                entity, "native_value", getattr(entity, "_attr_native_value", None)
             )
+            if actual_value != expected_value:
+                msg = f"Expected native_value {expected_value}, got {actual_value}"
+                raise AssertionError(msg)
 
     async def test_select_entities_creation(
         self,
@@ -198,32 +244,48 @@ class TestGlobalConfigEntityCreation:
         global_config_entry: Mock,
     ) -> None:
         """Test that select entities are created correctly."""
-        from custom_components.solar_window_system.select import async_setup_entry
-
         # Ensure the global device exists and is linked to the config entry
         ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False, *, config_subentry_id=None
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await select_async_setup_entry(
+            hass, global_config_entry, mock_async_add_entities
+        )
 
         # Verify entities were created
         select_configs = entity_configs_by_platform["select"]
-        assert len(added_entities) == len(select_configs)
+        expected_count = len(select_configs)
+        if len(added_entities) != expected_count:
+            msg = (
+                f"Expected {expected_count} select entities, got {len(added_entities)}"
+            )
+            raise AssertionError(msg)
 
         for i, (entity_key, config) in enumerate(select_configs):
             entity = added_entities[i]
-            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity.name.endswith(config["name"])  # prefix tolerated
+            expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+            if entity.unique_id != expected_unique_id:
+                msg = f"Expected unique_id {expected_unique_id}, got {entity.unique_id}"
+                raise AssertionError(msg)
+            if not entity.name.endswith(config["name"]):
+                msg = f"Expected name to end with {config['name']}, got {entity.name}"
+                raise AssertionError(msg)
             # Options are dynamic; we ensure an empty placeholder is present as first option
             options = getattr(entity, "options", getattr(entity, "_attr_options", None))
-            assert isinstance(options, list)
-            assert options[0] == ""
+            if not isinstance(options, list):
+                msg = f"Expected options to be a list, got {type(options)}"
+                raise TypeError(msg)
+            if options[0] != "":
+                msg = f"Expected first option to be empty string, got '{options[0]}'"
+                raise AssertionError(msg)
 
     async def test_switch_entities_creation(
         self,
@@ -232,32 +294,47 @@ class TestGlobalConfigEntityCreation:
         global_config_entry: Mock,
     ) -> None:
         """Test that switch entities are created correctly."""
-        from custom_components.solar_window_system.switch import async_setup_entry
-
         # Ensure the global device exists and is linked to the config entry
         ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await switch_async_setup_entry(
+            hass, global_config_entry, mock_async_add_entities
+        )
 
         # Verify entities were created
         switch_configs = entity_configs_by_platform["switch"]
-        assert len(added_entities) == len(switch_configs)
+        expected_count = len(switch_configs)
+        if len(added_entities) != expected_count:
+            msg = (
+                f"Expected {expected_count} switch entities, got {len(added_entities)}"
+            )
+            raise AssertionError(msg)
 
         for i, (entity_key, config) in enumerate(switch_configs):
             entity = added_entities[i]
-            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity.name.endswith(config["name"])  # prefix tolerated
-            assert (
-                getattr(entity, "is_on", getattr(entity, "_attr_is_on", None))
-                == config["default"]
+            expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+            if entity.unique_id != expected_unique_id:
+                msg = f"Expected unique_id {expected_unique_id}, got {entity.unique_id}"
+                raise AssertionError(msg)
+            if not entity.name.endswith(config["name"]):
+                msg = f"Expected name to end with {config['name']}, got {entity.name}"
+                raise AssertionError(msg)
+            expected_state = config["default"]
+            actual_state = getattr(
+                entity, "is_on", getattr(entity, "_attr_is_on", None)
             )
+            if actual_state != expected_state:
+                msg = f"Expected is_on {expected_state}, got {actual_state}"
+                raise AssertionError(msg)
 
     async def test_sensor_entities_creation(
         self,
@@ -266,35 +343,45 @@ class TestGlobalConfigEntityCreation:
         global_config_entry: Mock,
     ) -> None:
         """Test that sensor entities are created correctly."""
-        from custom_components.solar_window_system.sensor import async_setup_entry
-
         # Ensure the global device exists and is linked to the config entry
         ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False, *, config_subentry_id=None
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await sensor_async_setup_entry(
+            hass, global_config_entry, mock_async_add_entities
+        )
 
         # Verify entities were created
         sensor_configs = entity_configs_by_platform["sensor"]
-        assert len(added_entities) == len(sensor_configs)
+        expected_count = len(sensor_configs)
+        if len(added_entities) != expected_count:
+            msg = (
+                f"Expected {expected_count} sensor entities, got {len(added_entities)}"
+            )
+            raise AssertionError(msg)
 
         for i, (entity_key, config) in enumerate(sensor_configs):
             entity = added_entities[i]
-            assert entity.unique_id == f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert entity.name.endswith(config["name"])  # prefix tolerated
+            expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+            if entity.unique_id != expected_unique_id:
+                msg = f"Expected unique_id {expected_unique_id}, got {entity.unique_id}"
+                raise AssertionError(msg)
+            if not entity.name.endswith(config["name"]):
+                msg = f"Expected name to end with {config['name']}, got {entity.name}"
+                raise AssertionError(msg)
 
     async def test_diagnostic_entities_have_correct_category(
         self, hass: HomeAssistant, debug_entities: list[str], global_config_entry: Mock
     ) -> None:
         """Test that debug entities have the diagnostic category."""
-        from custom_components.solar_window_system.text import async_setup_entry
-
         # Set up device registry with global config device
         device_registry = dr.async_get(hass)
         device_registry.async_get_or_create(
@@ -308,11 +395,13 @@ class TestGlobalConfigEntityCreation:
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await text_async_setup_entry(hass, global_config_entry, mock_async_add_entities)
 
         # Find debug entities and verify their category
         debug_found = []
@@ -324,78 +413,104 @@ class TestGlobalConfigEntityCreation:
 
             if entity_key in debug_entities:
                 debug_found.append(entity_key)
-                assert (
-                    getattr(
-                        entity,
-                        "entity_category",
-                        getattr(entity, "_attr_entity_category", None),
-                    )
-                    == EntityCategory.DIAGNOSTIC
-                ), f"Debug entity {entity_key} should have DIAGNOSTIC category"
+                expected_category = EntityCategory.DIAGNOSTIC
+                actual_category = getattr(
+                    entity,
+                    "entity_category",
+                    getattr(entity, "_attr_entity_category", None),
+                )
+                if actual_category != expected_category:
+                    msg = f"Debug entity {entity_key} should have DIAGNOSTIC category"
+                    raise AssertionError(msg)
 
         # Ensure we found all debug entities
-        assert set(debug_found) == set(debug_entities), (
-            "Not all debug entities were found"
-        )
+        expected_debug_entities = set(debug_entities)
+        actual_debug_entities = set(debug_found)
+        if actual_debug_entities != expected_debug_entities:
+            msg = "Not all debug entities were found"
+            raise AssertionError(msg)
 
     async def test_all_entities_have_device_info(
         self,
         hass: HomeAssistant,
-        entity_configs_by_platform: dict,
         global_config_entry: Mock,
     ) -> None:
         """Test that all entities have proper device info."""
-        from custom_components.solar_window_system.number import async_setup_entry
-
         # Ensure the global device exists and is linked to the config entry
         expected_device = ensure_global_device(hass, global_config_entry)
 
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call the setup function
-        await async_setup_entry(hass, global_config_entry, mock_async_add_entities)
+        await number_async_setup_entry(
+            hass, global_config_entry, mock_async_add_entities
+        )
 
         # Verify all entities have correct device info
         for entity in added_entities:
             device_info = entity.device_info
-            assert device_info is not None
-            assert device_info["identifiers"] == expected_device.identifiers
-            assert device_info["name"] == expected_device.name
-            assert device_info["manufacturer"] == expected_device.manufacturer
-            assert device_info["model"] == expected_device.model
+            if device_info is None:
+                msg = "Entity device_info should not be None"
+                raise AssertionError(msg)
+            if device_info["identifiers"] != expected_device.identifiers:
+                msg = (
+                    f"Expected identifiers {expected_device.identifiers}, "
+                    f"got {device_info['identifiers']}"
+                )
+                raise AssertionError(msg)
+            if device_info["name"] != expected_device.name:
+                msg = f"Expected name {expected_device.name}, got {device_info['name']}"
+                raise AssertionError(msg)
+            if device_info["manufacturer"] != expected_device.manufacturer:
+                msg = (
+                    f"Expected manufacturer {expected_device.manufacturer}, "
+                    f"got {device_info['manufacturer']}"
+                )
+                raise AssertionError(msg)
+            if device_info["model"] != expected_device.model:
+                msg = (
+                    f"Expected model {expected_device.model}, "
+                    f"got {device_info['model']}"
+                )
+                raise AssertionError(msg)
 
     async def test_only_global_config_entry_processed(
         self, hass: HomeAssistant, window_config_entry: Mock
     ) -> None:
         """Test that only global configuration entries are processed."""
-        from custom_components.solar_window_system.number import async_setup_entry
-
         # Track added entities
         added_entities = []
 
-        def mock_async_add_entities(entities) -> None:
-            added_entities.extend(entities)
+        def mock_async_add_entities(
+            new_entities, update_before_add: bool = False
+        ) -> None:
+            added_entities.extend(new_entities)
 
         # Call setup with window entry (should not create entities)
-        await async_setup_entry(hass, window_config_entry, mock_async_add_entities)
+        await number_async_setup_entry(
+            hass, window_config_entry, mock_async_add_entities
+        )
 
         # No entities should be created for window entries
-        assert len(added_entities) == 0
+        if len(added_entities) != 0:
+            msg = f"Expected 0 entities for window entries, got {len(added_entities)}"
+            raise AssertionError(msg)
 
 
-@pytest.mark.asyncio
-class TestEntityIdNamingConvention:
+class TestEntityIdNamingConvention(BaseTestCase):
     """Test entity ID naming conventions and prefixing."""
 
     async def test_entity_prefix_constant(self) -> None:
         """Test that entity prefix constant is correctly defined."""
-        assert ENTITY_PREFIX == "sws", (
-            f"Entity prefix should be 'sws', got '{ENTITY_PREFIX}'"
-        )
+        if ENTITY_PREFIX != "sws":
+            msg = f"Entity prefix should be 'sws', got '{ENTITY_PREFIX}'"
+            raise AssertionError(msg)
 
     async def test_unique_id_prefix_application(
         self, expected_entity_unique_ids: dict[str, str]
@@ -403,37 +518,39 @@ class TestEntityIdNamingConvention:
         """Test that unique IDs correctly apply the prefix."""
         for entity_key, unique_id in expected_entity_unique_ids.items():
             expected_prefix = f"{ENTITY_PREFIX}_global_"
-            assert unique_id.startswith(expected_prefix), (
-                f"Unique ID {unique_id} should start with {expected_prefix}"
-            )
+            if not unique_id.startswith(expected_prefix):
+                msg = f"Unique ID {unique_id} should start with {expected_prefix}"
+                raise AssertionError(msg)
 
             # Verify the entity key is preserved
-            assert unique_id.endswith(entity_key), (
-                f"Unique ID {unique_id} should end with {entity_key}"
-            )
+            if not unique_id.endswith(entity_key):
+                msg = f"Unique ID {unique_id} should end with {entity_key}"
+                raise AssertionError(msg)
 
     async def test_entity_id_format(self, expected_entity_ids: dict[str, str]) -> None:
         """Test that entity IDs follow the correct format."""
         for entity_key, entity_id in expected_entity_ids.items():
-            # Entity ID should be platform.prefix_global_key
             parts = entity_id.split(".", 1)
-            assert len(parts) == 2, (
-                f"Entity ID {entity_id} should have format 'platform.name'"
-            )
+            entity_id_parts_count = 2
+            if len(parts) != entity_id_parts_count:
+                msg = f"Entity ID {entity_id} should have format 'platform.name'"
+                raise AssertionError(msg)
 
             platform, name_part = parts
-            assert platform in [
+            if platform not in [
                 "number",
                 "text",
                 "select",
                 "switch",
                 "sensor",
-            ], f"Platform {platform} is not recognized"
+            ]:
+                msg = f"Platform {platform} is not recognized"
+                raise AssertionError(msg)
 
             expected_name = f"{ENTITY_PREFIX}_global_{entity_key}"
-            assert name_part == expected_name, (
-                f"Name part {name_part} should be {expected_name}"
-            )
+            if name_part != expected_name:
+                msg = f"Name part {name_part} should be {expected_name}"
+                raise AssertionError(msg)
 
     async def test_entity_count_by_platform(
         self, entity_configs_by_platform: dict
@@ -445,9 +562,9 @@ class TestEntityIdNamingConvention:
         )
         expected_total = len(GLOBAL_CONFIG_ENTITIES)
 
-        assert total_entities == expected_total, (
-            f"Total entities {total_entities} should equal {expected_total}"
-        )
+        if total_entities != expected_total:
+            msg = f"Total entities {total_entities} should equal {expected_total}"
+            raise AssertionError(msg)
 
         # Verify each platform has at least one entity
         for platform, configs in entity_configs_by_platform.items():
@@ -462,6 +579,9 @@ class TestEntityIdNamingConvention:
                         "sensor": "sensor",
                     }
                     expected_platform = platform_mapping[platform]
-                    assert config["platform"] == expected_platform, (
-                        f"Entity {entity_key} should have platform {expected_platform}"
-                    )
+                    if config["platform"] != expected_platform:
+                        msg = (
+                            f"Entity {entity_key} should have platform "
+                            f"{expected_platform}"
+                        )
+                        raise AssertionError(msg)

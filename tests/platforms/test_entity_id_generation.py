@@ -1,9 +1,12 @@
 """Tests for entity ID generation and prefix application."""
 
+from __future__ import annotations
+
 from custom_components.solar_window_system.const import (
     ENTITY_PREFIX,
     GLOBAL_CONFIG_ENTITIES,
 )
+from tests.helpers.test_framework import BaseTestCase
 
 # Constants for expected values
 EXPECTED_TOTAL_ENTITIES = 11
@@ -15,8 +18,14 @@ EXPECTED_SENSOR_ENTITIES = 4
 EXPECTED_DEBUG_ENTITIES = 1
 
 
-class TestEntityIdGeneration:
+class TestEntityIdGeneration(BaseTestCase):
     """Test entity ID generation and naming conventions."""
+
+    test_type = "entity_ids"
+
+    def get_required_fixtures(self) -> list[str]:
+        """Return list of required fixture names for this test type."""
+        return []
 
     def test_entity_prefix_constant(self) -> None:
         """Verify the entity prefix constant matches the expected value."""

@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_diagnostics_config_entry_snapshot
+# name: TestDiagnostics.test_config_entry_snapshot
   dict({
     'data': dict({
     }),

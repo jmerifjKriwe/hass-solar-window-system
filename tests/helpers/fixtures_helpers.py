@@ -10,20 +10,20 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.solar_window_system.const import DOMAIN, ENTITY_PREFIX
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
-
-from custom_components.solar_window_system.const import DOMAIN
 from tests.constants import (
     GLOBAL_DEVICE_MANUFACTURER,
     GLOBAL_DEVICE_MODEL,
     GLOBAL_DEVICE_NAME,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
 
 
 def create_global_config_entry(
@@ -198,3 +198,46 @@ def window_config_entry() -> MagicMock:
     Returns a MagicMock mimicking a ConfigEntry for window subentries.
     """
     return create_window_config_entry(entry_id="window_config_entry_id")
+
+
+async def validate_entities_for_platform(
+    hass: HomeAssistant,
+    module: Any,
+    entry: MockConfigEntry,
+    platform_configs: list[tuple[str, dict[str, Any]]],
+    platform_name: str,
+) -> list[Any]:
+    """
+    Validate entities created by a platform module.
+
+    This function handles the common pattern of setting up entities for a platform
+    and validating their basic properties.
+    """
+    # Ensure the global device exists
+    ensure_global_device(hass, entry)
+
+    # Collect entities
+    added_entities = await collect_entities_for_setup(hass, module, entry)
+
+    # Basic validation
+    if len(added_entities) != len(platform_configs):
+        msg = (
+            f"Expected {len(platform_configs)} entities for {platform_name}, "
+            f"got {len(added_entities)}"
+        )
+        raise AssertionError(msg)
+
+    for i, (entity_key, config) in enumerate(platform_configs):
+        entity = added_entities[i]
+        expected_unique_id = f"{ENTITY_PREFIX}_global_{entity_key}"
+        if entity.unique_id != expected_unique_id:
+            msg = (
+                f"Entity {i} unique_id should be {expected_unique_id}, "
+                f"got {entity.unique_id}"
+            )
+            raise AssertionError(msg)
+        if not entity.name.endswith(config["name"]):
+            msg = f"Entity {i} name should end with {config['name']}, got {entity.name}"
+            raise AssertionError(msg)
+
+    return added_entities

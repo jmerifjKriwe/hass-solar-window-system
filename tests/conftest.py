@@ -11,6 +11,8 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -83,6 +85,19 @@ def valid_group_input() -> dict[str, str]:
 
 
 @pytest.fixture
+def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Return a global config entry fixture for tests."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Solar Window System",
+        data={"entry_type": "global_config"},
+        entry_id="global_config_entry_id",
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+@pytest.fixture
 def mock_device_registry() -> Mock:
     """
     Return a mock device registry.
@@ -121,7 +136,9 @@ async def setup_global_config_device(
     for how the device is created.
     """
     # Import here to avoid circular imports during pytest collection
-    from tests.helpers.fixtures_helpers import ensure_global_device
+    from tests.helpers.fixtures_helpers import (
+        ensure_global_device,  # type: ignore[import]
+    )
 
     return ensure_global_device(hass, global_config_entry)
 

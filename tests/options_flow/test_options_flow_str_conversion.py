@@ -1,158 +1,105 @@
-"""Test to specifically verify the str conversion fix.
+"""Test to specifically verify the str conversion fix."""
 
-Type annotations and docstrings in tests can be noisy; disable ANN001 and
-D103 for this test module.
-"""
+from __future__ import annotations
 
-# ruff: noqa: ANN001,D103,S101
-
-from unittest.mock import patch
-
-import pytest
-from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from unittest.mock import Mock, patch
 
 from custom_components.solar_window_system.config_flow import (
     GroupSubentryFlowHandler,
     WindowSubentryFlowHandler,
 )
 from custom_components.solar_window_system.const import DOMAIN
+from tests.helpers.test_framework import ConfigFlowTestCase
 from tests.test_data import VALID_GROUP_OPTIONS_NUMERIC, VALID_WINDOW_OPTIONS_NUMERIC
 
 
-@pytest.mark.asyncio
-async def test_group_options_numeric_values_conversion(hass: HomeAssistant) -> None:
-    """
+class TestOptionsFlowStrConversion(ConfigFlowTestCase):
+    """Test to specifically verify the str conversion fix."""
 
-    Test that numeric values from data/options are properly converted to strings in
-    GroupSubentryFlowHandler.
-    """
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test Group",
-        data=VALID_GROUP_OPTIONS_NUMERIC,
-        options={},
-        unique_id="test_group_1",
-    )
-    config_entry.add_to_hass(hass)
+    async def test_group_options_numeric_values_conversion(self) -> None:
+        """Numeric values from data/options are converted to strings in group flow."""
+        # Create mock hass
+        mock_hass = Mock()
 
-    handler = GroupSubentryFlowHandler()
-    handler.hass = hass
-    handler.handler = (DOMAIN, "group")
+        # Create mock config entry
+        mock_config_entry = Mock()
+        mock_config_entry.domain = DOMAIN
+        mock_config_entry.title = "Test Group"
+        mock_config_entry.data = VALID_GROUP_OPTIONS_NUMERIC
+        mock_config_entry.options = {}
+        mock_config_entry.unique_id = "test_group_1"
 
-    with patch(
-        "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities"
-    ) as mock_temp:
-        mock_temp.return_value = [
-            {"value": "sensor.temp1", "label": "Temperature 1"},
-            {"value": "sensor.temp2", "label": "Temperature 2"},
-        ]
+        # Mock add_to_hass
+        mock_config_entry.add_to_hass = Mock()
 
-    # This should not raise an error - the fix should convert numeric values to strings
-    result = await handler.async_step_user(None)
-    # Verify the schema was created successfully
-    assert result["type"] == "form"
-    assert result["step_id"] == "user"
-    assert "data_schema" in result
+        # Mock config_entries for hass
+        mock_hass.config_entries.async_entries = Mock(return_value=[])
 
+        handler = GroupSubentryFlowHandler()
+        handler.hass = mock_hass
+        handler.handler = (DOMAIN, "group")
 
-@pytest.mark.asyncio
-async def test_window_options_numeric_values_conversion(hass: HomeAssistant) -> None:
-    """
+        with patch(
+            "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities"
+        ) as mock_temp:
+            mock_temp.return_value = [
+                {"value": "sensor.temp1", "label": "Temperature 1"},
+                {"value": "sensor.temp2", "label": "Temperature 2"},
+            ]
 
-    Test that numeric values from data/options are properly converted to strings in
-    WindowSubentryFlowHandler.
-    """
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test Window",
-        data=VALID_WINDOW_OPTIONS_NUMERIC,
-        options={},
-        unique_id="test_window_1",
-    )
-    config_entry.add_to_hass(hass)
+            # This should not raise an error - fix converts numeric values to strings
+            result = await handler.async_step_user(None)
+            # Verify the schema was created successfully
+            if result["type"] != "form":
+                msg = f"Expected form, got {result['type']}"
+                raise AssertionError(msg)
+            if result["step_id"] != "user":
+                msg = f"Expected user, got {result['step_id']}"
+                raise AssertionError(msg)
+            if "data_schema" not in result:
+                msg = "data_schema not in result"
+                raise AssertionError(msg)
 
-    handler = WindowSubentryFlowHandler()
-    handler.hass = hass
-    handler.handler = (DOMAIN, "window")
+    async def test_window_options_numeric_values_conversion(self) -> None:
+        """Numeric values from data/options are converted to strings in window flow."""
+        # Create mock hass
+        mock_hass = Mock()
 
-    with patch(
-        "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities"
-    ) as mock_temp:
-        mock_temp.return_value = [
-            {"value": "sensor.temp1", "label": "Temperature 1"},
-            {"value": "sensor.temp2", "label": "Temperature 2"},
-        ]
+        # Create mock config entry
+        mock_config_entry = Mock()
+        mock_config_entry.domain = DOMAIN
+        mock_config_entry.title = "Test Window"
+        mock_config_entry.data = VALID_WINDOW_OPTIONS_NUMERIC
+        mock_config_entry.options = {}
+        mock_config_entry.unique_id = "test_window_1"
 
-    # This should not raise an error - the fix should convert numeric values to strings
-    result = await handler.async_step_user(None)
-    # Verify the schema was created successfully
-    assert result["type"] == "form"
-    assert result["step_id"] == "user"
-    assert "data_schema" in result
+        # Mock add_to_hass
+        mock_config_entry.add_to_hass = Mock()
 
+        # Mock config_entries for hass
+        mock_hass.config_entries.async_entries = Mock(return_value=[])
 
-"""Test to specifically verify the str conversion fix for options flow handlers."""
+        handler = WindowSubentryFlowHandler()
+        handler.hass = mock_hass
+        handler.handler = (DOMAIN, "window")
 
-import pytest
-from homeassistant.core import HomeAssistant
+        with patch(
+            "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities"
+        ) as mock_temp:
+            mock_temp.return_value = [
+                {"value": "sensor.temp1", "label": "Temperature 1"},
+                {"value": "sensor.temp2", "label": "Temperature 2"},
+            ]
 
-
-@pytest.mark.asyncio
-async def test_group_options_numeric_values_conversion(hass: HomeAssistant) -> None:
-    """Numeric values from data/options are converted to strings in group flow."""
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test Group",
-        data=VALID_GROUP_OPTIONS_NUMERIC,
-        options={},
-        unique_id="test_group_1",
-    )
-    config_entry.add_to_hass(hass)
-
-    handler = GroupSubentryFlowHandler()
-    handler.hass = hass
-    handler.handler = (DOMAIN, "group")
-
-    with patch(
-        "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities"
-    ) as mock_temp:
-        mock_temp.return_value = [
-            {"value": "sensor.temp1", "label": "Temperature 1"},
-            {"value": "sensor.temp2", "label": "Temperature 2"},
-        ]
-
-    result = await handler.async_step_user(None)
-    assert result["type"] == "form"
-    assert result["step_id"] == "user"
-    assert "data_schema" in result
-
-
-@pytest.mark.asyncio
-async def test_window_options_numeric_values_conversion(hass: HomeAssistant) -> None:
-    """Numeric values from data/options are converted to strings in window flow."""
-    config_entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="Test Window",
-        data=VALID_WINDOW_OPTIONS_NUMERIC,
-        options={},
-        unique_id="test_window_1",
-    )
-    config_entry.add_to_hass(hass)
-
-    handler = WindowSubentryFlowHandler()
-    handler.hass = hass
-    handler.handler = (DOMAIN, "window")
-
-    with patch(
-        "custom_components.solar_window_system.config_flow.get_temperature_sensor_entities"
-    ) as mock_temp:
-        mock_temp.return_value = [
-            {"value": "sensor.temp1", "label": "Temperature 1"},
-            {"value": "sensor.temp2", "label": "Temperature 2"},
-        ]
-
-    result = await handler.async_step_user(None)
-    assert result["type"] == "form"
-    assert result["step_id"] == "user"
-    assert "data_schema" in result
+            # This should not raise an error - fix converts numeric values to strings
+            result = await handler.async_step_user(None)
+            # Verify the schema was created successfully
+            if result["type"] != "form":
+                msg = f"Expected form, got {result['type']}"
+                raise AssertionError(msg)
+            if result["step_id"] != "user":
+                msg = f"Expected user, got {result['step_id']}"
+                raise AssertionError(msg)
+            if "data_schema" not in result:
+                msg = "data_schema not in result"
+                raise AssertionError(msg)

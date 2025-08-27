@@ -1,4 +1,5 @@
-"""Test to verify string conversion handling in config flows.
+"""
+Test to verify string conversion handling in config flows.
 
 Assertions are used intentionally in tests; disable assertion lint (S101) for this
 module.
@@ -10,9 +11,9 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 import voluptuous as vol
-from homeassistant import config_entries
 
 from custom_components.solar_window_system import config_flow
+from homeassistant import config_entries
 from tests.test_data import (
     VALID_GLOBAL_ENHANCED,
     VALID_GLOBAL_SCENARIOS,
