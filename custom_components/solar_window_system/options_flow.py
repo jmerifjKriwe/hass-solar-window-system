@@ -13,10 +13,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.helpers import selector
+import voluptuous as vol
 
 _LOGGER = logging.getLogger(__name__)
 
