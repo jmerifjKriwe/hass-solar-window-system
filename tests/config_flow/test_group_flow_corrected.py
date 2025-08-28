@@ -160,9 +160,7 @@ async def test_group_subentry_flow_basic_step(
         # Should proceed to enhanced step
         if result2["type"] != FlowResultType.FORM:
             msg = f"Expected form for enhanced step, got {result2['type']}"
-            raise AssertionError(
-                msg
-            )
+            raise AssertionError(msg)
 
         if result2["step_id"] != "enhanced":
             msg = "Expected step_id 'enhanced'"

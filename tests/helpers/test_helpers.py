@@ -9,11 +9,11 @@ from __future__ import annotations
 from unittest.mock import Mock, patch
 
 import pytest
-from homeassistant.core import HomeAssistant
 
 from custom_components.solar_window_system.helpers import (
     get_temperature_sensor_entities,
 )
+from homeassistant.core import HomeAssistant
 
 
 class TestGetTemperatureSensorEntities:

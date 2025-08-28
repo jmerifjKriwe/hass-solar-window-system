@@ -21,9 +21,7 @@ if TYPE_CHECKING:
 class TestConfigFlowReconfigure(ConfigFlowTestCase):
     """Test reconfigure flow for the global configuration entry using framework."""
 
-    async def test_global_config_reconfigure_flow(
-        self, hass: HomeAssistant
-    ) -> None:
+    async def test_global_config_reconfigure_flow(self, hass: HomeAssistant) -> None:
         """
         Reconfigure existing global entry with options flow.
 

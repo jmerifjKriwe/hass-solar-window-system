@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import UTC
 from unittest.mock import Mock, patch
 
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
@@ -113,7 +113,7 @@ class TestCalculatorSampleData(IntegrationTestCase):
             "custom_components.solar_window_system.calculator.datetime"
         ) as mock_datetime:
             mock_datetime.now.return_value.hour = 10  # After 9 AM
-            mock_datetime.UTC = timezone.utc
+            mock_datetime.UTC = UTC
 
             # Inspect effective config used for this window
             effective_cfg, sources = calc.get_effective_config_from_flows(

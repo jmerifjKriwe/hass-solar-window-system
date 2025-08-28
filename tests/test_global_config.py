@@ -1,12 +1,9 @@
-# ruff: noqa: SLF001,ARG001
+# ruff: noqa: SLF001
 """Tests for global_config.py module."""
 
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 
 from custom_components.solar_window_system.const import (
     DOMAIN,
@@ -23,8 +20,9 @@ from custom_components.solar_window_system.global_config import (
     _get_binary_sensor_entities,
     _get_input_boolean_entities,
     _get_temperature_sensor_entities,
-    async_create_global_config_entities,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 
 class TestGlobalConfig:

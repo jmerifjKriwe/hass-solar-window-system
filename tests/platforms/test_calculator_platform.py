@@ -9,8 +9,8 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solar_window_system.calculator import (
-    SolarWindowCalculator,
     ShadeRequestFlow,
+    SolarWindowCalculator,
     WindowCalculationResult,
 )
 from custom_components.solar_window_system.const import DOMAIN

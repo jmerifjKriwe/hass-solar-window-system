@@ -9,14 +9,14 @@ from unittest.mock import Mock, patch
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.solar_window_system.const import DOMAIN
 from custom_components.solar_window_system.select import (
     GlobalConfigSelectEntity,
     GroupConfigSelectEntity,
     WindowConfigSelectEntity,
-    async_setup_entry,
     _setup_global_config_selects,
+    async_setup_entry,
 )
-from custom_components.solar_window_system.const import DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

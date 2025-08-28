@@ -15,6 +15,7 @@ import logging
 from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
