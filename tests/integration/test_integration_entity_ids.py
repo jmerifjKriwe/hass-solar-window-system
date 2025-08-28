@@ -1,5 +1,7 @@
 """Tests for Solar Window System entity ID integration using framework."""
 
+# ruff: noqa: ANN001,FBT001,ARG001,FBT002
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -51,9 +53,9 @@ class TestEntityIDIntegration(IntegrationTestCase):
 
         def mock_add_entities(
             new_entities,  # type: ignore[no-untyped-def]
-            update_before_add: bool = False,  # noqa: FBT001
+            update_before_add: bool = False,
             *,
-            config_subentry_id=None,  # noqa: ARG001
+            config_subentry_id=None,
         ) -> None:
             added_entities.extend(list(new_entities))
 

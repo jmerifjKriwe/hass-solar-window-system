@@ -18,6 +18,7 @@ async def test_group_options_second_save_expected_str_error(
 ) -> None:
     """
     Test the 'expected str' bug scenario using the correct subentry reconfigure flow.
+
     1. Create group parent and global config entries
     2. Create a group subentry with numeric values (as strings)
     3. Reconfigure the group subentry (simulate second save)
@@ -80,11 +81,19 @@ async def test_group_options_second_save_expected_str_error(
         }
         # First save (creation)
         result = await flow_handler.async_step_user(user_input)
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "enhanced"
+        if result["type"] != FlowResultType.FORM:
+            msg = f"Expected form type, got {result['type']}"
+            raise AssertionError(msg)
+        if result["step_id"] != "enhanced":
+            msg = f"Expected step_id 'enhanced', got {result['step_id']}"
+            raise AssertionError(msg)
 
         # Second save (reconfigure)
         result2 = await flow_handler.async_step_reconfigure(user_input)
-        assert result2["type"] == FlowResultType.FORM
-        assert result2["step_id"] == "enhanced"
+        if result2["type"] != FlowResultType.FORM:
+            msg = f"Expected form type, got {result2['type']}"
+            raise AssertionError(msg)
+        if result2["step_id"] != "enhanced":
+            msg = f"Expected step_id 'enhanced', got {result2['step_id']}"
+            raise AssertionError(msg)
     # If we get here, the bug is fixed (no 'expected str' error)

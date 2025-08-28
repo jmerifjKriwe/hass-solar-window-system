@@ -1121,11 +1121,15 @@ class SolarWindowCalculator:
                 return result_b, reason_b
 
         # --- Scenario C: Heatwave forecast ---
-        scenario_c_config = shade_request.effective_config.get("scenario_c", {})
-        if shade_request.scenario_c_enabled and scenario_c_config.get("enabled", True):
-            result_c, reason_c = self._check_scenario_c(
-                shade_request, scenario_c_config, indoor_temp
-            )
+        # Check if scenario C is enabled (default to True if not specified)
+        scenario_c_enabled_in_config = shade_request.effective_config.get(
+            "scenario_c_enable", "inherit"
+        )
+        if shade_request.scenario_c_enabled and scenario_c_enabled_in_config not in (
+            "disable",
+            False,
+        ):
+            result_c, reason_c = self._check_scenario_c(shade_request, indoor_temp)
             if result_c:
                 return result_c, reason_c
 
@@ -1176,7 +1180,6 @@ class SolarWindowCalculator:
     def _check_scenario_c(
         self,
         shade_request: ShadeRequestFlow,
-        scenario_c_config: dict[str, Any],
         indoor_temp: float,
     ) -> tuple[bool, str]:
         """Check scenario C: Heatwave forecast."""
@@ -1184,10 +1187,14 @@ class SolarWindowCalculator:
             forecast_temp = shade_request.external_states["forecast_temp"]
             if forecast_temp > 0:
                 current_hour = datetime.now(UTC).hour
-                temp_forecast_threshold = scenario_c_config.get(
-                    "temp_forecast_threshold", 28.5
+                # Read threshold from effective config instead of nested
+                # scenario_c_config
+                temp_forecast_threshold = shade_request.effective_config.get(
+                    "scenario_c_temp_forecast", 28.5
                 )
-                start_hour = scenario_c_config.get("start_hour", 9)
+                start_hour = shade_request.effective_config.get(
+                    "scenario_c_start_hour", 9
+                )
 
                 _LOGGER.debug(
                     "[SHADE-FLOW] Scenario C Check: Forecast (%.1f°C) > "

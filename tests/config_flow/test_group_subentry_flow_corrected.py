@@ -125,8 +125,12 @@ async def test_group_subentry_flow_basic_step(
             msg = f"Expected form, got {result['type']}"
             raise AssertionError(msg)
 
-        assert result["step_id"] == "user"
-        assert "data_schema" in result
+        if result["step_id"] != "user":
+            msg = f"Expected step_id 'user', got {result['step_id']}"
+            raise AssertionError(msg)
+        if "data_schema" not in result:
+            msg = "Expected 'data_schema' in result"
+            raise AssertionError(msg)
 
         # Test form submission with valid data
         user_input = {
@@ -144,11 +148,11 @@ async def test_group_subentry_flow_basic_step(
         # Should proceed to enhanced step
         if result2["type"] != FlowResultType.FORM:
             msg = f"Expected form for enhanced step, got {result2['type']}"
-            raise AssertionError(
-                msg
-            )
+            raise AssertionError(msg)
 
-        assert result2["step_id"] == "enhanced"
+        if result2["step_id"] != "enhanced":
+            msg = f"Expected step_id 'enhanced', got {result2['step_id']}"
+            raise AssertionError(msg)
 
 
 @pytest.mark.asyncio
@@ -211,7 +215,9 @@ async def test_group_subentry_flow_complete(
         }
 
         result = await flow_handler.async_step_user(user_input_basic)
-        assert result["step_id"] == "enhanced"
+        if result["step_id"] != "enhanced":
+            msg = f"Expected step_id 'enhanced', got {result['step_id']}"
+            raise AssertionError(msg)
 
         # Step 2: Enhanced configuration (scenarios)
         user_input_enhanced = {
@@ -226,7 +232,9 @@ async def test_group_subentry_flow_complete(
             msg = f"Expected create_entry, got {result2['type']}"
             raise AssertionError(msg)
 
-        assert result2["title"] == "Test Group"
+        if result2["title"] != "Test Group":
+            msg = f"Expected title 'Test Group', got {result2['title']}"
+            raise AssertionError(msg)
 
         # Verify that async_create_entry was called
         mock_create_entry.assert_called_once()
@@ -275,8 +283,8 @@ async def test_group_subentry_flow_inheritance(
         # Should proceed to enhanced step even with inheritance values
         if result["type"] != FlowResultType.FORM:
             msg = f"Expected form for enhanced step, got {result['type']}"
-            raise AssertionError(
-                msg
-            )
+            raise AssertionError(msg)
 
-        assert result["step_id"] == "enhanced"
+        if result["step_id"] != "enhanced":
+            msg = f"Expected step_id 'enhanced', got {result['step_id']}"
+            raise AssertionError(msg)

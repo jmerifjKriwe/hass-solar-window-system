@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .calculator import SolarWindowCalculator
 from .const import DOMAIN
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 

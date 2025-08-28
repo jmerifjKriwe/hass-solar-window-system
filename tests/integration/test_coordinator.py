@@ -1,3 +1,4 @@
+# ruff: noqa: TRY004
 """Integration/unit tests for SolarWindowSystemCoordinator using framework."""
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from custom_components.solar_window_system.calculator import SolarWindowCalculat
 from custom_components.solar_window_system.coordinator import (
     SolarWindowSystemCoordinator,
 )
+from homeassistant.helpers.update_coordinator import UpdateFailed
 from tests.helpers.test_framework import IntegrationTestCase
 
 
@@ -319,3 +321,144 @@ class TestCoordinator(IntegrationTestCase):
             if coordinator.get_window_shading_status("Bedroom Window") is not False:
                 msg = "Bedroom should not require shading"
                 raise AssertionError(msg)
+
+    async def test_coordinator_setup_calculator_exception(self) -> None:
+        """Test coordinator setup calculator exception handling."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        # Mock config_entries.async_entries to return empty list
+        fake_hass_magicmock.config_entries.async_entries.return_value = []
+
+        # Mock SolarWindowCalculator.from_flows to raise an exception
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            side_effect=ValueError("Test exception"),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
+
+            # Calculator should be None after exception
+            if coordinator.calculator is not None:
+                msg = "Coordinator calculator should be None after exception"
+                raise AssertionError(msg)
+
+    async def test_async_update_data_no_calculator(self) -> None:
+        """Test _async_update_data when calculator is None."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        # Mock config_entries.async_entries to return empty list
+        fake_hass_magicmock.config_entries.async_entries.return_value = []
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+        # Force calculator to be None
+        coordinator.calculator = None
+
+        # Call _async_update_data
+        result = await coordinator._async_update_data()  # noqa: SLF001
+
+        # Should return empty dict
+        if result != {}:
+            msg = "Should return empty dict when calculator is None"
+            raise AssertionError(msg)
+
+    async def test_async_update_data_calculation_exception(self) -> None:
+        """Test _async_update_data when calculation raises exception."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        # Mock config_entries.async_entries to return empty list
+        fake_hass_magicmock.config_entries.async_entries.return_value = []
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Mock calculate_all_windows_from_flows to raise an exception
+        with patch.object(
+            SolarWindowCalculator,
+            "calculate_all_windows_from_flows",
+            side_effect=ValueError("Calculation error"),
+        ):
+            # Should raise UpdateFailed
+            try:
+                await coordinator._async_update_data()  # noqa: SLF001
+                msg = "Should have raised UpdateFailed"
+                raise AssertionError(msg)
+            except UpdateFailed:
+                pass  # Expected
+
+    async def test_async_update_data_missing_keys(self) -> None:
+        """Test _async_update_data when result is missing windows/groups keys."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        # Mock config_entries.async_entries to return empty list
+        fake_hass_magicmock.config_entries.async_entries.return_value = []
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Mock calculate_all_windows_from_flows to return incomplete result
+        with patch.object(
+            SolarWindowCalculator,
+            "calculate_all_windows_from_flows",
+            return_value={"summary": {"total_power": 1000}},
+        ):
+            result = await coordinator._async_update_data()  # noqa: SLF001
+
+            # Should have windows and groups keys added
+            if "windows" not in result:
+                msg = "Should have windows key added"
+                raise AssertionError(msg)
+            if "groups" not in result:
+                msg = "Should have groups key added"
+                raise AssertionError(msg)
+            if result["windows"] != {}:
+                msg = "Windows should be empty dict"
+                raise AssertionError(msg)
+            if result["groups"] != {}:
+                msg = "Groups should be empty dict"
+                raise AssertionError(msg)
+
+    async def test_get_window_shading_status_no_data(self) -> None:
+        """Test get_window_shading_status when coordinator has no data."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        # Mock config_entries.async_entries to return empty list
+        fake_hass_magicmock.config_entries.async_entries.return_value = []
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Data is None initially
+        result = coordinator.get_window_shading_status("test_window")
+
+        # Should return False
+        if result is not False:
+            msg = "Should return False when no data"
+            raise AssertionError(msg)
+
+    async def test_get_window_data_no_data(self) -> None:
+        """Test get_window_data when coordinator has no data."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        # Mock config_entries.async_entries to return empty list
+        fake_hass_magicmock.config_entries.async_entries.return_value = []
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Data is None initially
+        result = coordinator.get_window_data("test_window")
+
+        # Should return empty dict
+        if result != {}:
+            msg = "Should return empty dict when no data"
+            raise AssertionError(msg)

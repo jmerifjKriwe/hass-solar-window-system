@@ -1,6 +1,6 @@
-"""
-Tests for group and window related entities.
-"""
+"""Tests for group and window related entities."""
+
+# ruff: noqa: ANN001,ARG002,FBT001,ARG001,FBT002,TRY004
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ class TestGroupWindowEntities(IntegrationTestCase):
             entry_id="test_group_entry",
         )
         # Use shared subentry mocks
-        entry.subentries = {k: Mock(**v) for k, v in MOCK_GROUP_SUBENTRIES.items()}
+        entry.subentries = {k: Mock(**v) for k, v in MOCK_GROUP_SUBENTRIES.items()}  # type: ignore[assignment]
         return entry
 
     def _create_mock_window_config_entry(
@@ -64,7 +64,7 @@ class TestGroupWindowEntities(IntegrationTestCase):
             entry_id="test_window_entry",
         )
         # Use shared subentry mocks
-        entry.subentries = {k: Mock(**v) for k, v in MOCK_WINDOW_SUBENTRIES.items()}
+        entry.subentries = {k: Mock(**v) for k, v in MOCK_WINDOW_SUBENTRIES.items()}  # type: ignore[assignment]
         return entry
 
     @pytest.mark.asyncio

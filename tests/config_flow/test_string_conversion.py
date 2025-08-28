@@ -1,3 +1,4 @@
+# ruff: noqa: S101,PT012
 """
 Test to verify string conversion handling in config flows.
 
@@ -5,7 +6,7 @@ Assertions are used intentionally in tests; disable assertion lint (S101) for th
 module.
 """
 
-# ruff: noqa: S101
+# ruff: noqa: S101,ARG002,ANN001,D102,I001
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -14,6 +15,7 @@ import voluptuous as vol
 
 from custom_components.solar_window_system import config_flow
 from homeassistant import config_entries
+from homeassistant.core import HomeAssistant
 from tests.test_data import (
     VALID_GLOBAL_ENHANCED,
     VALID_GLOBAL_SCENARIOS,
@@ -26,8 +28,9 @@ class TestSecondSaveBugFix:
     """Test suite specifically designed to catch the string-conversion bug."""
 
     async def test_group_reconfigure_with_numeric_values_second_save(
-        self, hass, global_config_entry
+        self, hass: HomeAssistant, global_config_entry
     ) -> None:
+        """Test group reconfiguration with numeric values on second save."""
         flow = config_flow.GroupSubentryFlowHandler()
         flow.hass = hass
         flow.init_step = "user"

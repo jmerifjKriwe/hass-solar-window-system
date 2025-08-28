@@ -4,6 +4,7 @@
 
 [![HACS+Hassfest validation](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml)
 [![Run Tests](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml)
+[![Coverage Badge](coverage.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/coverage.yml)
 
 
 

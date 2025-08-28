@@ -22,7 +22,10 @@ async def test_window_options_second_save_expected_str_error(
         minor_version=1,
         domain=DOMAIN,
         title="Window configurations",
-        data={"entry_type": "window_configs", "is_subentry_parent": True},
+        data={
+            "entry_type": "window_configs",
+            "is_subentry_parent": True,
+        },
         source="internal",
         entry_id="test_window_parent_id",
         unique_id=None,
@@ -64,10 +67,18 @@ async def test_window_options_second_save_expected_str_error(
         }
         # First save (creation)
         result = await flow_handler.async_step_user(user_input)
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "overrides"
+        if result["type"] != FlowResultType.FORM:
+            msg = f"Expected form type, got {result['type']}"
+            raise AssertionError(msg)
+        if result["step_id"] != "overrides":
+            msg = f"Expected step_id 'overrides', got {result['step_id']}"
+            raise AssertionError(msg)
 
         # Second save (reconfigure)
         result2 = await flow_handler.async_step_reconfigure(user_input)
-        assert result2["type"] == FlowResultType.FORM
-        assert result2["step_id"] == "overrides"
+        if result2["type"] != FlowResultType.FORM:
+            msg = f"Expected form type, got {result2['type']}"
+            raise AssertionError(msg)
+        if result2["step_id"] != "overrides":
+            msg = f"Expected step_id 'overrides', got {result2['step_id']}"
+            raise AssertionError(msg)

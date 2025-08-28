@@ -1,8 +1,10 @@
+# ruff: noqa: SLF001,ARG001
 """Run SolarWindowCalculator with sample data using framework."""
 
 from __future__ import annotations
 
-from unittest.mock import Mock
+from datetime import timezone
+from unittest.mock import Mock, patch
 
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
 from homeassistant.config_entries import ConfigEntry
@@ -106,13 +108,22 @@ class TestCalculatorSampleData(IntegrationTestCase):
 
         calc.get_safe_attr = _get_safe_attr
 
-        # Inspect effective config used for this window
-        effective_cfg, sources = calc.get_effective_config_from_flows("og_kind2_ost")
-        # debug: effective_cfg logged during development
+        # Mock current hour to be after start_hour (9)
+        with patch(
+            "custom_components.solar_window_system.calculator.datetime"
+        ) as mock_datetime:
+            mock_datetime.now.return_value.hour = 10  # After 9 AM
+            mock_datetime.UTC = timezone.utc
 
-        # Execute calculation
-        results = calc.calculate_all_windows_from_flows()
-        # TEMP DEBUG: results available during development
+            # Inspect effective config used for this window
+            effective_cfg, sources = calc.get_effective_config_from_flows(
+                "og_kind2_ost"
+            )
+            # debug: effective_cfg logged during development
+
+            # Execute calculation
+            results = calc.calculate_all_windows_from_flows()
+            # TEMP DEBUG: results available during development
 
         if "og_kind2_ost" not in results["windows"]:
             msg = "Window 'og_kind2_ost' not found in results"

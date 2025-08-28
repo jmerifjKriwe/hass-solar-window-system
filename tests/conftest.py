@@ -1,3 +1,4 @@
+# ruff: noqa: PLC0415
 """
 Pytest configuration and shared fixtures for the test suite.
 

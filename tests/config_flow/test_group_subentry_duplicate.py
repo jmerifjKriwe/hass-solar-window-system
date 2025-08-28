@@ -1,3 +1,4 @@
+# ruff: noqa: SLF001
 """Tests for duplicate-name handling in Group SubentryFlowHandler."""
 
 from __future__ import annotations

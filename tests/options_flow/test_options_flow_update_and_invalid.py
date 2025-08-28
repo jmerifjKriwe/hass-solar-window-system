@@ -1,3 +1,4 @@
+# ruff: noqa: PLR0915
 """
 Test Options Flow for Solar Window System integration.
 
