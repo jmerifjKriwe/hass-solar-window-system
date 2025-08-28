@@ -106,4 +106,21 @@ GLOBAL_CONFIG_ENTITIES = {
         "icon": "mdi:weather-partly-cloudy",
         "category": "sensor",
     },
+    # Weather-related select entities
+    "weather_warning_sensor": {
+        "platform": "input_select",
+        "name": "Weather Warning Sensor",
+        "options": [],
+        "default": "",
+        "icon": "mdi:weather-cloudy-alert",
+        "category": "configuration",
+    },
+    "weather_forecast_temperature_sensor": {
+        "platform": "input_select",
+        "name": "Weather Forecast Temperature Sensor",
+        "options": [],
+        "default": "",
+        "icon": "mdi:thermometer",
+        "category": "configuration",
+    },
 }

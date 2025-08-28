@@ -43,7 +43,6 @@ async def _setup_global_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Global Configuration select entities."""
-
     device_registry = dr.async_get(hass)
     global_device = None
 
@@ -89,7 +88,6 @@ async def _setup_group_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Group Configuration select entities."""
-
     device_registry = dr.async_get(hass)
 
     if not entry.subentries:
@@ -337,7 +335,6 @@ async def _setup_window_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Window Configuration select entities."""
-
     device_registry = dr.async_get(hass)
     if not entry.subentries:
         _LOGGER.warning("No window subentries found")

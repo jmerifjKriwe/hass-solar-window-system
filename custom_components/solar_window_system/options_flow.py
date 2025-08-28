@@ -1,10 +1,11 @@
 """
 Options flow for Solar Window System integration.
 
-NOTE:
+Note:
 This options flow only handles the global configuration entry.
 All logic for group and window subentries (including inheritance, defaults, and UI behavior)
 is implemented in config_flow.py, not here.
+
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import logging
 from typing import Any
 
 import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 
@@ -60,13 +62,13 @@ def _parse_int_locale(v: Any) -> int:
 
 
 class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
-    """
-    Handle options flow for the global configuration of Solar Window System.
-    """
+    """Options flow for the global configuration of Solar Window System."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize the options flow."""
-        self.config_entry = config_entry
+        # Store the config entry privately to avoid relying on the public
+        # attribute which is deprecated to be assigned by integrations.
+        self._config_entry = config_entry
         # page storages
         self._p1: dict[str, Any] | None = None
         self._p2: dict[str, Any] | None = None
@@ -75,7 +77,7 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         self, _user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Start options flow, routing by entry type."""
-        entry_type = (self.config_entry.data or {}).get("entry_type", "")
+        entry_type = (self._config_entry.data or {}).get("entry_type", "")
 
         # This options flow is only for the global configuration.
         if entry_type == "global_config":
@@ -92,8 +94,8 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Options page 1: basic geometry and optional selectors."""
-        opts = self.config_entry.options or {}
-        data = self.config_entry.data or {}
+        opts = self._config_entry.options or {}
+        data = self._config_entry.data or {}
 
         # build defaults from options with fallback to data
         def _g(key: str, fallback: Any = "") -> Any:
@@ -104,10 +106,11 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
             return v if v else None
 
         def _sel_default_with_fallback(key: str) -> Any:
-            # If key explizit in options, respektiere ihn (auch "")
+            # If key is explicitly present in options, prefer it
+            # (including empty string)
             if key in opts:
                 return _sel_default(opts.get(key))
-            # Sonst fallback auf data
+            # Otherwise fall back to data
             return _sel_default(data.get(key, ""))
 
         defaults = {
@@ -359,8 +362,8 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Options page 2: required global defaults (validated)."""
-        opts = self.config_entry.options or {}
-        data = self.config_entry.data or {}
+        opts = self._config_entry.options or {}
+        data = self._config_entry.data or {}
 
         def _g(key: str, fallback: Any = "") -> Any:
             return opts.get(key, data.get(key, fallback))
@@ -493,8 +496,8 @@ class SolarWindowSystemOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Options page 3: scenario thresholds (validated)."""
-        opts = self.config_entry.options or {}
-        data = self.config_entry.data or {}
+        opts = self._config_entry.options or {}
+        data = self._config_entry.data or {}
 
         def _g(key: str, fallback: Any = "") -> Any:
             return opts.get(key, data.get(key, fallback))

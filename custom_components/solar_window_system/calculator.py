@@ -1,18 +1,19 @@
-"""This Source Code Form is subject to the terms of the Mozilla Public
+"""
+This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
 import logging
-import time
-from datetime import datetime, UTC
 import math
-from typing import Any, NamedTuple
+import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any, NamedTuple
 
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,14 +91,13 @@ class SolarWindowCalculator:
         window_height = 1.0
         if effective_shadow <= 0:
             return 1.0  # no shadow
-        elif effective_shadow >= window_height:
+        if effective_shadow >= window_height:
             return 0.1  # full shadow (minimum factor)
-        else:
-            # Linear interpolation between 1.0 (no shadow) and 0.1 (full shadow)
-            factor = 1.0 - 0.9 * (effective_shadow / window_height)
-            # Angle dependency: more shadow if sun is direct, less if angled
-            factor = factor * az_factor + (1.0 - az_factor)
-            return max(0.1, min(1.0, factor))
+        # Linear interpolation between 1.0 (no shadow) and 0.1 (full shadow)
+        factor = 1.0 - 0.9 * (effective_shadow / window_height)
+        # Angle dependency: more shadow if sun is direct, less if angled
+        factor = factor * az_factor + (1.0 - az_factor)
+        return max(0.1, min(1.0, factor))
 
     def __init__(
         self, hass, defaults_config=None, groups_config=None, windows_config=None
@@ -535,6 +535,7 @@ class SolarWindowCalculator:
 
         Returns:
             WindowCalculationResult with calculated values
+
         """
 
         def safe_float(val, default=0.0):
@@ -803,7 +804,7 @@ class SolarWindowCalculator:
                 window_set = {
                     k: v
                     for k, v in flat_window.items()
-                    if not (v in ("-1", -1, "", None, "inherit"))
+                    if v not in ("-1", -1, "", None, "inherit")
                 }
                 # Welche Werte werden aus Gruppe geerbt?
                 group_inherited = {
@@ -1047,24 +1048,20 @@ class SolarWindowCalculator:
 
         # Get indoor temperature from window, group, or global config
         try:
+
+            def is_inherit_marker(val: Any) -> bool:
+                return val in ("-1", -1, "", None, "inherit")
+
             # 1. Window-specific - prefer new key, but accept legacy key
             indoor_temp_entity = shade_request.window_data.get(
                 "indoor_temperature_sensor", ""
             ) or shade_request.window_data.get("room_temp_entity", "")
-            # 2. Group (effective_config['group'] if present)
-            if not indoor_temp_entity:
-                group_cfg = shade_request.effective_config.get("group", {})
-                # group may contain either the new or legacy key
-                indoor_temp_entity = ""
-                if isinstance(group_cfg, dict):
-                    indoor_temp_entity = group_cfg.get(
-                        "indoor_temperature_sensor", ""
-                    ) or group_cfg.get("room_temp_entity", "")
-            # 3. Global
-            if not indoor_temp_entity:
+            # 2. If not found or is inheritance marker, use effective config
+            if not indoor_temp_entity or is_inherit_marker(indoor_temp_entity):
                 indoor_temp_entity = shade_request.effective_config.get(
                     "indoor_temperature_sensor", ""
-                )
+                ) or shade_request.effective_config.get("room_temp_entity", "")
+
             if not indoor_temp_entity:
                 _LOGGER.warning(
                     "No room temperature sensor for window %s "
@@ -1117,14 +1114,24 @@ class SolarWindowCalculator:
         # --- Scenario B: Diffuse heat ---
         scenario_b_config = shade_request.effective_config.get("scenario_b", {})
         if shade_request.scenario_b_enabled and scenario_b_config.get("enabled", True):
-            return self._check_scenario_b(
+            result_b, reason_b = self._check_scenario_b(
                 shade_request, scenario_b_config, indoor_temp, outdoor_temp
             )
+            if result_b:
+                return result_b, reason_b
 
         # --- Scenario C: Heatwave forecast ---
-        scenario_c_config = shade_request.effective_config.get("scenario_c", {})
-        if shade_request.scenario_c_enabled and scenario_c_config.get("enabled", True):
-            return self._check_scenario_c(shade_request, scenario_c_config, indoor_temp)
+        # Check if scenario C is enabled (default to True if not specified)
+        scenario_c_enabled_in_config = shade_request.effective_config.get(
+            "scenario_c_enable", "inherit"
+        )
+        if shade_request.scenario_c_enabled and scenario_c_enabled_in_config not in (
+            "disable",
+            False,
+        ):
+            result_c, reason_c = self._check_scenario_c(shade_request, indoor_temp)
+            if result_c:
+                return result_c, reason_c
 
         _LOGGER.debug("[SHADE-FLOW] Result: OFF (No scenario triggered)")
         return False, "No shading required"
@@ -1173,7 +1180,6 @@ class SolarWindowCalculator:
     def _check_scenario_c(
         self,
         shade_request: ShadeRequestFlow,
-        scenario_c_config: dict[str, Any],
         indoor_temp: float,
     ) -> tuple[bool, str]:
         """Check scenario C: Heatwave forecast."""
@@ -1181,10 +1187,14 @@ class SolarWindowCalculator:
             forecast_temp = shade_request.external_states["forecast_temp"]
             if forecast_temp > 0:
                 current_hour = datetime.now(UTC).hour
-                temp_forecast_threshold = scenario_c_config.get(
-                    "temp_forecast_threshold", 28.5
+                # Read threshold from effective config instead of nested
+                # scenario_c_config
+                temp_forecast_threshold = shade_request.effective_config.get(
+                    "scenario_c_temp_forecast", 28.5
                 )
-                start_hour = scenario_c_config.get("start_hour", 9)
+                start_hour = shade_request.effective_config.get(
+                    "scenario_c_start_hour", 9
+                )
 
                 _LOGGER.debug(
                     "[SHADE-FLOW] Scenario C Check: Forecast (%.1f°C) > "

@@ -12,9 +12,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
@@ -22,7 +23,6 @@ from homeassistant.helpers.update_coordinator import (
 
 from .const import DOMAIN, GLOBAL_CONFIG_ENTITIES
 from .global_config import GlobalConfigSensor
-from homeassistant.helpers.restore_state import RestoreEntity
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry

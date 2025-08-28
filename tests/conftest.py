@@ -1,14 +1,23 @@
+# ruff: noqa: PLC0415
+"""
+Pytest configuration and shared fixtures for the test suite.
+
+This module configures pytest for Home Assistant custom component tests and
+exposes commonly used fixtures used across the `tests/` directory.
+"""
+
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-from homeassistant.core import HomeAssistant
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 # Ensure custom_components is in sys.path for Home Assistant test discovery
 sys.path.insert(0, str((Path(__file__).parent.parent).resolve()))
@@ -23,15 +32,21 @@ from tests.test_data import VALID_WINDOW_DATA
 # Ensure custom integrations are enabled for all tests
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
-    """Enable custom integrations defined in the test dir."""
-    return
+    """
+    Enable custom integrations defined in the test dir.
 
+    The parameter `enable_custom_integrations` is provided by the
+    `pytest_homeassistant_custom_component` plugin; referencing it here
+    ensures linters do not flag the argument as unused.
+    """
+    _ = enable_custom_integrations
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
 
 # Fixtures for Home Assistant test environment
-pytest_plugins = "pytest_homeassistant_custom_component"
+pytest_plugins = (
+    "pytest_homeassistant_custom_component",
+    "tests.helpers.fixtures_helpers",
+)
 
 
 @pytest.fixture
@@ -65,9 +80,14 @@ def valid_group_input() -> dict[str, str]:
     }
 
 
+# Note: canonical fixtures `global_config_entry` and `window_config_entry` are
+# provided by `tests.helpers.fixtures_helpers`. Avoid redefining them here to
+# prevent fixture override and accidental mutation of frozen attributes.
+
+
 @pytest.fixture
 def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
-    """Return a registered global config entry."""
+    """Return a global config entry fixture for tests."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="Solar Window System",
@@ -79,32 +99,20 @@ def global_config_entry(hass: HomeAssistant) -> MockConfigEntry:
 
 
 @pytest.fixture
-def window_config_entry(hass: HomeAssistant) -> MockConfigEntry:
-    """Return a registered window config entry."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title=VALID_WINDOW_DATA["name"],
-        data=VALID_WINDOW_DATA.copy(),
-        entry_id="window_config_entry_id",
-    )
-    entry.add_to_hass(hass)
-    return entry
-
-
-@pytest.fixture
 def mock_device_registry() -> Mock:
-    """Return a mock device registry."""
+    """
+    Return a mock device registry.
+
+    Tests may still depend on a mocked device registry for unit tests; keep a
+    thin shim here while production fixtures are provided by helpers.
+    """
     registry = Mock(spec=dr.DeviceRegistry)
 
-    # Mock global config device
+    # Minimal global device placeholder to avoid test breakage
     global_device = Mock(spec=dr.DeviceEntry)
     global_device.id = "global_device_id"
     global_device.identifiers = {(DOMAIN, "global_config")}
     global_device.name = "Solar Window System Global Configuration"
-    global_device.manufacturer = "Solar Window System"
-    global_device.model = "Global Configuration"
-    global_device.config_entries = {"global_config_entry_id"}
-
     registry.devices = {"global_device_id": global_device}
     return registry
 
@@ -121,16 +129,19 @@ def mock_entity_registry() -> Mock:
 async def setup_global_config_device(
     hass: HomeAssistant, global_config_entry: Mock
 ) -> dr.DeviceEntry:
-    """Set up a global configuration device in the device registry."""
-    device_registry = dr.async_get(hass)
+    """
+    Set up a global configuration device in the device registry.
 
-    return device_registry.async_get_or_create(
-        config_entry_id=global_config_entry.entry_id,
-        identifiers={(DOMAIN, "global_config")},
-        name="Solar Window System Global Configuration",
-        manufacturer="Solar Window System",
-        model="Global Configuration",
+    Delegate to the helper `ensure_global_device` from
+    `tests.helpers.fixtures_helpers` to maintain a single source of truth
+    for how the device is created.
+    """
+    # Import here to avoid circular imports during pytest collection
+    from tests.helpers.fixtures_helpers import (
+        ensure_global_device,  # type: ignore[import]
     )
+
+    return ensure_global_device(hass, global_config_entry)
 
 
 @pytest.fixture
