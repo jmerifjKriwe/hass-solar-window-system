@@ -462,3 +462,135 @@ class TestCoordinator(IntegrationTestCase):
         if result != {}:
             msg = "Should return empty dict when no data"
             raise AssertionError(msg)
+
+    async def test_create_debug_data_no_calculator(self) -> None:
+        """Test create_debug_data when calculator is not initialized."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+        # Set calculator to None to simulate initialization failure
+        coordinator.calculator = None
+
+        with patch(
+            "custom_components.solar_window_system.coordinator._LOGGER"
+        ) as mock_logger:
+            result = await coordinator.create_debug_data("test_window")
+
+            # Should return None
+            if result is not None:
+                msg = "Should return None when calculator is not initialized"
+                raise AssertionError(msg)
+
+            # Should log warning
+            mock_logger.warning.assert_called_once_with("Calculator not initialized")
+
+    async def test_create_debug_data_success(self) -> None:
+        """Test create_debug_data with successful execution."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+        window_entry.entry_id = "test_entry_id"
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Mock calculator debug data
+        mock_debug_data = {
+            "window_id": "test_window",
+            "solar_radiation": 500.0,
+            "temperature": 22.0,
+            "calculation": {"power": 150.0},
+        }
+
+        with patch.object(
+            coordinator.calculator, "create_debug_data", return_value=mock_debug_data
+        ) as mock_create_debug:
+            # Mock update interval
+            coordinator.update_interval = None
+
+            result = await coordinator.create_debug_data("test_window")
+
+            # Should return debug data with metadata
+            if result is None:
+                msg = "Should return debug data"
+                raise AssertionError(msg)
+
+            if "metadata" not in result:
+                msg = "Should include metadata"
+                raise AssertionError(msg)
+
+            if result["metadata"]["coordinator_entry_id"] != "test_entry_id":
+                msg = "Should include correct entry_id in metadata"
+                raise AssertionError(msg)
+
+            # Verify calculator was called
+            mock_create_debug.assert_called_once_with("test_window")
+
+    async def test_create_debug_data_no_data(self) -> None:
+        """Test create_debug_data when no debug data is available."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Mock calculator to return None
+        with patch.object(
+            coordinator.calculator, "create_debug_data", return_value=None
+        ):
+            with patch(
+                "custom_components.solar_window_system.coordinator._LOGGER"
+            ) as mock_logger:
+                result = await coordinator.create_debug_data("test_window")
+
+                # Should return None
+                if result is not None:
+                    msg = "Should return None when no debug data available"
+                    raise AssertionError(msg)
+
+                # Should log warning
+                mock_logger.warning.assert_called_once_with(
+                    "No debug data found for window: %s", "test_window"
+                )
+
+    async def test_create_debug_data_exception(self) -> None:
+        """Test create_debug_data with exception handling."""
+        fake_hass_magicmock = Mock()
+        window_entry = Mock()
+        window_entry.data = {"entry_type": "window_configs"}
+
+        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+
+        # Mock calculator to raise exception
+        with patch.object(
+            coordinator.calculator,
+            "create_debug_data",
+            side_effect=Exception("Test error"),
+        ):
+            with patch(
+                "custom_components.solar_window_system.coordinator._LOGGER"
+            ) as mock_logger:
+                result = await coordinator.create_debug_data("test_window")
+
+                # Should return error data
+                if result is None:
+                    msg = "Should return error data on exception"
+                    raise AssertionError(msg)
+
+                if "error" not in result:
+                    msg = "Should include error in result"
+                    raise AssertionError(msg)
+
+                if result["error"] != "Test error":
+                    msg = "Should include correct error message"
+                    raise AssertionError(msg)
+
+                if result["window_id"] != "test_window":
+                    msg = "Should include window_id in error result"
+                    raise AssertionError(msg)
+
+                # Should log exception
+                mock_logger.exception.assert_called_once_with(
+                    "Error creating debug data for window %s", "test_window"
+                )

@@ -1,4 +1,4 @@
-"""Tests for the `recalculate` service of the Solar Window System integration."""
+"""Tests for the `solar_window_system_recalculate` service."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from tests.helpers.test_framework import ServiceTestCase
 
 
 class TestRecalculateService(ServiceTestCase):
-    """Tests for the recalculate service."""
+    """Tests for the solar_window_system_recalculate service."""
 
     async def test_recalculate_service_empty_payload(self) -> None:
         """Call the recalculate service with empty payload."""
@@ -19,16 +19,20 @@ class TestRecalculateService(ServiceTestCase):
         mock_hass.services.async_call = AsyncMock()
 
         # Service should be registered by the integration setup
-        if not mock_hass.services.has_service(DOMAIN, "recalculate"):
-            msg = "recalculate service not registered"
+        if not mock_hass.services.has_service(
+            DOMAIN, "solar_window_system_recalculate"
+        ):
+            msg = "solar_window_system_recalculate service not registered"
             raise AssertionError(msg)
 
         # Call the service with empty payload
-        await mock_hass.services.async_call(DOMAIN, "recalculate", {}, blocking=True)
+        await mock_hass.services.async_call(
+            DOMAIN, "solar_window_system_recalculate", {}, blocking=True
+        )
 
         # Verify service was called
         mock_hass.services.async_call.assert_called_once_with(
-            DOMAIN, "recalculate", {}, blocking=True
+            DOMAIN, "solar_window_system_recalculate", {}, blocking=True
         )
 
     async def test_recalculate_service_invalid_window_id(self) -> None:
@@ -39,16 +43,24 @@ class TestRecalculateService(ServiceTestCase):
         mock_hass.services.async_call = AsyncMock()
 
         # Service should be registered by the integration setup
-        if not mock_hass.services.has_service(DOMAIN, "recalculate"):
-            msg = "recalculate service not registered"
+        if not mock_hass.services.has_service(
+            DOMAIN, "solar_window_system_recalculate"
+        ):
+            msg = "solar_window_system_recalculate service not registered"
             raise AssertionError(msg)
 
         # Call the service with invalid window id
         await mock_hass.services.async_call(
-            DOMAIN, "recalculate", {"window_id": "invalid"}, blocking=True
+            DOMAIN,
+            "solar_window_system_recalculate",
+            {"window_id": "invalid"},
+            blocking=True,
         )
 
         # Verify service was called
         mock_hass.services.async_call.assert_called_once_with(
-            DOMAIN, "recalculate", {"window_id": "invalid"}, blocking=True
+            DOMAIN,
+            "solar_window_system_recalculate",
+            {"window_id": "invalid"},
+            blocking=True,
         )

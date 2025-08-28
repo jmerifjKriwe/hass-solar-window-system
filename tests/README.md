@@ -18,6 +18,7 @@ tests/
 │   ├── test_group_flow.py
 │   └── test_window_flow.py
 ├── integration/                   # End-to-end integration tests
+│   ├── test_services_integration.py    # Service integration tests
 │   └── test_solar_calculation_workflows.py
 ├── platforms/                     # Platform-specific entity tests
 │   ├── test_binary_sensor_platform.py
@@ -29,6 +30,8 @@ tests/
 │   └── test_text_platform.py
 ├── helpers/                       # Helper function tests
 ├── services/                      # Service handler tests
+│   ├── test_recalculate.py        # Recalculate service tests
+│   └── test_debug_calculation.py  # Debug calculation service tests
 └── README.md                      # This documentation
 ```
 
@@ -343,5 +346,125 @@ async def test_window_subentry_flow(hass, mock_config_entry):
   - If a test fails due to `UnknownFlow` or similar, verify that the correct flow handler is used and that the test setup matches the integration's actual config flow logic.
   - If main config flow aborts with 'already_configured', this is expected - use SubentryFlows for group/window testing
   - Always check Home Assistant documentation for current SubentryFlow testing patterns
+
+## Service Testing
+
+### Service Test Structure
+
+The Solar Window System provides two main services that are thoroughly tested:
+
+- **`solar_window_system_recalculate`**: Triggers recalculation for all windows or a specific window
+- **`solar_window_system_debug_calculation`**: Creates debug calculation files for troubleshooting
+
+### Service Test Categories
+
+#### Unit Tests (`tests/services/`)
+
+Located in `tests/services/`, these tests validate individual service functionality:
+
+```python
+# tests/services/test_recalculate.py
+class TestRecalculateService(ServiceTestCase):
+    async def test_recalculate_service_empty_payload(self) -> None:
+        """Test service with empty payload."""
+
+# tests/services/test_debug_calculation.py
+class TestDebugCalculationService(ServiceTestCase):
+    async def test_debug_calculation_service_valid_window_id(self) -> None:
+        """Test service with valid window ID."""
+```
+
+#### Integration Tests (`tests/integration/`)
+
+Located in `tests/integration/test_services_integration.py`, these tests validate services in a full Home Assistant environment:
+
+```python
+class TestServicesIntegration:
+    async def test_services_registered_on_setup(self, hass, mock_config_entry):
+        """Test services are registered during integration setup."""
+
+    async def test_services_persist_across_restarts(self, hass, mock_config_entry):
+        """Test services remain registered after config entry reload."""
+```
+
+### Service Test Patterns
+
+#### Service Registration Testing
+
+```python
+# Verify service is registered
+assert hass.services.has_service(DOMAIN, "solar_window_system_recalculate")
+
+# Test service call
+await hass.services.async_call(
+    DOMAIN,
+    "solar_window_system_recalculate",
+    {"window_id": "test_window"},
+    blocking=True
+)
+```
+
+#### Service Parameter Validation
+
+```python
+# Test required parameters
+await hass.services.async_call(
+    DOMAIN,
+    "solar_window_system_debug_calculation",
+    {"window_id": "required_param"},
+    blocking=True
+)
+
+# Test optional parameters
+await hass.services.async_call(
+    DOMAIN,
+    "solar_window_system_debug_calculation",
+    {
+        "window_id": "test_window",
+        "filename": "custom_debug.json"
+    },
+    blocking=True
+)
+```
+
+### Running Service Tests
+
+```bash
+# Run all service tests
+pytest tests/services/
+
+# Run specific service test
+pytest tests/services/test_recalculate.py::TestRecalculateService::test_recalculate_service_empty_payload
+
+# Run service integration tests
+pytest tests/integration/test_services_integration.py
+```
+
+### Service Test Best Practices
+
+1. **Parameter Validation**: Test both required and optional parameters
+2. **Error Handling**: Test service behavior with invalid inputs
+3. **Integration Context**: Verify services work in full HA environment
+4. **Persistence**: Test services remain available after reloads
+5. **Device Registry**: Ensure services work with device registry integration
+
+### Service Documentation
+
+Services are documented in `custom_components/solar_window_system/services.yaml`:
+
+```yaml
+solar_window_system_recalculate:
+  name: Solar Window System - Recalculate shading
+  description: Trigger a recalculation for all windows or a specific window
+  fields:
+    window_id:
+      name: Window ID
+      description: Optional window ID to recalculate only this window
+      required: false
+```
+
+---
+
+*Last updated: August 2025 - Service naming refactor and test documentation update*
 
 _These rules are based on recent refactoring and bugfixes (2025-08) and should be followed for all future test maintenance._

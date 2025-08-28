@@ -248,6 +248,7 @@ async def test_window_shading_required_binary_sensor_async_added_to_hass(
 
 
 @pytest.mark.asyncio
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 async def test_async_setup_entry_success() -> None:
     """Test async_setup_entry with successful device discovery."""
     hass = Mock()
@@ -273,7 +274,7 @@ async def test_async_setup_entry_success() -> None:
     # Create a proper mock entity registry
     mock_registry = Mock()
     mock_registry.entities = {}
-    mock_registry.async_update_entity = Mock(return_value=None)
+    mock_registry.async_update_entity = AsyncMock(return_value=None)
 
     with (
         patch(

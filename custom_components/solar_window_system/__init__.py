@@ -1,6 +1,9 @@
 """Solar Window System integration package."""
 
+from datetime import UTC, datetime
+import json
 import logging
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
@@ -12,18 +15,10 @@ from .coordinator import SolarWindowSystemCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up the Solar Window System integration from a config entry."""
-    update_interval_minutes = 1
-    for config_entry in hass.config_entries.async_entries(DOMAIN):
-        if config_entry.data.get("entry_type") == "global_config":
-            update_interval_minutes = config_entry.options.get(
-                "update_interval", config_entry.data.get("update_interval", 1)
-            )
-            break
-
+def _register_services(hass: HomeAssistant) -> None:
+    """Register all services for the Solar Window System integration."""
     # Register recalculate service (only once)
-    if not hass.services.has_service(DOMAIN, "recalculate"):
+    if not hass.services.has_service(DOMAIN, "solar_window_system_recalculate"):
 
         async def handle_recalculate_service(call: ServiceCall) -> None:
             """Service to trigger recalculation for all or a specific window."""
@@ -37,16 +32,99 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     await coordinator.async_refresh()
                     # If a specific window_id is given, optionally filter or log
                     if window_id:
-                        # Optionally, you could implement per-window
-                        # recalculation logic here
                         _LOGGER.info(
                             "Recalculation triggered for window: %s", window_id
                         )
                     else:
                         _LOGGER.info("Recalculation triggered for all windows.")
 
-        hass.services.async_register(DOMAIN, "recalculate", handle_recalculate_service)
-    """Set up Solar Window System from a config entry."""
+        hass.services.async_register(
+            DOMAIN, "solar_window_system_recalculate", handle_recalculate_service
+        )
+
+    # Register debug_calculation service (only once)
+    if not hass.services.has_service(DOMAIN, "solar_window_system_debug_calculation"):
+
+        async def handle_debug_calculation_service(call: ServiceCall) -> None:
+            """Service to create debug calculation file for a window."""
+            window_id = call.data.get("window_id")
+            filename = call.data.get("filename")
+
+            if not window_id:
+                _LOGGER.error("Window ID is required for debug calculation")
+                return
+
+            # Find the coordinator for this window
+            for config_entry in hass.config_entries.async_entries(DOMAIN):
+                if config_entry.data.get("entry_type") == "window_configs":
+                    coordinator = hass.data[DOMAIN][config_entry.entry_id][
+                        "coordinator"
+                    ]
+
+                    # Create debug data
+                    debug_data = await coordinator.create_debug_data(window_id)
+
+                    if debug_data:
+                        # Generate filename if not provided
+                        if not filename:
+                            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                            filename = f"debug_{window_id}_{timestamp}.json"
+
+                        # Save to config directory
+                        config_dir = Path(hass.config.config_dir)
+                        file_path = config_dir / filename
+
+                        try:
+                            with file_path.open("w", encoding="utf-8") as f:
+                                json.dump(
+                                    debug_data,
+                                    f,
+                                    indent=2,
+                                    ensure_ascii=False,
+                                    default=str,
+                                )
+
+                            _LOGGER.info("Debug file created: %s", file_path)
+
+                            await hass.services.async_call(
+                                "persistent_notification",
+                                "create",
+                                {
+                                    "title": "Debug File Created",
+                                    "message": (
+                                        f"Debug calculation file saved to: {filename}"
+                                    ),
+                                },
+                            )
+
+                        except OSError:
+                            _LOGGER.exception("Failed to create debug file")
+
+                    else:
+                        _LOGGER.error(
+                            "Could not create debug data for window: %s", window_id
+                        )
+
+        hass.services.async_register(
+            DOMAIN,
+            "solar_window_system_debug_calculation",
+            handle_debug_calculation_service,
+        )
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up the Solar Window System integration from a config entry."""
+    # Register services once
+    _register_services(hass)
+
+    update_interval_minutes = 1
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        if config_entry.data.get("entry_type") == "global_config":
+            update_interval_minutes = config_entry.options.get(
+                "update_interval", config_entry.data.get("update_interval", 1)
+            )
+            break
+
     _LOGGER.debug("Setting up entry: %s", entry.title)
     _LOGGER.debug("Entry data: %s", entry.data)
     _LOGGER.debug("Entry ID: %s", entry.entry_id)
@@ -135,6 +213,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Setup completed for: %s", entry.title)
     return True
+
+
+async def _handle_debug_calculation_service(
+    hass: HomeAssistant, call: ServiceCall
+) -> None:
+    """Service to create debug calculation file for a window."""
+    window_id = call.data.get("window_id")
+    filename = call.data.get("filename")
+
+    if not window_id:
+        _LOGGER.error("Window ID is required for debug calculation")
+        return
+
+    # Find the coordinator for this window
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        if config_entry.data.get("entry_type") == "window_configs":
+            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+
+            # Create debug data
+            debug_data = await coordinator.create_debug_data(window_id)
+
+            if debug_data:
+                # Generate filename if not provided
+                if not filename:
+                    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                    filename = f"debug_{window_id}_{timestamp}.json"
+
+                # Save to config directory
+                config_dir = Path(hass.config.config_dir)
+                file_path = config_dir / filename
+
+                try:
+                    with file_path.open("w", encoding="utf-8") as f:
+                        json.dump(
+                            debug_data, f, indent=2, ensure_ascii=False, default=str
+                        )
+
+                    _LOGGER.info("Debug file created: %s", file_path)
+
+                    # Optional: Create a persistent notification
+                    await hass.services.async_call(
+                        "persistent_notification",
+                        "create",
+                        {
+                            "title": "Debug File Created",
+                            "message": f"Debug calculation file saved to: {filename}",
+                        },
+                    )
+
+                except OSError:
+                    _LOGGER.exception("Failed to create debug file")
+            else:
+                _LOGGER.error("Could not create debug data for window: %s", window_id)
 
 
 @callback

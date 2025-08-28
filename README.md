@@ -1,6 +1,7 @@
 ![GitHub Release](https://img.shields.io/github/v/release/jmerifjKriwe/hass-solar-window-system)
 ![Static Badge](https://img.shields.io/badge/HomeAssistant-2025.07-blue)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
+![HACS Downloads](https://img.shields.io/github/downloads/jmerifjKriwe/hass-solar-window-system/total.svg?style=for-the-badge)
 
 [![HACS+Hassfest validation](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml)
 [![Run Tests](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml)
@@ -98,6 +99,77 @@ and per-window sensors, and binary shading indicators. Main entities are:
 - Global configuration entities (stable ids `sws_global_<key>`)
     - input_number, input_boolean, input_select and template sensors created
         for convenience (sensitivity, scenario enables, debug, totals, ...).
+
+Services
+--------
+
+SWS provides several services to interact with the integration programmatically. These can be called via Home Assistant's service calls or used in automations.
+
+### recalculate
+
+Triggers a recalculation of all windows or a specific window. This is useful for:
+- Forcing an immediate update after configuration changes
+- Testing different scenarios without waiting for the regular update interval
+- Integration with external weather events or manual triggers
+
+**Service data:**
+- `window_id` (optional): Specific window ID to recalculate. If omitted, all windows are recalculated.
+
+**Example service call:**
+```yaml
+service: solar_window_system.recalculate
+data:
+  window_id: "living_room_south"  # Optional: recalculate specific window
+```
+
+### debug_calculation
+
+The debug service provides detailed insight into the calculation process for troubleshooting and optimization. It generates a comprehensive debug report that includes:
+
+- **Current environmental data**: Solar radiation, temperatures, sun position
+- **Window-specific calculations**: Power values, shadow factors, visibility status
+- **Decision logic breakdown**: Which scenario triggered (A, B, or C) and why
+- **Configuration inheritance**: Shows effective configuration after inheritance resolution
+- **Performance metrics**: Calculation time and cache status
+
+This service is invaluable for:
+- Understanding why a window is or isn't requesting shading
+- Verifying configuration changes take effect correctly
+- Optimizing thresholds and parameters based on real data
+- Debugging unexpected behavior in production
+
+**Service data:**
+- `window_id` (required): The window to debug
+- `filename` (optional): Custom filename for the debug output (saved to Home Assistant's config directory)
+
+**Example service call:**
+```yaml
+service: solar_window_system.debug_calculation
+data:
+  window_id: "living_room_south"
+  filename: "debug_living_room_2025-08-28"  # Optional custom filename
+```
+
+**Debug output includes:**
+- Timestamp and calculation duration
+- Effective configuration (merged from global → group → window)
+- Environmental sensor readings
+- Detailed power calculations (direct, diffuse, total)
+- Shadow factor computation with sun position data
+- Scenario evaluation results with threshold comparisons
+- Final shading decision and reasoning
+
+### create_subentry_devices
+
+Creates device entries for groups and windows in Home Assistant's device registry. This service is typically called automatically during integration setup, but can be used manually if device entries are missing.
+
+**Service data:**
+- No parameters required - creates devices for all configured groups and windows
+
+**Example service call:**
+```yaml
+service: solar_window_system.create_subentry_devices
+```
 
 Implementation notes (how values are computed)
 ---------------------------------------------

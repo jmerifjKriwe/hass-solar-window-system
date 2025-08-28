@@ -867,7 +867,7 @@ class SolarWindowCalculator:
                 if result["shade_required"]:
                     shading_count += 1
 
-            except Exception as err:
+            except (ValueError, TypeError, KeyError, Exception) as err:
                 _LOGGER.exception("Error calculating window %s", window_subentry_id)
                 window_results[window_subentry_id] = self._get_error_window_result(
                     window_data, window_subentry_id, err
@@ -1293,3 +1293,101 @@ class SolarWindowCalculator:
             _LOGGER.warning("Could not read forecast temperature for Scenario C")
 
         return False, "No shading required"
+
+    def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
+        """
+        Create comprehensive debug data for a specific window.
+
+        Args:
+            window_id: The ID of the window to create debug data for
+
+        Returns:
+            Dictionary containing debug information or None if window not found
+
+        """
+        # Get window configuration
+        windows = self._get_subentries_by_type("window")
+        if window_id not in windows:
+            _LOGGER.warning("Window %s not found in configuration", window_id)
+            return None
+
+        _LOGGER.debug("Creating debug data for window: %s", window_id)
+
+        # Collect basic debug information
+        debug_data = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "window_id": window_id,
+            "configuration": self._collect_window_configuration(window_id),
+            "sensor_data": self._collect_sensor_data(),
+            "calculation_steps": {},
+            "decision_logic": {},
+            "final_result": {},
+        }
+
+        try:
+            # Get final result from full calculation
+            results = self.calculate_all_windows_from_flows()
+            window_result = results.get("windows", {}).get(window_id, {})
+
+            debug_data["final_result"] = {
+                "shade_required": window_result.get("shade_required", False),
+                "shade_reason": window_result.get("shade_reason", ""),
+                "calculation_timestamp": datetime.now(UTC).isoformat(),
+            }
+
+            debug_data["calculation_steps"] = {
+                "full_calculation_completed": True,
+                "window_found_in_results": window_id in results.get("windows", {}),
+            }
+
+            _LOGGER.debug("Debug data created successfully for window: %s", window_id)
+
+        except (ValueError, TypeError, KeyError) as err:
+            _LOGGER.exception("Error creating debug data for window %s", window_id)
+            debug_data["error"] = str(err)
+        else:
+            return debug_data
+
+        return debug_data
+
+    def _collect_window_configuration(self, window_id: str) -> dict[str, Any]:
+        """Collect all configuration data for a window."""
+        windows = self._get_subentries_by_type("window")
+        window_config = windows.get(window_id, {})
+
+        return {
+            "window_config": window_config,
+            "global_config": self._get_global_data_merged(),
+        }
+
+    def _collect_sensor_data(self) -> dict[str, Any]:
+        """Collect current states of all relevant sensors."""
+        global_data = self._get_global_data_merged()
+
+        sensor_data = {}
+        sensor_entities = [
+            ("solar_radiation", global_data.get("solar_radiation_sensor")),
+            ("outdoor_temperature", global_data.get("outdoor_temperature_sensor")),
+            ("indoor_temperature", global_data.get("indoor_temperature_sensor")),
+            (
+                "weather_forecast_temperature",
+                global_data.get("weather_forecast_temperature_sensor"),
+            ),
+            ("weather_warning", global_data.get("weather_warning_sensor")),
+        ]
+
+        for name, entity_id in sensor_entities:
+            if entity_id:
+                sensor_data[name] = {
+                    "entity_id": entity_id,
+                    "state": self.get_safe_state(entity_id),
+                    "available": self.hass.states.get(entity_id) is not None,
+                }
+            else:
+                sensor_data[name] = {
+                    "entity_id": None,
+                    "state": None,
+                    "available": False,
+                }
+
+        return sensor_data

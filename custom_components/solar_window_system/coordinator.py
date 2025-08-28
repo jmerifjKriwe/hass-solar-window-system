@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -93,3 +93,40 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Reconfigure the coordinator when config changes."""
         self._setup_calculator()
         await self.async_refresh()
+
+    async def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
+        """Create comprehensive debug data for a window."""
+        if not self.calculator:
+            _LOGGER.warning("Calculator not initialized")
+            return None
+
+        try:
+            # Get debug data from calculator
+            debug_data = self.calculator.create_debug_data(window_id)
+            if debug_data:
+                # Add coordinator metadata
+                debug_data["metadata"] = {
+                    "coordinator_entry_id": self.entry.entry_id,
+                    "coordinator_name": self.name,
+                    "update_interval_minutes": (
+                        self.update_interval.total_seconds() / 60
+                        if self.update_interval
+                        else 0
+                    ),
+                    "last_update": None,
+                    "next_update": None,
+                }
+
+                return debug_data
+
+            _LOGGER.warning("No debug data found for window: %s", window_id)
+
+        except Exception as err:
+            _LOGGER.exception("Error creating debug data for window %s", window_id)
+            return {
+                "error": str(err),
+                "window_id": window_id,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        else:
+            return None

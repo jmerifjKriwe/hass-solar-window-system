@@ -1,12 +1,32 @@
 # Service to trigger recalculation for all or a specific window
-recalculate:
-  name: Recalculate shading
-  description: Trigger a recalculation for all windows or a specific window.
+solar_window_system_recalculate:
+  name: Solar Window System - Recalculate shading
+  description: Trigger a recalculation for all windows or a specific window in the Solar Window System integration.
   fields:
     window_id:
       name: Window ID
       description: Optional window ID to recalculate only this window. If omitted, all windows are recalculated.
       required: false
       example: "window_1"
+      selector:
+        text:
+
+# Service to create debug file for window calculation
+solar_window_system_debug_calculation:
+  name: Solar Window System - Create debug calculation file
+  description: Create a comprehensive JSON debug file with all input data, configuration hierarchy, and calculation steps for a specific window in the Solar Window System integration.
+  fields:
+    window_id:
+      name: Window ID
+      description: The window ID to debug (required).
+      required: true
+      example: "window_1"
+      selector:
+        text:
+    filename:
+      name: Filename
+      description: Optional custom filename. If not provided, uses timestamp-based name.
+      required: false
+      example: "debug_living_room_south_20250128.json"
       selector:
         text:
