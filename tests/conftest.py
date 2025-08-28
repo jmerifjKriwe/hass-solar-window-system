@@ -5,8 +5,8 @@ This module configures pytest for Home Assistant custom component tests and
 exposes commonly used fixtures used across the `tests/` directory.
 """
 
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 from unittest.mock import Mock
 
@@ -64,7 +64,7 @@ def valid_global_input() -> dict[str, str]:
 
 
 @pytest.fixture
-def valid_window_input() -> dict[str, str | float | int]:
+def valid_window_input() -> dict[str, "str | float | int"]:
     """Return valid input for window configuration flow."""
     return VALID_WINDOW_DATA.copy()
 

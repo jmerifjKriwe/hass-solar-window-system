@@ -6,7 +6,7 @@ Assertions are used intentionally in tests; disable assertion lint (S101) for th
 module.
 """
 
-# ruff: noqa: ARG002, ANN001, D102
+# ruff: noqa: ARG002
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 

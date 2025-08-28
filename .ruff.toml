@@ -16,9 +16,9 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"tests/**" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "PLR2004", "ARG001", "F811"]
-"tests/**/*.py" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
-"tests/*" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
+"tests/**" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "PLR2004", "ARG001", "F811", "I001"]
+"tests/**/*.py" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "I001"]
+"tests/*" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "I001"]
 
 [lint.flake8-pytest-style]
 fixture-parentheses = false
@@ -28,3 +28,8 @@ keep-runtime-typing = true
 
 [lint.mccabe]
 max-complexity = 25
+
+[lint.isort]
+known-first-party = ["custom_components.solar_window_system"]
+force-sort-within-sections = true
+split-on-trailing-comma = true

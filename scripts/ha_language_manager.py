@@ -5,12 +5,14 @@ Home Assistant Custom Component Language File Manager.
 Automatisiert die Erstellung und Verwaltung von Translation Files.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

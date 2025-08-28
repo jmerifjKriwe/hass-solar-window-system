@@ -1,6 +1,6 @@
 """Tests for entity ID generation and global configuration entity creation."""
 
-# ruff: noqa: FBT001, FBT002, ANN001, E501
+# ruff: noqa: E501
 # These rules are disabled for test files as mock functions often require
 # boolean parameters, missing type annotations, unused arguments, and longer lines
 

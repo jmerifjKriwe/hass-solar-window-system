@@ -1,15 +1,19 @@
 """Solar Window System calculator module."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import UTC, datetime
 import logging
 import math
 import time
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +45,7 @@ class ShadeRequestFlow(NamedTuple):
     external_states: dict[str, Any]
     scenario_b_enabled: bool
     scenario_c_enabled: bool
-    solar_result: "WindowCalculationResult"
+    solar_result: WindowCalculationResult
 
 
 class SolarWindowCalculator:
@@ -224,7 +228,7 @@ class SolarWindowCalculator:
     @classmethod
     def from_flows(
         cls, hass: HomeAssistant, entry: ConfigEntry
-    ) -> "SolarWindowCalculator":
+    ) -> SolarWindowCalculator:
         """Create calculator instance from flow-based configuration."""
         # Create instance with empty windows list first
         instance = cls(hass, {}, {})
