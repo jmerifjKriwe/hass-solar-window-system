@@ -312,7 +312,7 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
                 coordinator.async_add_listener(_coordinator_updated)
 
     @property
-    def state(self) -> Any:
+    def state(self) -> Any:  # type: ignore[override]
         """Return the state of the sensor."""
         # For system-level sensors, aggregate data from all coordinators
         sensor_keys = [

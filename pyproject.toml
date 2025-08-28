@@ -12,11 +12,14 @@ allowed_tags = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "style", 
 minor_tags = ["feat"]
 patch_tags = ["fix", "perf"]
 
-[tool.ruff.lint]
-# Relax a few rules for tests to reduce false-positives from pytest-style assertions
-extend-ignore = ["S101", "TRY003", "EM101", "EM102", "PLC0415", "ANN001", "D103"]
-per-file-ignores = { "tests/**" = ["S101", "D100", "D101", "D102", "D103", "ANN201", "ANN001", "ARG001", "ARG002", "ANN202", "TRY003", "EM101", "EM102", "PLC0415", "SLF001"] }
-
 [tool.ruff]
 line-length = 88
 # Do not exclude tests from ruff; we control noisy rules via per-file-ignores.
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "PLR2004", "ARG001", "F811"]
+"tests/**/*.py" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
+"tests/*" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
+
+[tool.pyright]
+exclude = ["tests/"]

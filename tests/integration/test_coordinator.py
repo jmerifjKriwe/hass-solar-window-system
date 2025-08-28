@@ -312,7 +312,7 @@ class TestCoordinator(IntegrationTestCase):
             coordinator.calculator.calculate_all_windows_from_flows.assert_called_once()
 
             # Verify data is correct
-            if coordinator.data["summary"]["window_count"] != 2:  # noqa: PLR2004
+            if coordinator.data["summary"]["window_count"] != 2:
                 msg = "Window count should be 2"
                 raise AssertionError(msg)
             if coordinator.get_window_shading_status("Living Room Window") is not True:
@@ -360,7 +360,7 @@ class TestCoordinator(IntegrationTestCase):
         coordinator.calculator = None
 
         # Call _async_update_data
-        result = await coordinator._async_update_data()  # noqa: SLF001
+        result = await coordinator._async_update_data()
 
         # Should return empty dict
         if result != {}:
@@ -386,7 +386,7 @@ class TestCoordinator(IntegrationTestCase):
         ):
             # Should raise UpdateFailed
             try:
-                await coordinator._async_update_data()  # noqa: SLF001
+                await coordinator._async_update_data()
                 msg = "Should have raised UpdateFailed"
                 raise AssertionError(msg)
             except UpdateFailed:
@@ -409,7 +409,7 @@ class TestCoordinator(IntegrationTestCase):
             "calculate_all_windows_from_flows",
             return_value={"summary": {"total_power": 1000}},
         ):
-            result = await coordinator._async_update_data()  # noqa: SLF001
+            result = await coordinator._async_update_data()
 
             # Should have windows and groups keys added
             if "windows" not in result:

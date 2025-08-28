@@ -1,4 +1,3 @@
-# ruff: noqa: SLF001
 """Integration tests for SolarWindowCalculator using framework."""
 
 from __future__ import annotations

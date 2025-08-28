@@ -1,19 +1,19 @@
-"""
-This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at https://mozilla.org/MPL/2.0/.
-"""
+"""Solar Window System calculator module."""
 
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import UTC, datetime
 import logging
 import math
 import time
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,10 +45,17 @@ class ShadeRequestFlow(NamedTuple):
     external_states: dict[str, Any]
     scenario_b_enabled: bool
     scenario_c_enabled: bool
-    solar_result: "WindowCalculationResult"
+    solar_result: WindowCalculationResult
 
 
 class SolarWindowCalculator:
+    """
+    Calculator for solar window shading requirements.
+
+    This class handles all calculations related to determining when windows
+    should be shaded based on solar radiation, elevation, and other factors.
+    """
+
     def _calculate_shadow_factor(
         self,
         sun_elevation: float,
@@ -59,6 +66,7 @@ class SolarWindowCalculator:
     ) -> float:
         """
         Calculate the geometric shadow factor for a window.
+
         Returns a value between 0.1 (full shadow) and 1.0 (no shadow).
         """
         # If no shadow geometry, return 1.0 (no shadow)
@@ -80,7 +88,7 @@ class SolarWindowCalculator:
         # Shadow length: shadow_depth / tan(sun_elevation)
         try:
             shadow_length = shadow_depth / max(math.tan(sun_el_rad), 1e-3)
-        except Exception:
+        except (ValueError, ZeroDivisionError):
             shadow_length = 0.0
 
         # Effective shadow on window: shadow_length - shadow_offset
@@ -100,8 +108,22 @@ class SolarWindowCalculator:
         return max(0.1, min(1.0, factor))
 
     def __init__(
-        self, hass, defaults_config=None, groups_config=None, windows_config=None
-    ):
+        self,
+        hass: Any,
+        defaults_config: dict[str, Any] | None = None,
+        groups_config: dict[str, Any] | None = None,
+        windows_config: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Initialize the SolarWindowCalculator.
+
+        Args:
+            hass: Home Assistant instance
+            defaults_config: Default configuration settings
+            groups_config: Group-specific configuration settings
+            windows_config: Window-specific configuration settings
+
+        """
         self.hass = hass
         self.defaults = defaults_config or {}
         self.groups = groups_config or {}
@@ -115,9 +137,10 @@ class SolarWindowCalculator:
 
         _LOGGER.debug("Calculator initialized with %s windows.", len(self.windows))
 
-    def get_safe_state(self, entity_id: str, default: str | float = 0):
+    def get_safe_state(self, entity_id: str, default: str | float = 0) -> Any:
         """
-        Safely get the state of an entity, returning a default if it is
+        Safely get the state of an entity, returning a default if it is.
+
         unavailable, unknown, or not found.
         """
         if not entity_id:
@@ -134,7 +157,7 @@ class SolarWindowCalculator:
 
         return state.state
 
-    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0):
+    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
         """Safely get an attribute of an entity, returning a default if unavailable."""
         if not entity_id:
             return default
@@ -143,7 +166,8 @@ class SolarWindowCalculator:
 
         if state is None or state.state in ["unknown", "unavailable"]:
             _LOGGER.warning(
-                "Entity %s not found or unavailable, returning default value for attribute %s.",
+                "Entity %s not found or unavailable, returning default value "
+                "for attribute %s.",
                 entity_id,
                 attr,
             )
@@ -154,9 +178,13 @@ class SolarWindowCalculator:
     def apply_global_factors(
         self, config: dict[str, Any], group_type: str, states: dict[str, Any]
     ) -> dict[str, Any]:
-        """Apply global sensitivity and offset factors to configuration, robust gegen ungültige Werte."""
+        """
+        Apply global sensitivity and offset factors to configuration.
 
-        def safe_float(val, default=0.0):
+        Robust gegen ungültige Werte.
+        """
+
+        def safe_float(val: Any, default: float = 0.0) -> float:
             if val in ("", None, "inherit", "-1", -1):
                 return default
             try:
@@ -200,10 +228,10 @@ class SolarWindowCalculator:
     @classmethod
     def from_flows(
         cls, hass: HomeAssistant, entry: ConfigEntry
-    ) -> "SolarWindowCalculator":
+    ) -> SolarWindowCalculator:
         """Create calculator instance from flow-based configuration."""
         # Create instance with empty windows list first
-        instance = cls(hass, [], {})
+        instance = cls(hass, {}, {})
 
         # Set up flow-based configuration
         instance.global_entry = entry
@@ -217,9 +245,13 @@ class SolarWindowCalculator:
         return instance
 
     def _get_cached_entity_state(
-        self, entity_id: str, default_value: Any = None, debug_label: str = None
+        self, entity_id: str, default_value: Any | None = None
     ) -> Any:
-        """Get entity state with short-term caching for one calculation run, with debug logging."""
+        """
+        Get entity state with short-term caching for one calculation run.
+
+        With debug logging.
+        """
         current_time = time.time()
 
         # Check if cache is expired
@@ -257,7 +289,11 @@ class SolarWindowCalculator:
         return fallback
 
     def _get_subentries_by_type(self, entry_type: str) -> dict[str, dict[str, Any]]:
-        """Get all sub-entries of a specific type. Handles legacy, new type names, and subentries in parent configs."""
+        """
+        Get all sub-entries of a specific type.
+
+        Handles legacy, new type names, and subentries in parent configs.
+        """
         subentries = {}
 
         # Map legacy and new type names for global config
@@ -281,7 +317,6 @@ class SolarWindowCalculator:
             # For window/group: also check subentries in parent configs
             if entry_type in ("window", "group") and hasattr(entry, "subentries"):
                 for sub in entry.subentries.values():
-                    # Support ConfigSubentry objects (Home Assistant 2024+) and dicts (legacy)
                     if hasattr(sub, "data") and hasattr(sub, "subentry_type"):
                         sub_data = (
                             dict(sub.data) if hasattr(sub.data, "items") else sub.data
@@ -367,54 +402,71 @@ class SolarWindowCalculator:
         group_config: dict[str, Any],
         window_data: dict[str, Any],
     ) -> dict[str, Any]:
-        """Build effective configuration with inheritance, respecting explicit inheritance markers."""
+        """
+        Build effective configuration with inheritance.
 
-        def is_inherit_marker(val):
-            return val in ("-1", -1, "", None, "inherit")
-
+        Respecting explicit inheritance markers.
+        """
         # Start with global as base
-        effective = {}
-
-        # Copy all global config
-        for key, value in global_config.items():
-            if isinstance(value, dict):
-                effective[key] = value.copy()
-            else:
-                effective[key] = value
+        effective = self._copy_config(global_config)
 
         # Override with group config, but skip inherit markers
-        for key, value in group_config.items():
-            if is_inherit_marker(value):
-                continue
-            if (
-                key in effective
-                and isinstance(effective[key], dict)
-                and isinstance(value, dict)
-            ):
-                # Nested dict: update only non-inherit values
-                for subkey, subval in value.items():
-                    if not is_inherit_marker(subval):
-                        effective[key][subkey] = subval
-            else:
-                effective[key] = value
+        self._merge_config_layer(effective, group_config)
 
         # Override with window-specific data, but skip inherit markers
-        for key, value in window_data.items():
-            if is_inherit_marker(value):
-                continue
-            if (
-                key in effective
-                and isinstance(effective[key], dict)
-                and isinstance(value, dict)
-            ):
-                for subkey, subval in value.items():
-                    if not is_inherit_marker(subval):
-                        effective[key][subkey] = subval
-            else:
-                effective[key] = value
+        self._merge_config_layer(effective, window_data)
 
         # Structure flat config into expected nested format for apply_global_factors
         return self._structure_flat_config(effective)
+
+    def _copy_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Create a deep copy of configuration."""
+        result = {}
+        for key, value in config.items():
+            if isinstance(value, dict):
+                result[key] = value.copy()
+            else:
+                result[key] = value
+        return result
+
+    def _merge_config_layer(
+        self, effective: dict[str, Any], layer_config: dict[str, Any]
+    ) -> None:
+        """Merge a configuration layer into the effective config."""
+
+        def is_inherit_marker(val: Any) -> bool:
+            return val in ("-1", -1, "", None, "inherit")
+
+        for key, value in layer_config.items():
+            if is_inherit_marker(value):
+                continue
+
+            if self._should_merge_nested(effective, key, value):
+                self._merge_nested_dict(effective, key, value)
+            else:
+                effective[key] = value
+
+    def _should_merge_nested(
+        self, effective: dict[str, Any], key: str, value: Any
+    ) -> bool:
+        """Check if we should merge nested dictionaries."""
+        return (
+            key in effective
+            and isinstance(effective[key], dict)
+            and isinstance(value, dict)
+        )
+
+    def _merge_nested_dict(
+        self, effective: dict[str, Any], key: str, value: dict[str, Any]
+    ) -> None:
+        """Merge nested dictionary values."""
+
+        def is_inherit_marker(val: Any) -> bool:
+            return val in ("-1", -1, "", None, "inherit")
+
+        for subkey, subval in value.items():
+            if not is_inherit_marker(subval):
+                effective[key][subkey] = subval
 
     def _structure_flat_config(self, flat_config: dict[str, Any]) -> dict[str, Any]:
         """Structure flat config into nested format expected by apply_global_factors."""
@@ -538,7 +590,7 @@ class SolarWindowCalculator:
 
         """
 
-        def safe_float(val, default=0.0):
+        def safe_float(val: Any, default: float = 0.0) -> float:
             if val in ("", None, "inherit", "-1", -1):
                 return default
             try:
@@ -551,11 +603,11 @@ class SolarWindowCalculator:
         sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
 
         # Thresholds for minimum radiation and elevation
-        MIN_RADIATION = 1e-3
-        MIN_ELEVATION = 0.0
+        min_radiation = 1e-3
+        min_elevation = 0.0
 
         # Check if minimums are met; if not, skip calculation
-        if solar_radiation < MIN_RADIATION or sun_elevation < MIN_ELEVATION:
+        if solar_radiation < min_radiation or sun_elevation < min_elevation:
             return WindowCalculationResult(
                 power_total=0.0,
                 power_direct=0.0,
@@ -687,28 +739,57 @@ class SolarWindowCalculator:
         self._cache_timestamp = time.time()
 
         global_data = self._get_global_data_merged()
-        # Determine whether this coordinator should calculate windows. Only
-        # coordinators with entry_type == 'window_configs' do calculations.
-        entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
-        should_calculate_windows = entry_type == "window_configs"
 
-        # If this coordinator isn't responsible for windows, return all windows with shade_required: False
-        if not should_calculate_windows:
-            _LOGGER.debug(
-                "Skipping calculations: entry_type '%s' does not calculate windows",
-                entry_type,
-            )
-            windows = self._get_subentries_by_type("window")
-            return {"windows": {k: {"shade_required": False} for k in windows}}
+        # Check if this coordinator should calculate windows
+        if not self._should_calculate_windows():
+            return self._get_empty_window_results()
 
-        # Get all window subentries; if none exist, return all windows with shade_required: False
+        # Get windows and check if any exist
         windows = self._get_subentries_by_type("window")
         if not windows:
             _LOGGER.debug("No window subentries found; skipping calculations.")
             return {"windows": {}}
 
-        # Get external states (only when there are windows to calculate)
-        # Debug: log which entity IDs are being used for external states
+        # Get external states and perform calculations
+        external_states = self._prepare_external_states(global_data)
+
+        # Check minimum calculation conditions
+        if not self._meets_calculation_conditions(external_states):
+            return self._get_empty_window_results_for_windows(windows)
+
+        # Perform main window calculations
+        window_results = self._calculate_window_results(windows, external_states)
+
+        # Calculate group aggregations and summary
+        group_results = self._calculate_group_results(windows, window_results)
+        summary = self._calculate_summary(window_results)
+
+        # Return results in the structure expected by coordinator
+        results = {
+            "windows": window_results,
+            "groups": group_results,
+            "summary": summary,
+        }
+
+        _LOGGER.debug("calculation cycle finished")
+        return results
+
+    def _should_calculate_windows(self) -> bool:
+        """Check if this coordinator should calculate windows."""
+        entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
+        return entry_type == "window_configs"
+
+    def _get_empty_window_results(self) -> dict[str, Any]:
+        """Get empty window results when coordinator shouldn't calculate."""
+        _LOGGER.debug(
+            "Skipping calculations: entry_type '%s' does not calculate windows",
+            getattr(self.global_entry, "data", {}).get("entry_type", ""),
+        )
+        windows = self._get_subentries_by_type("window")
+        return {"windows": {k: {"shade_required": False} for k in windows}}
+
+    def _prepare_external_states(self, global_data: dict[str, Any]) -> dict[str, Any]:
+        """Prepare external states from global data."""
         _LOGGER.debug(
             "Using entity IDs: solar_radiation='%s', outdoor_temp='%s', "
             "forecast_temp='%s', weather_warning='%s'",
@@ -718,7 +799,7 @@ class SolarWindowCalculator:
             global_data.get("weather_warning_sensor", ""),
         )
 
-        external_states = {
+        return {
             "sensitivity": global_data.get("global_sensitivity", 1.0),
             "children_factor": global_data.get("children_factor", 0.8),
             "temperature_offset": global_data.get("temperature_offset", 0.0),
@@ -728,195 +809,173 @@ class SolarWindowCalculator:
             "maintenance_mode": global_data.get("maintenance_mode", False),
             "solar_radiation": float(
                 self._get_cached_entity_state(
-                    global_data.get("solar_radiation_sensor", ""), 0, "solar_radiation"
+                    global_data.get("solar_radiation_sensor", ""), 0
                 )
             ),
             "sun_azimuth": float(self.get_safe_attr("sun.sun", "azimuth", 0)),
             "sun_elevation": float(self.get_safe_attr("sun.sun", "elevation", 0)),
             "outdoor_temp": float(
                 self._get_cached_entity_state(
-                    global_data.get("outdoor_temperature_sensor", ""), 0, "outdoor_temp"
+                    global_data.get("outdoor_temperature_sensor", ""), 0
                 )
             ),
             "forecast_temp": float(
                 self._get_cached_entity_state(
-                    global_data.get("weather_forecast_temperature_sensor", ""),
-                    0,
-                    "forecast_temp",
+                    global_data.get("weather_forecast_temperature_sensor", ""), 0
                 )
             ),
             "weather_warning": self._get_cached_entity_state(
-                global_data.get("weather_warning_sensor", ""), "off", "weather_warning"
+                global_data.get("weather_warning_sensor", ""), "off"
             )
             == "on",
         }
 
-        _LOGGER.debug("External states: %s", external_states)
+    def _meets_calculation_conditions(self, external_states: dict[str, Any]) -> bool:
+        """Check if minimum calculation conditions are met."""
+        min_radiation = external_states.get("solar_radiation", 0.0)
+        min_elevation = external_states.get("sun_elevation", 0.0)
+        min_radiation_threshold = 1e-3
+        return min_radiation >= min_radiation_threshold and min_elevation >= 0.0
 
+    def _get_empty_window_results_for_windows(
+        self, windows: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Get empty window results for all windows."""
+        window_results = {}
+        for window_subentry_id, window_data in windows.items():
+            window_results[window_subentry_id] = {
+                "name": window_data.get("name", window_subentry_id),
+                "shade_required": False,
+            }
+        return {"windows": window_results}
+
+    def _calculate_window_results(
+        self, windows: dict[str, Any], external_states: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Calculate results for all windows."""
         window_results = {}
         total_power = 0
         shading_count = 0
 
-        # Check if calculation conditions are met (minimum radiation/elevation)
-        min_radiation = external_states.get("solar_radiation", 0.0)
-        min_elevation = external_states.get("sun_elevation", 0.0)
-        if min_radiation < 1e-3 or min_elevation < 0.0:
-            for window_subentry_id, window_data in windows.items():
-                window_results[window_subentry_id] = {
-                    "name": window_data.get("name", window_subentry_id),
-                    "shade_required": False,
-                }
-            return {"windows": window_results}
-
         for window_subentry_id, window_data in windows.items():
             try:
-                # Get effective configuration and sources
-                effective_config, effective_sources = (
-                    self.get_effective_config_from_flows(window_subentry_id)
+                result = self._calculate_single_window(
+                    window_subentry_id, window_data, external_states
                 )
-
-                # Apply global factors
-                group_type = window_data.get("group_type", "default")
-                effective_config = self.apply_global_factors(
-                    effective_config, group_type, external_states
-                )
-
-                # Debug-Ausgabe: Vererbungs- und Wertestruktur
-                def flatten_dict(d, parent_key="", sep="."):
-                    items = []
-                    for k, v in d.items():
-                        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-                        if isinstance(v, dict):
-                            items.extend(flatten_dict(v, new_key, sep=sep).items())
-                        else:
-                            items.append((new_key, v))
-                    return dict(items)
-
-                flat_window = flatten_dict(window_data)
-                flat_group = (
-                    flatten_dict(group_config) if "group_config" in locals() else {}
-                )
-                flat_global = flatten_dict(global_data)
-                flat_effective = flatten_dict(effective_config)
-                flat_sources = flatten_dict(effective_sources)
-
-                # Welche Werte sind im Fenster gesetzt?
-                window_set = {
-                    k: v
-                    for k, v in flat_window.items()
-                    if v not in ("-1", -1, "", None, "inherit")
-                }
-                # Welche Werte werden aus Gruppe geerbt?
-                group_inherited = {
-                    k: flat_group.get(k)
-                    for k, src in flat_sources.items()
-                    if src == "group" and k not in window_set
-                }
-                # Welche Werte werden aus Global geerbt?
-                global_inherited = {
-                    k: flat_global.get(k)
-                    for k, src in flat_sources.items()
-                    if src == "global"
-                    and k not in window_set
-                    and k not in group_inherited
-                }
-                # Aggregierter View: finale Werte
-                final_view = flat_effective
-
-                _LOGGER.debug(
-                    "[DEBUG-VERERBUNG] Fenster '%s':\n  Fenster-spezifisch: %s\n  Geerbt (Gruppe): %s\n  Geerbt (Global): %s\n  Final genutzt: %s",
-                    window_data.get("name", window_subentry_id),
-                    window_set,
-                    group_inherited,
-                    global_inherited,
-                    final_view,
-                )
-
-                # Calculate solar power with shadows
-                solar_result = self.calculate_window_solar_power_with_shadow(
-                    effective_config, window_data, external_states
-                )
-
-                # Get scenario enables for this window with inheritance logic
-                (
-                    scenario_b_enabled,
-                    scenario_c_enabled,
-                ) = self._get_scenario_enables_from_flows(
-                    window_subentry_id, external_states
-                )
-
-                # Check shading requirement with full scenario logic
-                shade_request = ShadeRequestFlow(
-                    window_data=window_data,
-                    effective_config=effective_config,
-                    external_states=external_states,
-                    scenario_b_enabled=scenario_b_enabled,
-                    scenario_c_enabled=scenario_c_enabled,
-                    solar_result=solar_result,
-                )
-                shade_required, shade_reason = self._should_shade_window_from_flows(
-                    shade_request
-                )
-
-                # Update result
-                solar_result.shade_required = shade_required
-                solar_result.shade_reason = shade_reason
-
-                # Calculate additional metrics
-                power_raw = (
-                    solar_result.power_direct / solar_result.shadow_factor
-                    + solar_result.power_diffuse
-                    if solar_result.shadow_factor > 0
-                    else solar_result.power_total
-                )
-                # Avoid division by zero
-                area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
-
-                # Store results in the correct structure for coordinator
-                window_results[window_subentry_id] = {
-                    "name": window_data.get("name", window_subentry_id),
-                    "total_power": round(solar_result.power_total, 2),
-                    "total_power_direct": round(solar_result.power_direct, 2),
-                    "total_power_diffuse": round(solar_result.power_diffuse, 2),
-                    "total_power_raw": round(power_raw, 2),
-                    "power_m2_total": round(solar_result.power_total / area, 2),
-                    "power_m2_direct": round(solar_result.power_direct / area, 2),
-                    "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
-                    "power_m2_raw": round(power_raw / area, 2),
-                    "shadow_factor": solar_result.shadow_factor,
-                    "area_m2": solar_result.area_m2,
-                    "is_visible": solar_result.is_visible,
-                    "shade_required": solar_result.shade_required,
-                    "shade_reason": solar_result.shade_reason,
-                    "effective_threshold": solar_result.effective_threshold,
-                }
-
-                total_power += solar_result.power_total
-                if shade_required:
+                window_results[window_subentry_id] = result
+                total_power += result["total_power"]
+                if result["shade_required"]:
                     shading_count += 1
 
             except Exception as err:
                 _LOGGER.exception("Error calculating window %s", window_subentry_id)
-                window_results[window_subentry_id] = {
-                    "name": window_data.get("name", window_subentry_id),
-                    "total_power": 0,
-                    "total_power_direct": 0,
-                    "total_power_diffuse": 0,
-                    "total_power_raw": 0,
-                    "power_m2_total": 0,
-                    "power_m2_direct": 0,
-                    "power_m2_diffuse": 0,
-                    "power_m2_raw": 0,
-                    "shadow_factor": 0,
-                    "area_m2": 0,
-                    "is_visible": False,
-                    "shade_required": False,
-                    "shade_reason": f"Calculation error: {err}",
-                    "effective_threshold": 0,
-                }
-        # (no-op) calculations completed for windows
+                window_results[window_subentry_id] = self._get_error_window_result(
+                    window_data, window_subentry_id, err
+                )
 
-        # Calculate group aggregations
+        return window_results
+
+    def _calculate_single_window(
+        self,
+        window_subentry_id: str,
+        window_data: dict[str, Any],
+        external_states: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Calculate result for a single window."""
+        # Get effective configuration and sources
+        effective_config, effective_sources = self.get_effective_config_from_flows(
+            window_subentry_id
+        )
+
+        # Apply global factors
+        group_type = window_data.get("group_type", "default")
+        effective_config = self.apply_global_factors(
+            effective_config, group_type, external_states
+        )
+
+        # Calculate solar power with shadows
+        solar_result = self.calculate_window_solar_power_with_shadow(
+            effective_config, window_data, external_states
+        )
+
+        # Get scenario enables for this window with inheritance logic
+        (
+            scenario_b_enabled,
+            scenario_c_enabled,
+        ) = self._get_scenario_enables_from_flows(window_subentry_id, external_states)
+
+        # Check shading requirement with full scenario logic
+        shade_request = ShadeRequestFlow(
+            window_data=window_data,
+            effective_config=effective_config,
+            external_states=external_states,
+            scenario_b_enabled=scenario_b_enabled,
+            scenario_c_enabled=scenario_c_enabled,
+            solar_result=solar_result,
+        )
+        shade_required, shade_reason = self._should_shade_window_from_flows(
+            shade_request
+        )
+
+        # Update result
+        solar_result.shade_required = shade_required
+        solar_result.shade_reason = shade_reason
+
+        # Calculate additional metrics
+        power_raw = (
+            solar_result.power_direct / solar_result.shadow_factor
+            + solar_result.power_diffuse
+            if solar_result.shadow_factor > 0
+            else solar_result.power_total
+        )
+        # Avoid division by zero
+        area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
+
+        # Return results in the correct structure for coordinator
+        return {
+            "name": window_data.get("name", window_subentry_id),
+            "total_power": round(solar_result.power_total, 2),
+            "total_power_direct": round(solar_result.power_direct, 2),
+            "total_power_diffuse": round(solar_result.power_diffuse, 2),
+            "total_power_raw": round(power_raw, 2),
+            "power_m2_total": round(solar_result.power_total / area, 2),
+            "power_m2_direct": round(solar_result.power_direct / area, 2),
+            "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
+            "power_m2_raw": round(power_raw / area, 2),
+            "shadow_factor": solar_result.shadow_factor,
+            "area_m2": solar_result.area_m2,
+            "is_visible": solar_result.is_visible,
+            "shade_required": solar_result.shade_required,
+            "shade_reason": solar_result.shade_reason,
+            "effective_threshold": solar_result.effective_threshold,
+        }
+
+    def _get_error_window_result(
+        self, window_data: dict[str, Any], window_subentry_id: str, err: Exception
+    ) -> dict[str, Any]:
+        """Get error result for a window calculation."""
+        return {
+            "name": window_data.get("name", window_subentry_id),
+            "total_power": 0,
+            "total_power_direct": 0,
+            "total_power_diffuse": 0,
+            "total_power_raw": 0,
+            "power_m2_total": 0,
+            "power_m2_direct": 0,
+            "power_m2_diffuse": 0,
+            "power_m2_raw": 0,
+            "shadow_factor": 0,
+            "area_m2": 0,
+            "is_visible": False,
+            "shade_required": False,
+            "shade_reason": f"Calculation error: {err}",
+            "effective_threshold": 0,
+        }
+
+    def _calculate_group_results(
+        self, windows: dict[str, Any], window_results: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Calculate group aggregation results."""
         group_results = {}
         groups = self._get_subentries_by_type("group")
 
@@ -942,34 +1001,31 @@ class SolarWindowCalculator:
                 "total_power_diffuse": round(group_total_diffuse, 2),
             }
 
-        # Calculate system-wide totals
+        return group_results
+
+    def _calculate_summary(self, window_results: dict[str, Any]) -> dict[str, Any]:
+        """Calculate system-wide summary."""
         total_power_direct = sum(
             w["total_power_direct"] for w in window_results.values()
         )
         total_power_diffuse = sum(
             w["total_power_diffuse"] for w in window_results.values()
         )
+        total_power = sum(w["total_power"] for w in window_results.values())
         windows_with_shading = sum(
             1 for w in window_results.values() if w["shade_required"]
         )
+        shading_count = sum(1 for w in window_results.values() if w["shade_required"])
 
-        # Return results in the structure expected by coordinator
-        results = {
-            "windows": window_results,
-            "groups": group_results,
-            "summary": {
-                "total_power": round(total_power, 2),
-                "total_power_direct": round(total_power_direct, 2),
-                "total_power_diffuse": round(total_power_diffuse, 2),
-                "windows_with_shading": windows_with_shading,
-                "window_count": len(windows),
-                "shading_count": shading_count,
-                "calculation_time": datetime.now(UTC).isoformat(),
-            },
+        return {
+            "total_power": round(total_power, 2),
+            "total_power_direct": round(total_power_direct, 2),
+            "total_power_diffuse": round(total_power_diffuse, 2),
+            "windows_with_shading": windows_with_shading,
+            "window_count": len(window_results),
+            "shading_count": shading_count,
+            "calculation_time": datetime.now(UTC).isoformat(),
         }
-
-        _LOGGER.debug("calculation cycle finished")
-        return results
 
     def _get_scenario_enables_from_flows(
         self,
@@ -997,7 +1053,7 @@ class SolarWindowCalculator:
             groups = self._get_subentries_by_type("group")
             group_data = groups.get(parent_group_id, {})
 
-        def resolve_scenario_enable(scenario_key: str, global_enabled: bool) -> bool:
+        def resolve_scenario_enable(scenario_key: str, *, global_enabled: bool) -> bool:
             """Resolve inheritance for a single scenario."""
             # Check window level
             window_value = window_data.get(scenario_key, "inherit")
@@ -1014,10 +1070,12 @@ class SolarWindowCalculator:
             return global_enabled
 
         scenario_b_enabled = resolve_scenario_enable(
-            "scenario_b_enable", global_states.get("scenario_b_enabled", False)
+            "scenario_b_enable",
+            global_enabled=global_states.get("scenario_b_enabled", False),
         )
         scenario_c_enabled = resolve_scenario_enable(
-            "scenario_c_enable", global_states.get("scenario_c_enabled", False)
+            "scenario_c_enable",
+            global_enabled=global_states.get("scenario_c_enabled", False),
         )
 
         return scenario_b_enabled, scenario_c_enabled
@@ -1083,6 +1141,18 @@ class SolarWindowCalculator:
             _LOGGER.warning("Could not parse temperature for window %s", window_name)
             return False, "Invalid temperature data"
 
+        # Main shading decision logic
+        return self._evaluate_shading_scenarios(
+            shade_request, indoor_temp, outdoor_temp
+        )
+
+    def _evaluate_shading_scenarios(
+        self,
+        shade_request: ShadeRequestFlow,
+        indoor_temp: float,
+        outdoor_temp: float,
+    ) -> tuple[bool, str]:
+        """Evaluate all shading scenarios and return the result."""
         # --- Scenario A: Strong direct sun (always active) ---
         threshold_direct = shade_request.effective_config["thresholds"]["direct"]
         _LOGGER.debug(

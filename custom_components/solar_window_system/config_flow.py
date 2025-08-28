@@ -14,11 +14,10 @@ import contextlib
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
-import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
+import voluptuous as vol
 
 from .const import DOMAIN
 from .helpers import get_temperature_sensor_entities
@@ -147,8 +146,9 @@ def allow_inherit_or_float(
     min_v: float | None = None, max_v: float | None = None
 ) -> Any:
     """
-    Return a validator that allows '-1' (as string or int) for inheritance,
-    or coerces to float and checks range.
+    Return a validator that allows '-1' (as string or int) for inheritance.
+
+    Or coerces to float and checks range.
     """
 
     def validator(v: Any) -> Any:
@@ -158,9 +158,11 @@ def allow_inherit_or_float(
             return v
         f = float(_normalize_decimal_string(v))
         if min_v is not None and f < min_v:
-            raise vol.Invalid(f"Value {f} below minimum {min_v}")
+            msg = f"Value {f} below minimum {min_v}"
+            raise vol.Invalid(msg)
         if max_v is not None and f > max_v:
-            raise vol.Invalid(f"Value {f} above maximum {max_v}")
+            msg = f"Value {f} above maximum {max_v}"
+            raise vol.Invalid(msg)
         return f
 
     return validator
@@ -168,8 +170,9 @@ def allow_inherit_or_float(
 
 def allow_inherit_or_int(min_v: int | None = None, max_v: int | None = None) -> Any:
     """
-    Return a validator that allows '-1' (as string or int) for inheritance,
-    or coerces to int and checks range.
+    Return a validator that allows '-1' (as string or int) for inheritance.
+
+    Or coerces to int and checks range.
     """
 
     def validator(v: Any) -> Any:
@@ -179,9 +182,11 @@ def allow_inherit_or_int(min_v: int | None = None, max_v: int | None = None) -> 
             return v
         i = int(float(_normalize_decimal_string(v)))
         if min_v is not None and i < min_v:
-            raise vol.Invalid(f"Value {i} below minimum {min_v}")
+            msg = f"Value {i} below minimum {min_v}"
+            raise vol.Invalid(msg)
         if max_v is not None and i > max_v:
-            raise vol.Invalid(f"Value {i} above maximum {max_v}")
+            msg = f"Value {i} above maximum {max_v}"
+            raise vol.Invalid(msg)
         return i
 
     return validator
@@ -208,12 +213,8 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         self._reconfigure_mode: bool = False
 
     # ----- Creation flow (step 1: basic) -----
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
-        """Render basic group configuration (page 1)."""
-        # Prepare temperature sensor options
-        temp_sensor_options = await get_temperature_sensor_entities(self.hass)
-
-        # Defaults for basic page
+    def _setup_defaults(self) -> dict[str, Any]:
+        """Set up default values for the basic configuration page."""
         defaults: dict[str, Any] = {
             "name": getattr(getattr(self, "subentry", None), "title", ""),
             "indoor_temperature_sensor": "-1",  # Default to inherit
@@ -223,9 +224,6 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             "temperature_indoor_base": "",
             "temperature_outdoor_base": "",
         }
-
-        # Inherit suggestions from Global Configuration for numeric fields
-        global_data = _get_global_data_merged(self.hass)
 
         # If reconfiguring, prefill from current subentry title and data
         if self.source == config_entries.SOURCE_RECONFIGURE:
@@ -249,30 +247,35 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                     else:
                         defaults[key] = raw_val
 
-        # Determine UI default for sensor: if no local default but Global has a value,
-        # show '-1' in the selector to indicate 'inherit'. The suggested_value shows
-        # the actual Global value as a hint to the user.
-        sensor_default = defaults.get("indoor_temperature_sensor", "")
-        sensor_suggested = global_data.get("indoor_temperature_sensor", "")
-        # Always preselect 'Inherit' (-1) if the value is empty or None
-        if sensor_default in ("", None):
-            sensor_ui_default = "-1"
-        else:
-            sensor_ui_default = sensor_default
+        return defaults
+
+    def _get_ui_default(
+        self, key: str, defaults: dict[str, Any], global_data: dict[str, Any]
+    ) -> str:
+        """Get UI default value for a field, considering inheritance."""
+        cur = defaults.get(key, "")
+        gv = global_data.get(key, "")
+        if cur in EMPTY_STRING_VALUES and gv not in EMPTY_STRING_VALUES:
+            return INHERITANCE_INDICATOR  # Inheritance indicator
+        return str(cur) if cur not in EMPTY_STRING_VALUES else ""
+
+    def _build_schema(
+        self,
+        defaults: dict[str, Any],
+        global_data: dict[str, Any],
+        temp_sensor_options: list[Any],
+    ) -> vol.Schema:
+        """Build the validation schema for the basic configuration page."""
 
         def _ui_default(key: str) -> str:
-            cur = defaults.get(key, "")
-            gv = global_data.get(key, "")
-            if cur in EMPTY_STRING_VALUES and gv not in EMPTY_STRING_VALUES:
-                return INHERITANCE_INDICATOR  # Inheritance indicator
-            return str(cur) if cur not in EMPTY_STRING_VALUES else ""
+            return self._get_ui_default(key, defaults, global_data)
 
         schema_dict: dict[Any, Any] = {
             vol.Required("name", default=defaults["name"]): str,
-            # ACHTUNG: Obwohl 'indoor_temperature_sensor' hier als optional deklariert ist,
-            # ist es für eine gültige Konfiguration faktisch verpflichtend!
-            # Die Validierung erfolgt erst später im Flow/bei der Nutzung.
-            # Für Tests und echte Flows IMMER einen Wert angeben!
+            # ACHTUNG: Obwohl 'indoor_temperature_sensor' hier als optional
+            # deklariert ist, ist es für eine gültige Konfiguration faktisch
+            # verpflichtend! Die Validierung erfolgt erst später im Flow/bei
+            # der Nutzung. Für Tests und echte Flows IMMER einen Wert angeben!
             vol.Optional(
                 "indoor_temperature_sensor",
                 default=_ui_default("indoor_temperature_sensor"),
@@ -287,15 +290,6 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
             ),
         }
 
-        # Helper function to ensure string defaults for Voluptuous schema compatibility
-        def _ui_default(key: str) -> str:
-            cur = defaults.get(key, "")
-            gv = global_data.get(key, "")
-            if cur in EMPTY_STRING_VALUES and gv not in EMPTY_STRING_VALUES:
-                return INHERITANCE_INDICATOR  # Inheritance indicator
-            # CRITICAL: Always convert to string for Voluptuous schema compatibility
-            return str(cur) if cur not in EMPTY_STRING_VALUES else ""
-
         # Build schema with safe string defaults
         for key in (
             "diffuse_factor",
@@ -306,32 +300,32 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
         ):
             schema_dict[vol.Optional(key, default=_ui_default(key))] = str
 
-        schema = vol.Schema(schema_dict)
+        return vol.Schema(schema_dict)
 
-        if user_input is None:
-            return self.async_show_form(step_id="user", data_schema=schema)
+    def _check_duplicate_name(self, user_input: dict[str, Any]) -> str | None:
+        """Check for duplicate group names and return error key if found."""
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            return None
 
-        errors = {}
+        new_name = (user_input.get("name") or "").strip().lower()
+        # Find the parent entry for groups
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get("entry_type") == ENTRY_TYPE_GROUPS:
+                if hasattr(entry, "subentries"):
+                    for sub in entry.subentries.values():
+                        if (
+                            getattr(sub, "subentry_type", None) == "group"
+                            and (sub.title or "").strip().lower() == new_name
+                        ):
+                            return "duplicate_name"
+                break
+        return None
+
+    def _validate_numeric_fields(
+        self, user_input: dict[str, Any], errors: dict[str, str]
+    ) -> dict[str, Any]:
+        """Validate numeric fields and return validated input."""
         validated_input = dict(user_input)
-
-        # --- Duplicate name check ---
-        # Only check on creation, not reconfigure
-        if self.source != config_entries.SOURCE_RECONFIGURE and user_input is not None:
-            new_name = (user_input.get("name") or "").strip().lower()
-            # Find the parent entry for groups
-            parent_entry = None
-            for entry in self.hass.config_entries.async_entries(DOMAIN):
-                if entry.data.get("entry_type") == ENTRY_TYPE_GROUPS:
-                    parent_entry = entry
-                    break
-            if parent_entry and hasattr(parent_entry, "subentries"):
-                for sub in parent_entry.subentries.values():
-                    if (
-                        getattr(sub, "subentry_type", None) == "group"
-                        and (sub.title or "").strip().lower() == new_name
-                    ):
-                        errors["name"] = "duplicate_name"
-                        break
 
         def strict_float(field: str, min_v: float, max_v: float) -> float | str | None:
             val = user_input.get(field)
@@ -372,8 +366,32 @@ class GroupSubentryFlowHandler(config_entries.ConfigSubentryFlow):
                 validated = func(k, min_v, max_v)
                 validated_input[k] = validated
 
+        return validated_input
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
+        """Render basic group configuration (page 1)."""
+        # Prepare temperature sensor options
+        temp_sensor_options = await get_temperature_sensor_entities(self.hass)
+
+        # Set up defaults and global data
+        defaults = self._setup_defaults()
+        global_data = _get_global_data_merged(self.hass)
+
+        # Build schema
+        schema = self._build_schema(defaults, global_data, temp_sensor_options)
+
+        if user_input is None:
+            return self.async_show_form(step_id="user", data_schema=schema)
+
+        # Validate input
+        errors = {}
+        duplicate_error = self._check_duplicate_name(user_input)
+        if duplicate_error:
+            errors["name"] = duplicate_error
+
+        validated_input = self._validate_numeric_fields(user_input, errors)
+
         if errors:
-            # Zeige das Formular erneut mit Fehlern und den bisherigen Eingaben
             return self.async_show_form(
                 step_id="user",
                 data_schema=schema,
@@ -544,7 +562,7 @@ class WindowSubentryFlowHandler(config_entries.ConfigSubentryFlow):
 
             # Overwrite defaults with any saved values
             for k in list(defaults.keys()):
-                if k == "name" or k == "linked_group":  # linked_group is special
+                if k in {"name", "linked_group"}:  # linked_group is special
                     continue
 
                 val = sub.data.get(k)
@@ -983,8 +1001,9 @@ class SolarWindowSystemConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # No subentries for the global/root entry
         return {}
 
-    async def async_step_user(self, _user_input: dict[str, Any] | None = None) -> Any:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> Any:
         """Handle Add entry button and bootstrap missing parents as needed."""
+        _ = user_input  # Parameter required by ConfigFlow interface but not used here
         # Inspect current entries for this domain
         existing = list(self._async_current_entries())
         has_main = any(e.title == "Solar Window System" for e in existing)

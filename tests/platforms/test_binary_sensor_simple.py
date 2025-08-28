@@ -1,4 +1,3 @@
-# ruff: noqa: S101,SLF001
 """Tests for binary_sensor platform."""
 
 from __future__ import annotations
@@ -159,9 +158,7 @@ async def test_window_shading_required_binary_sensor_is_on_with_data() -> None:
 
 
 @pytest.mark.asyncio
-async def test_window_shading_required_binary_sensor_extra_state_attributes_no_data() -> (
-    None
-):
+async def test_window_shading_required_binary_sensor_extra_attrs_no_data() -> None:
     """Test extra_state_attributes when no coordinator data."""
     coordinator = Mock()
     coordinator.data = None
@@ -173,7 +170,7 @@ async def test_window_shading_required_binary_sensor_extra_state_attributes_no_d
 
 
 @pytest.mark.asyncio
-async def test_window_shading_required_binary_sensor_extra_state_attributes_no_window_data() -> (
+async def test_window_shading_required_binary_sensor_extra_attrs_no_window_data() -> (
     None
 ):
     """Test extra_state_attributes when no window data."""
@@ -188,9 +185,7 @@ async def test_window_shading_required_binary_sensor_extra_state_attributes_no_w
 
 
 @pytest.mark.asyncio
-async def test_window_shading_required_binary_sensor_extra_state_attributes_with_data() -> (
-    None
-):
+async def test_window_shading_required_binary_sensor_extra_attrs_with_data() -> None:
     """Test extra_state_attributes with complete window data."""
     coordinator = Mock()
     coordinator.data = {"test": "data"}

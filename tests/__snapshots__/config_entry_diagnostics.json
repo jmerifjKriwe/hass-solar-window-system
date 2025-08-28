@@ -1,0 +1,14 @@
+{
+  "data": {},
+  "entry_data": {
+    "diffuse_factor": 0.2,
+    "entry_type": "global_config",
+    "g_value": 0.6,
+    "temperature_indoor_base": 22.0,
+    "temperature_outdoor_base": 20.0,
+    "threshold_diffuse": 120,
+    "threshold_direct": 250,
+    "window_height": 2.0,
+    "window_width": 1.5
+  }
+}

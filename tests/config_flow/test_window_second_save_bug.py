@@ -16,7 +16,7 @@ from tests.test_data import VALID_GLOBAL_BASIC, VALID_GLOBAL_ENHANCED
 async def test_window_options_second_save_expected_str_error(
     hass: HomeAssistant,
 ) -> None:
-    """Test window subentry reconfigure (second save) scenario for 'expected str' error."""
+    """Test window subentry reconfigure second save scenario."""
     parent_entry = MockConfigEntry(
         version=1,
         minor_version=1,

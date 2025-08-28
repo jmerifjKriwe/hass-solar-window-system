@@ -1,4 +1,3 @@
-# ruff: noqa: S101,SLF001
 """Tests for select platform."""
 
 from __future__ import annotations
@@ -17,6 +16,8 @@ from custom_components.solar_window_system.select import (
     _setup_global_config_selects,
     async_setup_entry,
 )
+
+EXPECTED_GLOBAL_CONFIG_ENTITIES = 2
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -73,7 +74,9 @@ async def test_async_setup_entry_global_config(hass: HomeAssistant) -> None:
             # weather_warning_sensor and weather_forecast_temperature_sensor
             assert async_add_entities.call_count == 1
             entities = async_add_entities.call_args[0][0]
-            assert len(entities) == 2  # Two select entities added
+            assert (
+                len(entities) == EXPECTED_GLOBAL_CONFIG_ENTITIES
+            )  # Two select entities added
             entity_keys = [entity._entity_key for entity in entities]
             assert "weather_warning_sensor" in entity_keys
             assert "weather_forecast_temperature_sensor" in entity_keys

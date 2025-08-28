@@ -1,5 +1,6 @@
 """Tests for __init__.py module."""
 
+import tempfile
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -26,7 +27,7 @@ class TestInitSetup:
         hass.data = {}
         # Add config attribute for device registry
         hass.config = Mock()
-        hass.config.config_dir = "/tmp"
+        hass.config.config_dir = tempfile.mkdtemp()
         return hass
 
     @pytest.fixture
@@ -560,7 +561,7 @@ class TestInitSetup:
     async def _call_async_setup_entry(
         self, hass: HomeAssistant, entry: ConfigEntry
     ) -> bool:
-        """Helper method to call async_setup_entry with proper imports."""
+        """Call async_setup_entry with proper imports."""
         from custom_components.solar_window_system import async_setup_entry
 
         return await async_setup_entry(hass, entry)

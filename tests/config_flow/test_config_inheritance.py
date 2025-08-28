@@ -91,13 +91,13 @@ class TestConfigInheritance(ConfigFlowTestCase):
                 raise AssertionError(msg)
 
             data = result["data"]  # type: ignore[typeddict-item]
-            if data["window_width"] != 1.5:  # noqa: PLR2004
+            if data["window_width"] != 1.5:
                 msg = f"Expected window_width 1.5, got {data['window_width']}"
                 raise AssertionError(msg)
-            if data["g_value"] != 0.6:  # noqa: PLR2004
+            if data["g_value"] != 0.6:
                 msg = f"Expected g_value 0.6, got {data['g_value']}"
                 raise AssertionError(msg)
-            if data["scenario_b_temp_indoor"] != 24.0:  # noqa: PLR2004
+            if data["scenario_b_temp_indoor"] != 24.0:
                 msg = (
                     f"Expected scenario_b_temp_indoor 24.0, got "
                     f"{data['scenario_b_temp_indoor']}"

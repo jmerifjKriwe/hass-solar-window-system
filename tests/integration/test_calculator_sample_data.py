@@ -1,4 +1,3 @@
-# ruff: noqa: SLF001,ARG001
 """Run SolarWindowCalculator with sample data using framework."""
 
 from __future__ import annotations

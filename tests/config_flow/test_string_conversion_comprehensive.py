@@ -1,11 +1,11 @@
-# ruff: noqa: S101,PT012
+# ruff: noqa: PT012
 """
 Comprehensive tests for string-conversion fixes in config flows.
 
 Assertions are used intentionally in tests; disable assertion lint (S101).
 """
 
-# ruff: noqa: S101,ANN001,ARG002,D102
+# ruff: noqa: ARG002
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -14,6 +14,7 @@ import voluptuous as vol
 
 from custom_components.solar_window_system import config_flow
 from homeassistant import config_entries
+from homeassistant.core import HomeAssistant
 from tests.test_data import (
     VALID_GLOBAL_ENHANCED,
     VALID_GLOBAL_SCENARIOS,
@@ -26,8 +27,9 @@ class TestSecondSaveBugFix:
     """Test suite specifically designed to catch the "expected str" bug."""
 
     async def test_group_reconfigure_with_numeric_values_second_save(
-        self, hass, global_config_entry
+        self, hass: HomeAssistant, global_config_entry: config_entries.ConfigEntry
     ) -> None:
+        """Test group reconfiguration with numeric values on second save."""
         flow = config_flow.GroupSubentryFlowHandler()
         flow.hass = hass
         flow.init_step = "user"
@@ -103,8 +105,9 @@ class TestSecondSaveBugFix:
                     pass
 
     async def test_window_reconfigure_with_numeric_values_second_save(
-        self, hass, global_config_entry
+        self, hass: HomeAssistant, global_config_entry: config_entries.ConfigEntry
     ) -> None:
+        """Test window reconfiguration with numeric values on second save."""
         flow = config_flow.WindowSubentryFlowHandler()
         flow.hass = hass
         flow.init_step = "user"
@@ -190,6 +193,7 @@ class TestSecondSaveBugFix:
                     pass
 
     def test_voluptuous_schema_with_numeric_defaults_fails_without_fix(self) -> None:
+        """Test voluptuous schema with numeric defaults fails without fix."""
         with pytest.raises(vol.Invalid, match="expected str"):
             schema = vol.Schema({vol.Optional("test_field", default=123): str})
             schema({})
@@ -199,6 +203,7 @@ class TestSecondSaveBugFix:
         assert result["test_field"] == "123"
 
     def test_ui_default_string_conversion(self) -> None:
+        """Test UI default string conversion functionality."""
         test_defaults = {
             "string_val": "test",
             "int_val": 123,

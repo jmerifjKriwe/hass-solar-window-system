@@ -1,4 +1,3 @@
-# ruff: noqa: SLF001
 """Tests for global_config.py module."""
 
 from unittest.mock import AsyncMock, Mock, patch
@@ -23,6 +22,13 @@ from custom_components.solar_window_system.global_config import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+
+# Test constants for expected aggregated values
+EXPECTED_AGGREGATED_VALUE_1 = 201.0  # 100.5 * 2
+EXPECTED_AGGREGATED_VALUE_2 = 160.4  # 80.2 * 2
+EXPECTED_AGGREGATED_VALUE_3 = 40.6  # 20.3 * 2
+EXPECTED_AGGREGATED_VALUE_4 = 6  # 3 * 2
+EXPECTED_SENSOR_STATE = 123.45
 
 
 class TestGlobalConfig:
@@ -249,19 +255,19 @@ class TestGlobalConfig:
         mock_entity_registry.async_get.return_value = mock_entity_entry
         mock_entity_registry.async_update_entity = Mock()
 
-        with patch(
-            "custom_components.solar_window_system.global_config.er.async_get",
-            return_value=mock_entity_registry,
+        with (
+            patch(
+                "custom_components.solar_window_system.global_config.er.async_get",
+                return_value=mock_entity_registry,
+            ),
+            patch.object(mock_hass, "async_block_till_done", new_callable=AsyncMock),
         ):
-            with patch.object(
-                mock_hass, "async_block_till_done", new_callable=AsyncMock
-            ):
-                await _associate_entity_with_device(mock_hass, entity_id, mock_device)
+            await _associate_entity_with_device(mock_hass, entity_id, mock_device)
 
-                # Verify entity update
-                mock_entity_registry.async_update_entity.assert_called_once_with(
-                    entity_id, device_id=mock_device.id
-                )
+            # Verify entity update
+            mock_entity_registry.async_update_entity.assert_called_once_with(
+                entity_id, device_id=mock_device.id
+            )
 
     @pytest.mark.asyncio
     async def test_associate_entity_with_device_not_found(
@@ -275,17 +281,17 @@ class TestGlobalConfig:
         mock_entity_registry.async_get.return_value = None
         mock_entity_registry.async_update_entity = Mock()
 
-        with patch(
-            "custom_components.solar_window_system.global_config.er.async_get",
-            return_value=mock_entity_registry,
+        with (
+            patch(
+                "custom_components.solar_window_system.global_config.er.async_get",
+                return_value=mock_entity_registry,
+            ),
+            patch.object(mock_hass, "async_block_till_done", new_callable=AsyncMock),
         ):
-            with patch.object(
-                mock_hass, "async_block_till_done", new_callable=AsyncMock
-            ):
-                await _associate_entity_with_device(mock_hass, entity_id, mock_device)
+            await _associate_entity_with_device(mock_hass, entity_id, mock_device)
 
-                # Verify no entity update attempted
-                mock_entity_registry.async_update_entity.assert_not_called()
+            # Verify no entity update attempted
+            mock_entity_registry.async_update_entity.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_binary_sensor_entities(self, mock_hass: HomeAssistant) -> None:
@@ -417,12 +423,12 @@ class TestGlobalConfigSensor:
         assert (
             sensor._attr_suggested_object_id == f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
         )
-        assert sensor._attr_name == f"SWS_GLOBAL {config['name']}"
-        assert sensor._attr_has_entity_name is False
-        assert sensor._attr_unit_of_measurement == config.get("unit")
-        assert sensor._attr_icon == config.get("icon")
-        assert sensor._state == config["default"]
-        assert sensor._attr_device_info == {
+        assert sensor._attr_name == f"SWS_GLOBAL {config['name']}"  # type: ignore[attr-defined]
+        assert sensor._attr_has_entity_name is False  # type: ignore[attr-defined]
+        assert sensor._attr_unit_of_measurement == config.get("unit")  # type: ignore[attr-defined]
+        assert sensor._attr_icon == config.get("icon")  # type: ignore[attr-defined]
+        assert sensor._state == config["default"]  # type: ignore[attr-defined]
+        assert sensor._attr_device_info == {  # type: ignore[attr-defined]
             "identifiers": mock_device.identifiers,
             "name": mock_device.name,
             "manufacturer": mock_device.manufacturer,
@@ -510,16 +516,18 @@ class TestGlobalConfigSensor:
 
         # Test aggregated values
         sensor._entity_key = "total_power"
-        assert sensor._get_aggregated_value() == 201.0  # 100.5 * 2
+        assert (
+            sensor._get_aggregated_value() == EXPECTED_AGGREGATED_VALUE_1
+        )  # 100.5 * 2
 
         sensor._entity_key = "total_power_direct"
-        assert sensor._get_aggregated_value() == 160.4  # 80.2 * 2
+        assert sensor._get_aggregated_value() == EXPECTED_AGGREGATED_VALUE_2  # 80.2 * 2
 
         sensor._entity_key = "total_power_diffuse"
-        assert sensor._get_aggregated_value() == 40.6  # 20.3 * 2
+        assert sensor._get_aggregated_value() == EXPECTED_AGGREGATED_VALUE_3  # 20.3 * 2
 
         sensor._entity_key = "window_with_shading"
-        assert sensor._get_aggregated_value() == 6  # 3 * 2
+        assert sensor._get_aggregated_value() == EXPECTED_AGGREGATED_VALUE_4  # 3 * 2
 
     def test_global_config_sensor_async_update_state(
         self, mock_device: dr.DeviceEntry
@@ -536,7 +544,7 @@ class TestGlobalConfigSensor:
         # Test state update
         sensor.async_update_state(123.45)
 
-        assert sensor._state == 123.45
+        assert sensor._state == EXPECTED_SENSOR_STATE
         sensor.async_write_ha_state.assert_called_once()
 
     @pytest.mark.asyncio
@@ -569,7 +577,7 @@ class TestGlobalConfigSensor:
             await sensor.async_added_to_hass()
 
             # Verify state restoration
-            assert sensor._state == 123.45
+            assert sensor._state == EXPECTED_SENSOR_STATE
 
             # Verify friendly name update
             mock_entity_registry.async_update_entity.assert_called_once_with(

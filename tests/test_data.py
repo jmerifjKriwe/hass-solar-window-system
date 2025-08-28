@@ -1,4 +1,5 @@
-# Shared group and window options with numeric values for str conversion tests
+"""Shared group and window options with numeric values for str conversion tests."""
+
 VALID_GROUP_OPTIONS_NUMERIC = {
     "entry_type": "group",
     "name": "Test Group",

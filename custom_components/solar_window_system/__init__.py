@@ -1,9 +1,3 @@
-"""
-This Source Code Form is subject to the terms of the Mozilla Public
-License, v. 2.0. If a copy of the MPL was not distributed with this
-file, You can obtain one at https://mozilla.org/MPL/2.0/.
-"""
-
 """Solar Window System integration package."""
 
 import logging
@@ -19,7 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # Get update interval from global config
+    """Set up the Solar Window System integration from a config entry."""
     update_interval_minutes = 1
     for config_entry in hass.config_entries.async_entries(DOMAIN):
         if config_entry.data.get("entry_type") == "global_config":
@@ -43,8 +37,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     await coordinator.async_refresh()
                     # If a specific window_id is given, optionally filter or log
                     if window_id:
-                        # Optionally, you could implement per-window recalculation logic here
-                        _LOGGER.info(f"Recalculation triggered for window: {window_id}")
+                        # Optionally, you could implement per-window
+                        # recalculation logic here
+                        _LOGGER.info(
+                            "Recalculation triggered for window: %s", window_id
+                        )
                     else:
                         _LOGGER.info("Recalculation triggered for all windows.")
 
