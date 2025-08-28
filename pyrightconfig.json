@@ -1,0 +1,15 @@
+{
+    "include": [
+        "custom_components/solar_window_system/"
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/tests/"
+    ],
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "reportIncompatibleVariableOverride": false,
+    "reportIncompatibleMethodOverride": false,
+    "pythonVersion": "3.13",
+    "typeCheckingMode": "basic"
+}

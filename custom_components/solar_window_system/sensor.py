@@ -88,7 +88,7 @@ class SolarWindowSystemGroupDummySensor(RestoreEntity, SensorEntity):
         }
 
     @property
-    def state(self) -> int:
+    def state(self) -> int:  # type: ignore[override]
         """Return the state of the sensor."""
         return getattr(self, "_restored_state", 42)
 
@@ -152,8 +152,7 @@ async def _setup_group_power_sensors(
                     kind="group",
                     object_name=group_name,
                     device=group_device,
-                    key=key,
-                    label=label,
+                    key_label=(key, label),
                     coordinator=coordinator,
                 )
             )
@@ -215,8 +214,7 @@ async def _setup_window_power_sensors(
                     kind="window",
                     object_name=window_name,
                     device=window_device,
-                    key=key,
-                    label=label,
+                    key_label=(key, label),
                     coordinator=coordinator,
                 )
             )
@@ -233,21 +231,19 @@ class GroupWindowPowerSensor(CoordinatorEntity, RestoreEntity):
         kind: str,  # "group" | "window"
         object_name: str,
         device: dr.DeviceEntry,
-        key: str,  # total_power | total_power_direct | total_power_diffuse
-        label: str,
+        key_label: tuple[str, str],  # (key, label) pair
         coordinator: DataUpdateCoordinator[Any],
     ) -> None:
         """Initialize power sensor bound to a group/window device."""
         super().__init__(coordinator)
         self._kind = kind
-        self._key = key
-        self._label = label
+        self._key, self._label = key_label
         self._object_name = object_name
         slug = object_name.lower().replace(" ", "_").replace("-", "_")
-        self._attr_unique_id = f"sws_{kind}_{slug}_{key}"
-        self._attr_suggested_object_id = f"sws_{kind}_{slug}_{key}"
+        self._attr_unique_id = f"sws_{kind}_{slug}_{self._key}"
+        self._attr_suggested_object_id = f"sws_{kind}_{slug}_{self._key}"
         prefix = "SWS_GROUP" if kind == "group" else "SWS_WINDOW"
-        self._attr_name = f"{prefix} {object_name} {label}"
+        self._attr_name = f"{prefix} {object_name} {self._label}"
         self._attr_has_entity_name = False
         self._attr_device_info = {
             "identifiers": device.identifiers,
@@ -256,18 +252,17 @@ class GroupWindowPowerSensor(CoordinatorEntity, RestoreEntity):
             "model": device.model,
         }
         self._attr_unit_of_measurement = "W"
-        if key == "total_power":
+        if self._key == "total_power":
             self._attr_icon = "mdi:lightning-bolt"
-        elif key == "total_power_direct":
+        elif self._key == "total_power_direct":
             self._attr_icon = "mdi:weather-sunny"
         else:
             self._attr_icon = "mdi:weather-partly-cloudy"
 
     @property
-    def state(self) -> Any:
+    def state(self) -> Any:  # type: ignore[override]
         """
-        Return current power value from latest coordinator data or restore if
-        unavailable.
+        Return current power value from coordinator data or restored state.
 
         If no data is available, returns the restored state if available.
         """

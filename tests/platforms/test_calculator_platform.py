@@ -1,3 +1,4 @@
+# ruff: noqa: S101, SLF001, PLR2004
 """Tests for calculator module with comprehensive functional tests."""
 
 from __future__ import annotations
@@ -131,14 +132,16 @@ class TestSolarWindowCalculator:
         mock_state.state = "unavailable"
         mock_states.get.return_value = mock_state
 
-        with patch.object(calculator, "hass", Mock(states=mock_states)):
-            with patch(
+        with (
+            patch.object(calculator, "hass", Mock(states=mock_states)),
+            patch(
                 "custom_components.solar_window_system.calculator._LOGGER.warning"
-            ) as mock_warning:
-                result = calculator.get_safe_state("sensor.test", 77.0)
-                assert result == 77.0
-                mock_warning.assert_called_once()
-                assert "not found or unavailable" in mock_warning.call_args[0][0]
+            ) as mock_warning,
+        ):
+            result = calculator.get_safe_state("sensor.test", 77.0)
+            assert result == 77.0
+            mock_warning.assert_called_once()
+            assert "not found or unavailable" in mock_warning.call_args[0][0]
 
     def test_get_safe_attr_unavailable_with_warning(
         self, calculator: SolarWindowCalculator
@@ -151,14 +154,16 @@ class TestSolarWindowCalculator:
         mock_state.attributes = {}
         mock_states.get.return_value = mock_state
 
-        with patch.object(calculator, "hass", Mock(states=mock_states)):
-            with patch(
+        with (
+            patch.object(calculator, "hass", Mock(states=mock_states)),
+            patch(
                 "custom_components.solar_window_system.calculator._LOGGER.warning"
-            ) as mock_warning:
-                result = calculator.get_safe_attr("sensor.test", "test_attr", 99.0)
-                assert result == 99.0
-                mock_warning.assert_called_once()
-                assert "not found or unavailable" in mock_warning.call_args[0][0]
+            ) as mock_warning,
+        ):
+            result = calculator.get_safe_attr("sensor.test", "test_attr", 99.0)
+            assert result == 99.0
+            mock_warning.assert_called_once()
+            assert "not found or unavailable" in mock_warning.call_args[0][0]
 
     def test_calculate_shadow_factor_no_shadow(
         self, calculator: SolarWindowCalculator
@@ -1227,17 +1232,19 @@ class TestSolarWindowCalculator:
         mock_state.state = "25.0"
         mock_states.get.return_value = mock_state
 
-        with patch.object(calculator, "hass", Mock(states=mock_states)):
-            with patch(
+        with (
+            patch.object(calculator, "hass", Mock(states=mock_states)),
+            patch(
                 "custom_components.solar_window_system.calculator.datetime"
-            ) as mock_datetime:
-                mock_datetime.now.return_value.hour = 10  # After start hour
+            ) as mock_datetime,
+        ):
+            mock_datetime.now.return_value.hour = 10  # After start hour
 
-                result, reason = calculator._check_scenario_c(shade_request, 25.0)
+            result, reason = calculator._check_scenario_c(shade_request, 25.0)
 
-                assert result is True
-                assert "Heatwave forecast" in reason
-                assert "30.0°C" in reason
+            assert result is True
+            assert "Heatwave forecast" in reason
+            assert "30.0°C" in reason
 
     def test_scenario_c_checking_disabled_early_hour(
         self, calculator: SolarWindowCalculator
@@ -1580,15 +1587,15 @@ class TestSolarWindowCalculator:
         mock_state.state = "25.0"  # Above indoor base
         mock_states.get.return_value = mock_state
 
-        with patch.object(calculator, "hass", Mock(states=mock_states)):
-            with patch(
+        with (
+            patch.object(calculator, "hass", Mock(states=mock_states)),
+            patch(
                 "custom_components.solar_window_system.calculator.datetime"
-            ) as mock_datetime:
-                mock_datetime.now.return_value.hour = 10  # After start hour
+            ) as mock_datetime,
+        ):
+            mock_datetime.now.return_value.hour = 10  # After start hour
 
-                result, reason = calculator._should_shade_window_from_flows(
-                    shade_request
-                )
+            result, reason = calculator._should_shade_window_from_flows(shade_request)
 
-                assert result is True
-                assert "Heatwave forecast" in reason
+            assert result is True
+            assert "Heatwave forecast" in reason

@@ -3,8 +3,8 @@ Options flow for Solar Window System integration.
 
 Note:
 This options flow only handles the global configuration entry.
-All logic for group and window subentries (including inheritance, defaults, and UI behavior)
-is implemented in config_flow.py, not here.
+All logic for group and window subentries (including inheritance, defaults,
+and UI behavior) is implemented in config_flow.py, not here.
 
 """
 

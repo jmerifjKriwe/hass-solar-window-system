@@ -1,3 +1,4 @@
+# ruff: noqa: S101, PLR2004
 """
 Test helpers module for Solar Window System integration.
 
@@ -75,7 +76,7 @@ class TestGetTemperatureSensorEntities:
             ),
             patch.object(mock_hass.helpers, "translation", mock_translation),
         ):
-            result = await get_temperature_sensor_entities(mock_hass)
+            await get_temperature_sensor_entities(mock_hass)
 
     @pytest.mark.asyncio
     async def test_get_temperature_sensor_entities_without_translation(

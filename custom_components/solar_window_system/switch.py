@@ -108,12 +108,12 @@ class GlobalConfigSwitchEntity(SwitchEntity, RestoreEntity):
                     self.entity_id, name=new_friendly_name
                 )
 
-    async def async_turn_on(self) -> None:
+    async def async_turn_on(self) -> None:  # type: ignore[override]
         """Turn the entity on and persist state."""
         self._attr_is_on = True
         self.async_write_ha_state()
 
-    async def async_turn_off(self) -> None:
+    async def async_turn_off(self) -> None:  # type: ignore[override]
         """Turn the entity off and persist state."""
         self._attr_is_on = False
         self.async_write_ha_state()

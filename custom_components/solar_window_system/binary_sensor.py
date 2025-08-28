@@ -29,7 +29,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up binary sensors for window subentries."""
-    if entry.data.get("entry_type") != "window_configs":
+    if entry.data.get("entry_type") != "window_configs" or not entry.subentries:
         return
 
     # Get coordinator
@@ -42,10 +42,6 @@ async def async_setup_entry(
         return
 
     device_registry = dr.async_get(hass)
-
-    if not entry.subentries:
-        _LOGGER.warning("No window subentries found")
-        return
 
     entities = []
     for subentry_id, subentry in entry.subentries.items():
@@ -123,14 +119,14 @@ class WindowShadingRequiredBinarySensor(
         self._friendly_label = "Shading Required"
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool:  # type: ignore[override]
         """Return True if shading is currently required."""
         if not self.coordinator.data:
             return False
         return self.coordinator.get_window_shading_status(self._window_name)
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | float | int | None]:
+    def extra_state_attributes(self) -> dict[str, str | float | int | None]:  # type: ignore[override]
         """Return additional state attributes."""
         if not self.coordinator.data:
             return {}

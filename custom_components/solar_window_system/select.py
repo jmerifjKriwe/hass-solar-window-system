@@ -247,18 +247,19 @@ class GlobalConfigSelectEntity(SelectEntity, RestoreEntity):
         """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
         # Restore previous state if available
-        if (restored_state := await self.async_get_last_state()) is not None:
-            if restored_state.state in self._attr_options:
-                self._attr_current_option = restored_state.state
+        if (
+            restored_state := await self.async_get_last_state()
+        ) is not None and restored_state.state in self._attr_options:
+            self._attr_current_option = restored_state.state
         # Set friendly name to config['name'] (e.g. 'Weather Warning Sensor')
         entity_registry = er.async_get(self.hass)
-        if self.entity_id in entity_registry.entities:
-            ent_reg_entry = entity_registry.entities[self.entity_id]
-            new_friendly_name = self._config.get("name")
-            if ent_reg_entry.original_name != new_friendly_name:
-                entity_registry.async_update_entity(
-                    self.entity_id, name=new_friendly_name
-                )
+        if (
+            self.entity_id in entity_registry.entities
+            and (ent_reg_entry := entity_registry.entities[self.entity_id])
+            and ent_reg_entry.original_name
+            != (new_friendly_name := self._config.get("name"))
+        ):
+            entity_registry.async_update_entity(self.entity_id, name=new_friendly_name)
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection and persist state."""
@@ -310,9 +311,10 @@ class GroupConfigSelectEntity(SelectEntity, RestoreEntity):
         """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
         # Restore previous state if available
-        if (restored_state := await self.async_get_last_state()) is not None:
-            if restored_state.state in self._attr_options:
-                self._attr_current_option = restored_state.state
+        if (
+            restored_state := await self.async_get_last_state()
+        ) is not None and restored_state.state in self._attr_options:
+            self._attr_current_option = restored_state.state
         # Set friendly name to config['name'] (e.g. 'Enable Scenario B')
         entity_registry = er.async_get(self.hass)
         if self.entity_id in entity_registry.entities:
