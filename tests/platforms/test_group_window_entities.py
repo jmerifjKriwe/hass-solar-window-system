@@ -1,6 +1,6 @@
 """Tests for group and window related entities."""
 
-# ruff: noqa: ARG002, TRY004
+# ruff: noqa: ARG002, TRY004, FBT001, FBT002, ANN001
 
 from __future__ import annotations
 
