@@ -15,6 +15,11 @@ ignore = [
     "ISC001", # incompatible with formatter
 ]
 
+[lint.per-file-ignores]
+"tests/**" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "PLR2004", "ARG001", "F811"]
+"tests/**/*.py" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
+"tests/*" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
+
 [lint.flake8-pytest-style]
 fixture-parentheses = false
 

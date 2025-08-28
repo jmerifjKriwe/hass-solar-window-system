@@ -1,11 +1,11 @@
-# ruff: noqa: S101,PT012
+# ruff: noqa: PT012
 """
 Comprehensive tests for string-conversion fixes in config flows.
 
 Assertions are used intentionally in tests; disable assertion lint (S101).
 """
 
-# ruff: noqa: S101,ANN001,ARG002,D102
+# ruff: noqa: ANN001, ARG002, D102
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 

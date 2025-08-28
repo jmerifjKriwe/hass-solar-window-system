@@ -1,4 +1,3 @@
-# ruff: noqa: S101,SLF001
 """Tests for select platform."""
 
 from __future__ import annotations

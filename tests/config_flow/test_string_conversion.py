@@ -1,4 +1,4 @@
-# ruff: noqa: S101,PT012
+# ruff: noqa: PT012
 """
 Test to verify string conversion handling in config flows.
 
@@ -6,7 +6,7 @@ Assertions are used intentionally in tests; disable assertion lint (S101) for th
 module.
 """
 
-# ruff: noqa: S101, ARG002, ANN001, D102
+# ruff: noqa: ARG002, ANN001, D102
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 

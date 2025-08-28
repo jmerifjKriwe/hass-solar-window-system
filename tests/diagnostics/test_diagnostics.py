@@ -60,4 +60,4 @@ class TestDiagnostics(BaseTestCase):
 
         result = await async_get_config_entry_diagnostics(hass, entry)
         # Use snapshot assertion for diagnostics output
-        assert result == snapshot  # noqa: S101
+        assert result == snapshot

@@ -1,4 +1,3 @@
-# ruff: noqa: S101, PLC0415, PLR2004
 """Tests for __init__.py module."""
 
 import tempfile

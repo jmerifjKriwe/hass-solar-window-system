@@ -1,4 +1,3 @@
-# ruff: noqa: S101, PLR2004
 """
 Test helpers module for Solar Window System integration.
 

@@ -1,4 +1,3 @@
-# ruff: noqa: SLF001, S101
 """Tests for global_config.py module."""
 
 from unittest.mock import AsyncMock, Mock, patch

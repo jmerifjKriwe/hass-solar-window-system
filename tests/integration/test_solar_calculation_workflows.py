@@ -1,4 +1,3 @@
-# ruff: noqa: S101, SLF001
 """End-to-end integration tests for solar window calculation workflows."""
 
 from __future__ import annotations

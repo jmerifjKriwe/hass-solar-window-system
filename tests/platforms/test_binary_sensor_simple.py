@@ -1,4 +1,3 @@
-# ruff: noqa: S101,SLF001
 """Tests for binary_sensor platform."""
 
 from __future__ import annotations

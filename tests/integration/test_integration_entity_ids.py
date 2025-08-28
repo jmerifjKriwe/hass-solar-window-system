@@ -1,6 +1,6 @@
 """Tests for Solar Window System entity ID integration using framework."""
 
-# ruff: noqa: ANN001,FBT001,ARG001,FBT002
+# ruff: noqa: ANN001, FBT001, FBT002
 
 from __future__ import annotations
 

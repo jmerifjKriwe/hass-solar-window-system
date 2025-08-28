@@ -1,4 +1,3 @@
-# ruff: noqa: S101, SLF001, PLR2004
 """Tests for calculator module with comprehensive functional tests."""
 
 from __future__ import annotations
