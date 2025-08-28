@@ -2,6 +2,171 @@
 
 <!-- version list -->
 
+## v1.1.0 (2025-08-28)
+
+### Bug Fixes
+
+- **tests**: Address linting issues and improve test quality
+  ([`66df3d2`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/66df3d22cb3f06f784c9e0e40457893698ae9130))
+
+- **tests**: Reduce noisy test lints (add test ruff exemptions and pyproject updates)
+  ([`336f9c6`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/336f9c6acde493e4004556cdb1ba81995e73d539))
+
+- **tests**: Repair helpers and make ruff-clean for snapshot PoC
+  ([`4628e31`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/4628e31de63beb502fcba0f14321692a4b56e70d))
+
+- **tests**: Silence deliberate asserts and reduce noisy lints (S101, per-file test exceptions)
+  ([`1a1fbdc`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/1a1fbdc75214ee5067005fcfdcfb9ac19974abce))
+
+- **tests**: Stabilize and clean test_calculator_flow_based.py for deterministic snapshots
+  ([`3f8734e`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/3f8734e704145d375f9ef95fc8f38250c6c5c2f1))
+
+- **tests**: Tidy test_calculator_flow_based.py (apply ruff fixes, reduce noisy findings)
+  ([`c05fe35`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/c05fe35bb5be3254252a59a40f812b4a0ebe171f))
+
+### Build System
+
+- **deps**: Bump actions/checkout from 4 to 5
+  ([`71623a7`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/71623a7aab8212bcd6fc9a4745b830991375d092))
+
+- **deps**: Bump home-assistant/actions
+  ([`3c3a499`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/3c3a499f609df9abb764b93e9873b6d514b6260d))
+
+- **deps**: Bump ruff from 0.12.5 to 0.12.10
+  ([`bbf7a98`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/bbf7a984f4c6a39d3868e83a703dfb4562999c4c))
+
+### Chores
+
+- Commit remaining workspace changes
+  ([`1de2c36`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/1de2c36a1936ba820197cdc78e1d422d43b9f82a))
+
+- Deleted "Upload | Distribution Artifacts" from release.yml
+  ([`a987d9e`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/a987d9ec0cc9f6e36070e359b73687b81f058699))
+
+- Small adjustments for github actions
+  ([`5801546`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/5801546e89dac60d188ab5571826e8e4a7487a5b))
+
+- Update of readme.md
+  ([`a26896e`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/a26896e6b0d3a0576eb9eb770270f990d706e020))
+
+- **tests**: Add config_flow happy-path and duplicate-name tests
+  ([`9a76ff9`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/9a76ff9590bf62905d4e43d8b93ce7c28aa791d6))
+
+- **tests**: Add fixtures helper and parametrized platform PoC; move legacy platform tests to
+  tests/old
+  ([`4279126`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/4279126e7e647c02c0afae34d21201a31721fdf5))
+
+- **tests**: Add initial diagnostics snapshots
+  ([`1aa08ce`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/1aa08ce978ae4cfaf45d38c378eac94b0c2a4388))
+
+- **tests**: Add tests/constants and helper collect_entities_for_setup_with_assert; use constants
+  for global device
+  ([`47654ea`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/47654eadc4d33e13310393b88a7ee6fc2838d90a))
+
+- **tests**: Centralize fixtures usage in conftest and add tests/TODO.md
+  ([`3e87ce7`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/3e87ce7952e005db8d85321a545b6ffc5b2fabcd))
+
+- **tests**: Centralize unit fixtures and update coordinator tests
+  ([`771edc0`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/771edc0da20ac66ec59b4cce4a1ccdc7a9a205a4))
+
+- **tests**: Complete migration — include remaining modified tests
+  ([`9a90a49`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/9a90a499b2e0732606ecd9c7b536e809916d9bdb))
+
+- **tests**: Consolidate coordinator tests and remove duplicates
+  ([`c1c7baf`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/c1c7bafda8ca4b0fef4d40204b6f4345adbd1561))
+
+- **tests**: Fix pyproject.toml and tidy tests to restore pytest collection
+  ([`33cc151`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/33cc151fc049e40ecda049c8ce10b16f405387a6))
+
+- **tests**: Move entity tests to tests/old (batch 3)
+  ([`59c30e2`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/59c30e24a0beb2db65b8de262b79cc5da1ca4232))
+
+- **tests**: Move legacy platform tests to tests/old (batch 2)
+  ([`acf331f`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/acf331f4baedc4184d186ada0536a307fb1aeeb6))
+
+- **tests**: Move remaining legacy tests to tests/old (bulk)
+  ([`50727c1`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/50727c139301ce7a9bc8fa757aa326fab4acc3dd))
+
+- **tests**: Remove legacy platform test files (consolidated)
+  ([`a1e7fb4`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/a1e7fb429f1ef70858611f5b5d2eca7601b5acb7))
+
+- **tests**: Remove legacy tests/old archive
+  ([`faaa135`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/faaa1350feef4aca9c5d2827db61dc8734f75dd8))
+
+- **tests**: Reorganize and fix test documentation
+  ([`eaaa966`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/eaaa9661f03735713f3536ef32dbaddb61c25004))
+
+- **tests**: Use centralized unit fixtures in coordinator tests
+  ([`925d0df`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/925d0dfc65071ee02fe264343a98466aee42bcd1))
+
+- **tests**: Wip checkpoint — pause for today
+  ([`fd56eb4`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/fd56eb427ba2c77dee59b63d6c3fdecb7868caf2))
+
+### Code Style
+
+- **tests**: Apply ruff --fix to tests
+  ([`ad81f84`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ad81f84fb0879f09ae1547d1e9c40c6c5a117372))
+
+- **tests**: Fix config_flow PoC formatting and docstring
+  ([`5298fd7`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/5298fd7795c7178adb43541ce306de3e1359ed35))
+
+- **tests**: Lint and typing fixes for config_flow PoC tests
+  ([`1b2e0bf`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/1b2e0bf50f9529d4c06f25e8333c564a1dd7c30e))
+
+- **tests**: Ruff fixes for snapshot helpers and integration PoC
+  ([`af1ecbc`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/af1ecbc6d425a5b604fcf6db467b27c47610cdbd))
+
+- **tests**: Tidy conftest docstrings and linter fixes
+  ([`ddcac4e`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ddcac4e43c3a171254a0b12e5e4eaf2acf19bc9e))
+
+### Documentation
+
+- Update coverage badge
+  ([`df52c24`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/df52c242156dfc291cf6aed663cf07ad93db1c57))
+
+- **tests**: Document syrupy snapshot usage and CI guidance
+  ([`9f61e6c`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/9f61e6c134aa77c0e3473bd228d507905e0bd27e))
+
+- **tests**: Rename TESTING.md to README.md and add snapshot guidance
+  ([`820c31a`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/820c31a832f18df6f67af957ac69276649766fb7))
+
+### Features
+
+- **tests**: Add number snapshot PoC
+  ([`db75aae`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/db75aaef132b76f7e2d89223928db01d7594bf9a))
+
+- **tests**: Add snapshot PoC tests and serializer helper
+  ([`512b847`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/512b8477af3ef5977a7f2cf69ab4c10376cf75a8))
+
+### Refactoring
+
+- **test**: Migrate and reorganize test suite
+  ([`eb0bfc6`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/eb0bfc6391e49594189cbab0f0ca58adc0cd086e))
+
+- **tests**: Centralize fixtures and make global-config entry idempotent; update platform tests
+  ([`c44c576`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/c44c5762e2cb86cd491b41bf1d4d3fd0ad8f3172))
+
+- **tests**: Reorganize test structure and improve documentation
+  ([`66f1bff`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/66f1bff2e0ac510d77db9e2020703db51a7b3f98))
+
+- **tests**: Unify fixture names (provide canonical fixtures in helpers)
+  ([`a1a1807`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/a1a1807b473a810cd7f720d1ff460cdd7d2adf12))
+
+### Testing
+
+- **config**: Add config_flow PoC import test
+  ([`77bfed0`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/77bfed00a0a728bc9eb249df4c57ba09dc8c4acc))
+
+- **config**: Add config_flow PoC tests for global and subentries
+  ([`d5d1ce3`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/d5d1ce3749c654f4da84c126406e78238bb0eca0))
+
+- **platforms**: Parametrize platform tests and skip legacy duplicates; mark TODO items 1-4 done
+  ([`e8aa726`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/e8aa726b8fb51af58e2257006adaa91978c22621))
+
+- **snapshot**: Normalize entity_id in number entity snapshot
+  ([`af44ed1`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/af44ed1c67725521783657aaa9075ae97aedd15b))
+
+
 ## v1.0.0 (2025-08-22)
 
 ### Chores
