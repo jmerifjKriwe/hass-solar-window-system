@@ -2,7 +2,6 @@
 
 target-version = "py313"
 src = [".", "src"]
-preview = true
 
 [lint]
 select = [
