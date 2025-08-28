@@ -29,6 +29,9 @@ class WindowCalculationResult:
     power_total: float
     power_direct: float
     power_diffuse: float
+    power_direct_raw: float  # Raw direct power before shadow factor
+    power_diffuse_raw: float  # Raw diffuse power (same as power_diffuse)
+    power_total_raw: float  # Raw total power before shadow factor
     shadow_factor: float
     is_visible: bool
     area_m2: float
@@ -571,6 +574,117 @@ class SolarWindowCalculator:
 
         return global_data
 
+    def _extract_calculation_parameters(
+        self,
+        effective_config: dict[str, Any],
+        window_data: dict[str, Any],
+        states: dict[str, Any],
+    ) -> tuple[float, float, float, float, float, float, float, float, float]:
+        """Extract and validate calculation parameters."""
+
+        def safe_float(val: Any, default: float = 0.0) -> float:
+            if val in ("", None, "inherit", "-1", -1):
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
+        sun_azimuth = safe_float(states.get("sun_azimuth", 0.0), 0.0)
+        sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
+
+        # Physical parameters
+        g_value = safe_float(effective_config["physical"].get("g_value", 0.5), 0.5)
+        frame_width = safe_float(
+            effective_config["physical"].get("frame_width", 0.125), 0.125
+        )
+        diffuse_factor = safe_float(
+            effective_config["physical"].get("diffuse_factor", 0.15), 0.15
+        )
+        tilt = safe_float(effective_config["physical"].get("tilt", 90.0), 90.0)
+
+        # Window dimensions
+        window_width = safe_float(window_data.get("window_width", 1.0), 1.0)
+        window_height = safe_float(window_data.get("window_height", 1.0), 1.0)
+        glass_width = max(0, window_width - 2 * frame_width)
+        glass_height = max(0, window_height - 2 * frame_width)
+        area = glass_width * glass_height
+
+        # Shadow parameters
+        shadow_depth = safe_float(window_data.get("shadow_depth", 0), 0.0)
+        shadow_offset = safe_float(window_data.get("shadow_offset", 0), 0.0)
+
+        return (
+            solar_radiation,
+            sun_azimuth,
+            sun_elevation,
+            g_value,
+            diffuse_factor,
+            tilt,
+            area,
+            shadow_depth,
+            shadow_offset,
+        )
+
+    def _check_window_visibility(
+        self,
+        sun_elevation: float,
+        sun_azimuth: float,
+        window_data: dict[str, Any],
+    ) -> tuple[bool, float]:
+        """Check if sun is visible to window and return window azimuth."""
+
+        def safe_float(val: Any, default: float = 0.0) -> float:
+            if val in ("", None, "inherit", "-1", -1):
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        elevation_min = safe_float(window_data.get("elevation_min", 0), 0.0)
+        elevation_max = safe_float(window_data.get("elevation_max", 90), 90.0)
+        azimuth_min = safe_float(window_data.get("azimuth_min", -90), -90.0)
+        azimuth_max = safe_float(window_data.get("azimuth_max", 90), 90.0)
+        window_azimuth = safe_float(window_data.get("azimuth", 180), 180.0)
+
+        is_visible = False
+        if elevation_min <= sun_elevation <= elevation_max:
+            az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
+            if azimuth_min <= az_diff <= azimuth_max:
+                is_visible = True
+
+        return is_visible, window_azimuth
+
+    def _calculate_direct_power(
+        self,
+        params: dict[str, float],
+        window_azimuth: float,
+    ) -> float:
+        """Calculate direct solar power component."""
+        sun_el_rad = math.radians(params["sun_elevation"])
+        sun_az_rad = math.radians(params["sun_azimuth"])
+        win_az_rad = math.radians(window_azimuth)
+        tilt_rad = math.radians(params["tilt"])
+
+        cos_incidence = math.sin(sun_el_rad) * math.cos(tilt_rad) + math.cos(
+            sun_el_rad
+        ) * math.sin(tilt_rad) * math.cos(sun_az_rad - win_az_rad)
+
+        if cos_incidence > 0 and sun_el_rad > 0:
+            return (
+                (
+                    params["solar_radiation"]
+                    * (1 - params["diffuse_factor"])
+                    * cos_incidence
+                    / math.sin(sun_el_rad)
+                )
+                * params["area"]
+                * params["g_value"]
+            )
+        return 0.0
+
     def calculate_window_solar_power_with_shadow(
         self,
         effective_config: dict[str, Any],
@@ -589,18 +703,18 @@ class SolarWindowCalculator:
             WindowCalculationResult with calculated values
 
         """
-
-        def safe_float(val: Any, default: float = 0.0) -> float:
-            if val in ("", None, "inherit", "-1", -1):
-                return default
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
-
-        solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
-        sun_azimuth = safe_float(states.get("sun_azimuth", 0.0), 0.0)
-        sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
+        # Extract parameters
+        (
+            solar_radiation,
+            sun_azimuth,
+            sun_elevation,
+            g_value,
+            diffuse_factor,
+            tilt,
+            area,
+            shadow_depth,
+            shadow_offset,
+        ) = self._extract_calculation_parameters(effective_config, window_data, states)
 
         # Thresholds for minimum radiation and elevation
         min_radiation = 1e-3
@@ -612,6 +726,9 @@ class SolarWindowCalculator:
                 power_total=0.0,
                 power_direct=0.0,
                 power_diffuse=0.0,
+                power_direct_raw=0.0,
+                power_diffuse_raw=0.0,
+                power_total_raw=0.0,
                 shadow_factor=1.0,
                 is_visible=False,
                 area_m2=0.0,
@@ -620,32 +737,18 @@ class SolarWindowCalculator:
                 effective_threshold=effective_config["thresholds"]["direct"],
             )
 
-        # Physical parameters (robust cast)
-        g_value = safe_float(effective_config["physical"].get("g_value", 0.5), 0.5)
-        frame_width = safe_float(
-            effective_config["physical"].get("frame_width", 0.125), 0.125
-        )
-        diffuse_factor = safe_float(
-            effective_config["physical"].get("diffuse_factor", 0.15), 0.15
-        )
-        tilt = safe_float(effective_config["physical"].get("tilt", 90.0), 90.0)
-
-        # Window dimensions and area calculation
-        window_width = safe_float(window_data.get("window_width", 1.0), 1.0)
-        window_height = safe_float(window_data.get("window_height", 1.0), 1.0)
-        glass_width = max(0, window_width - 2 * frame_width)
-        glass_height = max(0, window_height - 2 * frame_width)
-        area = glass_width * glass_height
-
-        # Shadow parameters (robust cast)
-        shadow_depth = safe_float(window_data.get("shadow_depth", 0), 0.0)
-        shadow_offset = safe_float(window_data.get("shadow_offset", 0), 0.0)
-
         # Calculate diffuse power (not affected by shadows)
         power_diffuse = solar_radiation * diffuse_factor * area * g_value
         power_direct = 0
+        power_direct_raw = 0
+        power_diffuse_raw = power_diffuse  # Diffuse is never affected by shadows
         is_visible = False
         shadow_factor = 1.0
+
+        # Check window visibility
+        is_visible, window_azimuth = self._check_window_visibility(
+            sun_elevation, sun_azimuth, window_data
+        )
 
         _LOGGER.debug(
             "Solar Power Calculation for %s: sun_el=%.1f°, sun_az=%.1f°, "
@@ -653,57 +756,40 @@ class SolarWindowCalculator:
             window_data.get("name", "Unknown"),
             sun_elevation,
             sun_azimuth,
-            safe_float(window_data.get("azimuth", 180), 180.0),
+            window_azimuth,
             shadow_depth,
             shadow_offset,
         )
 
-        # Check if sun is visible to window (robust cast)
-        elevation_min = safe_float(window_data.get("elevation_min", 0), 0.0)
-        elevation_max = safe_float(window_data.get("elevation_max", 90), 90.0)
-        azimuth_min = safe_float(window_data.get("azimuth_min", -90), -90.0)
-        azimuth_max = safe_float(window_data.get("azimuth_max", 90), 90.0)
-        window_azimuth = safe_float(window_data.get("azimuth", 180), 180.0)
+        if is_visible:
+            _LOGGER.debug("Sun is VISIBLE to the window.")
 
-        if elevation_min <= sun_elevation <= elevation_max:
-            az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
-            if azimuth_min <= az_diff <= azimuth_max:
-                is_visible = True
-                _LOGGER.debug("Sun is VISIBLE to the window.")
+            # Calculate direct power
+            params = {
+                "solar_radiation": solar_radiation,
+                "sun_elevation": sun_elevation,
+                "sun_azimuth": sun_azimuth,
+                "diffuse_factor": diffuse_factor,
+                "tilt": tilt,
+                "area": area,
+                "g_value": g_value,
+            }
+            power_direct_raw = self._calculate_direct_power(params, window_azimuth)
 
-                # Calculate basic direct solar power
-                sun_el_rad = math.radians(sun_elevation)
-                sun_az_rad = math.radians(sun_azimuth)
-                win_az_rad = math.radians(window_azimuth)
-                tilt_rad = math.radians(tilt)
+            # Store raw values before shadow calculation
+            power_direct = power_direct_raw
 
-                cos_incidence = math.sin(sun_el_rad) * math.cos(tilt_rad) + math.cos(
-                    sun_el_rad
-                ) * math.sin(tilt_rad) * math.cos(sun_az_rad - win_az_rad)
-
-                if cos_incidence > 0 and sun_el_rad > 0:
-                    power_direct = (
-                        (
-                            solar_radiation
-                            * (1 - diffuse_factor)
-                            * cos_incidence
-                            / math.sin(sun_el_rad)
-                        )
-                        * area
-                        * g_value
-                    )
-
-                    # Apply shadow calculation
-                    if shadow_depth > 0 or shadow_offset > 0:
-                        shadow_factor = self._calculate_shadow_factor(
-                            sun_elevation,
-                            sun_azimuth,
-                            window_azimuth,
-                            shadow_depth,
-                            shadow_offset,
-                        )
-                        power_direct *= shadow_factor
-                        _LOGGER.debug("Shadow factor applied: %.2f", shadow_factor)
+            # Apply shadow calculation
+            if shadow_depth > 0 or shadow_offset > 0:
+                shadow_factor = self._calculate_shadow_factor(
+                    sun_elevation,
+                    sun_azimuth,
+                    window_azimuth,
+                    shadow_depth,
+                    shadow_offset,
+                )
+                power_direct *= shadow_factor
+                _LOGGER.debug("Shadow factor applied: %.2f", shadow_factor)
 
         _LOGGER.debug(
             "Power calculation result: direct=%.2fW, diffuse=%.2fW, "
@@ -718,6 +804,9 @@ class SolarWindowCalculator:
             power_total=power_direct + power_diffuse,
             power_direct=power_direct,
             power_diffuse=power_diffuse,
+            power_direct_raw=power_direct_raw,
+            power_diffuse_raw=power_diffuse_raw,
+            power_total_raw=power_direct_raw + power_diffuse_raw,
             shadow_factor=shadow_factor,
             is_visible=is_visible,
             area_m2=area,
@@ -754,8 +843,8 @@ class SolarWindowCalculator:
         external_states = self._prepare_external_states(global_data)
 
         # Check minimum calculation conditions
-        if not self._meets_calculation_conditions(external_states):
-            return self._get_empty_window_results_for_windows(windows)
+        if not self._meets_calculation_conditions(external_states, global_data):
+            return self._get_zero_window_results_for_windows(windows)
 
         # Perform main window calculations
         window_results = self._calculate_window_results(windows, external_states)
@@ -830,22 +919,44 @@ class SolarWindowCalculator:
             == "on",
         }
 
-    def _meets_calculation_conditions(self, external_states: dict[str, Any]) -> bool:
+    def _meets_calculation_conditions(
+        self, external_states: dict[str, Any], global_config: dict[str, Any]
+    ) -> bool:
         """Check if minimum calculation conditions are met."""
         min_radiation = external_states.get("solar_radiation", 0.0)
         min_elevation = external_states.get("sun_elevation", 0.0)
-        min_radiation_threshold = 1e-3
-        return min_radiation >= min_radiation_threshold and min_elevation >= 0.0
 
-    def _get_empty_window_results_for_windows(
+        # Get configured thresholds from global config, fallback to defaults
+        min_radiation_threshold = global_config.get("min_solar_radiation", 1e-3)
+        min_elevation_threshold = global_config.get("min_sun_elevation", 0.0)
+
+        return (
+            min_radiation >= min_radiation_threshold
+            and min_elevation >= min_elevation_threshold
+        )
+
+    def _get_zero_window_results_for_windows(
         self, windows: dict[str, Any]
     ) -> dict[str, Any]:
-        """Get empty window results for all windows."""
+        """Get zero window results for all windows when conditions not met."""
         window_results = {}
         for window_subentry_id, window_data in windows.items():
             window_results[window_subentry_id] = {
                 "name": window_data.get("name", window_subentry_id),
+                "total_power": 0,
+                "total_power_direct": 0,
+                "total_power_diffuse": 0,
+                "total_power_raw": 0,
+                "power_m2_total": 0,
+                "power_m2_direct": 0,
+                "power_m2_diffuse": 0,
+                "power_m2_raw": 0,
+                "shadow_factor": 0,
+                "area_m2": 0,
+                "is_visible": False,
                 "shade_required": False,
+                "shade_reason": "Minimum conditions not met",
+                "effective_threshold": 0,
             }
         return {"windows": window_results}
 
@@ -921,13 +1032,8 @@ class SolarWindowCalculator:
         solar_result.shade_required = shade_required
         solar_result.shade_reason = shade_reason
 
-        # Calculate additional metrics
-        power_raw = (
-            solar_result.power_direct / solar_result.shadow_factor
-            + solar_result.power_diffuse
-            if solar_result.shadow_factor > 0
-            else solar_result.power_total
-        )
+        # Calculate additional metrics using the correct raw power values
+        power_raw = solar_result.power_total_raw
         # Avoid division by zero
         area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
 

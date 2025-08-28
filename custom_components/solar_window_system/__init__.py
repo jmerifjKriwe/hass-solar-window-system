@@ -15,6 +15,18 @@ from .coordinator import SolarWindowSystemCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+def _get_integration_version() -> str:
+    """Get the integration version from manifest.json."""
+    try:
+        manifest_path = Path(__file__).parent / "manifest.json"
+        with manifest_path.open("r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        return manifest.get("version", "unknown")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        _LOGGER.warning("Could not read version from manifest.json")
+        return "unknown"
+
+
 def _register_services(hass: HomeAssistant) -> None:
     """Register all services for the Solar Window System integration."""
     # Register recalculate service (only once)
@@ -140,6 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             name="Solar Window System",
             manufacturer="SolarWindowSystem",
             model="GlobalConfig",
+            sw_version=_get_integration_version(),
         )
 
         # Set up all platforms for this entry

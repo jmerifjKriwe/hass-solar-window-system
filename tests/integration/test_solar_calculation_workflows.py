@@ -362,6 +362,9 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
                 power_total=50.0,
                 power_direct=40.0,
                 power_diffuse=10.0,
+                power_direct_raw=40.0,  # Raw direct power before shadow factor
+                power_diffuse_raw=10.0,  # Raw diffuse power (same as power_diffuse)
+                power_total_raw=50.0,  # Raw total power before shadow factor
                 shadow_factor=1.0,
                 is_visible=True,
                 area_m2=2.0,
@@ -437,6 +440,9 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
             power_total=300.0,
             power_direct=240.0,
             power_diffuse=60.0,
+            power_direct_raw=240.0,  # Raw direct power before shadow factor
+            power_diffuse_raw=60.0,  # Raw diffuse power (same as power_diffuse)
+            power_total_raw=300.0,  # Raw total power before shadow factor
             shadow_factor=1.0,
             is_visible=True,
             area_m2=1.5,
@@ -652,6 +658,9 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
                 power_total=250.0,
                 power_direct=200.0,
                 power_diffuse=50.0,
+                power_direct_raw=200.0,  # Raw direct power before shadow factor
+                power_diffuse_raw=50.0,  # Raw diffuse power (same as power_diffuse)
+                power_total_raw=250.0,  # Raw total power before shadow factor
                 shadow_factor=1.0,
                 is_visible=True,
                 area_m2=2.0,
@@ -731,6 +740,9 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
             power_total=250.0,
             power_direct=200.0,
             power_diffuse=50.0,
+            power_direct_raw=200.0,  # Raw direct power before shadow factor
+            power_diffuse_raw=50.0,  # Raw diffuse power (same as power_diffuse)
+            power_total_raw=250.0,  # Raw total power before shadow factor
             shadow_factor=1.0,
             is_visible=True,
             area_m2=2.0,

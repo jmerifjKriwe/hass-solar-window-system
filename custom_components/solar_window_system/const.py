@@ -106,6 +106,15 @@ GLOBAL_CONFIG_ENTITIES = {
         "icon": "mdi:weather-partly-cloudy",
         "category": "sensor",
     },
+    # Diagnostic sensor for version info
+    "integration_version": {
+        "platform": "sensor",
+        "name": "Integration Version",
+        "default": "0.1.0",
+        "unit": "",
+        "icon": "mdi:information-outline",
+        "category": "diagnostic",
+    },
     # Weather-related select entities
     "weather_warning_sensor": {
         "platform": "input_select",

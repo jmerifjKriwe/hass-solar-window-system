@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -17,6 +20,18 @@ if TYPE_CHECKING:
     from homeassistant.helpers import device_registry as dr
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _get_integration_version() -> str:
+    """Get the integration version from manifest.json."""
+    try:
+        manifest_path = Path(__file__).parent / "manifest.json"
+        with manifest_path.open("r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        return manifest.get("version", "unknown")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        _LOGGER.warning("Could not read version from manifest.json")
+        return "unknown"
 
 
 async def async_create_global_config_entities(
@@ -265,6 +280,10 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         self._attr_icon = config.get("icon")
         self._state = config["default"]
 
+        # Set entity category for diagnostic sensors
+        if config.get("category") == "diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
@@ -323,6 +342,11 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         ]
         if self._entity_key in sensor_keys:
             return self._get_aggregated_value()
+
+        # Special handling for version sensor
+        if self._entity_key == "integration_version":
+            return _get_integration_version()
+
         return self._state
 
     def _get_aggregated_value(self) -> float | int:
