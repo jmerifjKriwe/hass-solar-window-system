@@ -2,6 +2,59 @@
 
 <!-- version list -->
 
+## v1.1.1 (2025-08-28)
+
+### Bug Fixes
+
+- **ci**: Correct YAML syntax in lint workflow
+  ([`ef39947`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ef3994733500c04e60767794cc6355dacc4ae632))
+
+- **test**: Resolve diagnostics snapshot test failure
+  ([`22c715c`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/22c715ce9ca4effe544950c8cc17a904d747757f))
+
+### Build System
+
+- **deps**: Bump actions/checkout from 4 to 5
+  ([`285c472`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/285c472ca061032fc9e756dec634ed3af1c19257))
+
+- **deps**: Bump stefanzweifel/git-auto-commit-action from 5 to 6
+  ([`f4692c9`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/f4692c927405b9eb5a8c8e46c86b349c9db78d24))
+
+### Chores
+
+- Clean up debug steps and temporary files
+  ([`30f56d2`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/30f56d26350f53b2c4622a6dce09bdfde101a265))
+
+- Fix linting errors and improve code quality
+  ([`a417b77`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/a417b77966eba5dce4d6bde383d652f1fec70e7b))
+
+- Remove preview mode to match CI behavior
+  ([`2126399`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/21263998695669a02fb9877edaec5292a374cc1f))
+
+- Resolve all ruff linting errors
+  ([`baa54b0`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/baa54b0baaccb9dfbd849ed2f7a903b8e82b0dcc))
+
+- Resolve I001 import sorting errors
+  ([`4390933`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/439093398cad1b0d44b93a43062d1089ef1a29cd))
+
+- **ci**: Add ruff debug steps to lint workflow for settings comparison
+  ([`fdaa3fc`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/fdaa3fc4be851116ebfed76a5b25c2ad3ff63e53))
+
+- **ci**: Add ruff debug steps to lint workflow for settings comparison
+  ([`38b83bf`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/38b83bf49dc7a7f65dc79e7979b7d509a65496c8))
+
+- **ci**: Ensure ruff uses local config in CI
+  ([`ac81473`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ac81473cf01249d1a88708a00d39d6020cb33c7b))
+
+- **lint**: Fix import sorting and type annotation issues
+  ([`c6ec626`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/c6ec6260ba582ecaa6d6b42ac18c9bd2d988381b))
+
+### Testing
+
+- **diagnostics**: Remove unused snapshot and update snapshots
+  ([`9136ed5`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/9136ed582ec2891f81234a882d7e7abb0f61802a))
+
+
 ## v1.1.0 (2025-08-28)
 
 ### Bug Fixes
