@@ -27,6 +27,15 @@ jobs:
       - name: Install requirements
         run: python3 -m pip install -r requirements.txt
 
+      - name: Debug: Ruff version
+        run: python3 -m ruff --version
+
+      - name: Debug: Ruff settings for a representative file
+        run: python3 -m ruff check --config .ruff.toml --show-settings custom_components/solar_window_system/config_flow.py
+
+      - name: Debug: Ruff full run (log only)
+        run: python3 -m ruff check --config .ruff.toml . || true
+
       - name: Lint
         run: python3 -m ruff check --config .ruff.toml .
 
