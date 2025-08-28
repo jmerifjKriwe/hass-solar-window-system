@@ -2,8 +2,14 @@ name: Lint
 
 on:
   push:
-    branches:
-      - "main"
+        - name: Install requirements
+        run: python3 -m pip install -r requirements.txt
+
+      - name: Lint
+        run: python3 -m ruff check --config .ruff.toml .
+
+      - name: Format
+        run: python3 -m ruff format . --check - "main"
   pull_request:
     branches:
       - "main"
