@@ -1,144 +1,323 @@
-````markdown
-### Subentry Flow Test Pattern (2025-08) - CORRECTED
+# Solar Window System - Test Documentation
 
-**Important:** For Group and Window subentry flows, the correct multi-step wizard pattern is:
+## Overview
 
-#### Group Flow (2 steps):
-1. **Step 1:** Call `async_step_user(group_data)` → expect `{"type": "form", "step_id": "enhanced"}`
-2. **Step 2:** Call `async_step_enhanced(scenario_data)` → expect `{"type": "create_entry"}`
+This document provides comprehensive guidance for testing the Solar Window System integration for Home Assistant. The test suite ensures reliability, performance, and compatibility with Home Assistant's architecture.
 
-#### Window Flow (3 steps):
-1. **Step 1:** Call `async_step_user(window_data)` → expect `{"type": "form", "step_id": "overrides"}`
-2. **Step 2:** Call `async_step_overrides(enhanced_data)` → expect `{"type": "form", "step_id": "scenarios"}`
-3. **Step 3:** Call `async_step_scenarios(scenario_data)` → expect `{"type": "create_entry"}`
+### Test Suite Architecture
 
-#### Reconfigure Pattern:
-- For reconfigure flows, start with `async_step_reconfigure(None)` then follow the same step pattern
-- **Group reconfigure:** `async_step_reconfigure(None)` → `async_step_user(data)` → `async_step_enhanced(data)` → `{"type": "update_entry"}`
-- **Window reconfigure:** `async_step_reconfigure(None)` → `async_step_user(data)` → `async_step_overrides(data)` → `async_step_scenarios(data)` → `{"type": "update_entry"}`
+The test suite is organized into several categories:
 
-**Example (Group):**
-```python
-# Creation flow
-result = await handler.async_step_user(group_data)
-assert result["type"] == "form" and result["step_id"] == "enhanced"
-result = await handler.async_step_enhanced(scenario_data)
-assert result["type"] == "create_entry"
-
-# Reconfigure flow
-result = await handler.async_step_reconfigure(None)
-assert result["type"] == "form" and result["step_id"] == "user"
-result = await handler.async_step_user(group_data)
-assert result["type"] == "form" and result["step_id"] == "enhanced"
-result = await handler.async_step_enhanced(scenario_data)
-assert result["type"] == "update_entry"
+```
+tests/
+├── __init__.py
+├── conftest.py                    # Shared fixtures and configuration
+├── test_data.py                   # Centralized test data
+├── config_flow/                   # Configuration flow tests
+│   ├── test_config_flow.py
+│   ├── test_group_flow.py
+│   └── test_window_flow.py
+├── integration/                   # End-to-end integration tests
+│   └── test_solar_calculation_workflows.py
+├── platforms/                     # Platform-specific entity tests
+│   ├── test_binary_sensor_platform.py
+│   ├── test_calculator_platform.py
+│   ├── test_number_platform.py
+│   ├── test_select_platform.py
+│   ├── test_sensor_platform.py
+│   ├── test_switch_platform.py
+│   └── test_text_platform.py
+├── helpers/                       # Helper function tests
+├── services/                      # Service handler tests
+└── README.md                      # This documentation
 ```
 
-**CRITICAL:** Never call `async_step_user` repeatedly for all steps. Each step has its own method.
+### Test Types
 
-### String Conversion Fix for Voluptuous Schemas (2025-08)
+- **Unit Tests**: Test individual functions and classes in isolation
+- **Integration Tests**: Test component interactions and end-to-end workflows
+- **Platform Tests**: Test entity platforms (sensors, switches, etc.)
+- **Config Flow Tests**: Test configuration and setup workflows
+- **Snapshot Tests**: Validate complex outputs using syrupy
 
-**Issue:** Home Assistant config flows with voluptuous schemas fail with "expected str" errors when numeric defaults are used with string validation.
+## Running Tests
 
-**Root Cause:** When a form field has a numeric default (e.g., `default=123`) but string validation (`str`), voluptuous raises "expected str" when the default value is used (field missing from input).
+### Prerequisites
 
-**Solution:** All `_ui_default` helper functions must convert values to strings:
-```python
-def _ui_default(key: str) -> str:
-    value = stored_data.get(key, "")
-    # CRITICAL: Always convert to string for voluptuous compatibility
-    return str(value) if value not in ("", None) else ""
+Ensure you have the test dependencies installed:
+
+```bash
+pip install -r requirements_test.txt
 ```
 
-**Test Strategy:** Tests should verify that schema validation works with string conversions without "expected str" errors, particularly in reconfigure flows where stored numeric data is displayed in forms.
-### Options Flow Storage Format (2025-08)
+### Basic Test Execution
 
-- The options flow for the global config entry stores **all values as strings** in the config entry options dict, regardless of whether the schema field is numeric or not.
-- Tests for the options flow must always expect string values when reading from `entry.options`, even for fields like `window_width`, `g_value`, etc.
-- This is required for compatibility with Home Assistant's config entry storage and is not a bug.
-- Example: If you submit `window_width: "1.5"` in the options flow, the stored value will be the string `"1.5"`, not the float `1.5`.
-## Special Notes: Config Flow & SubEntry Flow Testing (2025-08)
+```bash
+# Run all tests
+pytest
 
-### Critical Architecture Understanding
+# Run specific test file
+pytest tests/platforms/test_sensor_platform.py
 
-- **Main ConfigFlow vs SubentryFlow Distinction:**
-  - The main `SolarWindowSystemConfigFlow` only creates global config and parent entries
-  - **Groups and Windows use SubentryFlows, NOT the main ConfigFlow**
-  - `GroupSubentryFlowHandler` handles group creation/modification
-  - `WindowSubentryFlowHandler` handles window creation/modification
-  - Never use the main config flow to test group/window creation
+# Run specific test
+pytest tests/platforms/test_sensor_platform.py::test_sensor_entity_creation
 
+# Run with verbose output
+pytest -v
 
-### SubEntry Flow Testing Strategy
+# Stop on first failure
+pytest -x
 
-- **Reconfigure/Second Save Scenarios:**
-  - To test reconfigure (second save) scenarios for group or window subentries, always use the handler's public `async_step_reconfigure` method.
-  - Do not set private or unknown attributes (such as `_reconfigure_mode`, `subentry`, or `source`) directly on the handler.
-  - Example:
-    ```python
-    # First save (creation)
-    result = await flow_handler.async_step_user(user_input)
-    # Second save (reconfigure)
-    result2 = await flow_handler.async_step_reconfigure(user_input)
-    ```
-  - This ensures your test matches the actual Home Assistant flow logic and remains compatible with future updates.
+# Run only failed tests
+pytest --lf
+```
 
-- **Group/Window Configuration Testing:**
-  - Use `GroupSubentryFlowHandler`/`WindowSubentryFlowHandler` directly in tests
-  - Do NOT test via `hass.config_entries.flow.async_init` with `parent_entry_id`
-  - That API is for Home Assistant UI integration, not for testing
-  - Create the flow handler instance and set required attributes manually:
-    ```python
-    flow_handler = GroupSubentryFlowHandler()
-    flow_handler.hass = hass
-    flow_handler.handler = DOMAIN
-    flow_handler.parent_entry_id = parent_entry.entry_id
-    ```
+### Coverage Analysis
 
-- **Mock Setup for SubEntry Tests:**
-  - Use `MockConfigEntry` for parent entries and global config
-  - Add entries to hass via `entry.add_to_hass(hass)`
-  - Mock helper functions like `get_temperature_sensor_entities`
-  - Test each step of the subentry flow individually
+```bash
+# Generate coverage report
+pytest --cov=custom_components.solar_window_system --cov-report=term
 
-### Test Architecture Insights (August 2025)
+# Generate HTML coverage report
+pytest --cov=custom_components.solar_window_system --cov-report=html
 
-- **Config Flow Abortion with 'already_configured':**
-  - This is CORRECT behavior for the main config flow when integration exists
-  - The main flow should only run once to create global config + parent entries
-  - Individual groups/windows are created via their respective SubentryFlows
+# Show missing lines for specific module
+pytest --cov=custom_components.solar_window_system.calculator --cov-report=term-missing
+```
 
-- **Inheritance Testing:**
-  - Test inheritance by using "-1" values in SubentryFlow inputs
-  - Verify that inheritance values are properly resolved from global config
-  - Test both explicit values and inheritance scenarios
+### Test Filtering
 
+```bash
+# Run tests by name pattern
+pytest -k "config_flow"
 
+# Run tests by marker
+pytest -m "asyncio"
 
-### Centralized Test Data (2025-08)
+# Run tests in specific directory
+pytest tests/config_flow/
 
-- All test data dictionaries for config flows (e.g., global, group, window input dicts) must be defined centrally in `tests/test_data.py`.
-- Test modules must import and use these shared dictionaries instead of duplicating or redefining them locally.
-- This ensures consistency, maintainability, and reduces errors when updating test scenarios or required fields.
-- Example usage:
-  ```python
-  from tests.test_data import VALID_GLOBAL_BASIC, VALID_GLOBAL_ENHANCED
-  data = {"entry_type": "global_config"}
-  data.update(VALID_GLOBAL_BASIC)
-  data.update(VALID_GLOBAL_ENHANCED)
-  entry = MockConfigEntry(data=data, ...)
-  ```
+# Run tests excluding certain patterns
+pytest -k "not slow"
+```
 
-### Window & Group Config/Inheritance Testing (2025-08)
+## Test Architecture & Best Practices
 
-- **Window Config & Inheritance:**
-  - All window configuration and inheritance tests must use the `WindowSubentryFlowHandler` (a ConfigSubentryFlow), not the OptionsFlow.
-- **Group Config & Inheritance:**
-  - All group configuration and inheritance tests must use the `GroupSubentryFlowHandler` (a ConfigSubentryFlow), not the OptionsFlow.
-  - The legacy pattern of testing group/config inheritance via the options flow is no longer supported and will abort with `reason: not_supported`.
-  - To test group/window inheritance, instantiate the appropriate subentry flow handler and drive it through its steps (`async_step_user`, `async_step_enhanced`, etc.), patching subentry/group/global data as needed.
-  - Do not use OptionsFlow for window or group config/inheritance logic; this is reserved for other entity types if implemented.
-  - See `test_group_flow.py`, `test_group_flow_fixed.py`, and `test_group_flow_defaults.py` for correct, modern test patterns.
+### Core Testing Principles
+
+1. **Isolation**: Each test should be independent and not rely on other tests
+2. **Clarity**: Tests should be easy to understand and maintain
+3. **Coverage**: Aim for comprehensive coverage of all code paths
+4. **Performance**: Tests should run efficiently
+5. **Reliability**: Tests should be deterministic and not flaky
+
+### Home Assistant Integration Testing
+
+#### MockConfigEntry Setup
+
+```python
+from homeassistant import config_entries
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+@pytest.fixture
+def mock_config_entry():
+    """Create a mock config entry for testing."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "name": "Test Window",
+            "latitude": 52.0,
+            "longitude": 13.0,
+            # ... other config data
+        },
+        entry_id="test_entry_id",
+        version=1,
+    )
+```
+
+#### Async Test Patterns
+
+```python
+@pytest.mark.asyncio
+async def test_async_function(hass, mock_config_entry):
+    """Test async function with proper setup."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Test async operations
+    result = await async_function_call()
+    assert result is not None
+```
+
+#### Entity Testing
+
+```python
+async def test_entity_creation(hass, mock_config_entry):
+    """Test that entities are created correctly."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Setup integration
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Verify entity exists
+    entity_id = "sensor.test_window_solar_irradiance"
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.state != "unknown"
+```
+
+### Common Testing Patterns
+
+#### Patching External Dependencies
+
+```python
+from unittest.mock import patch, AsyncMock
+
+@pytest.mark.asyncio
+async def test_with_mocked_api(hass, mock_config_entry):
+    """Test with mocked external API calls."""
+    with patch("custom_components.solar_window_system.api.get_solar_data") as mock_api:
+        mock_api.return_value = AsyncMock(return_value={"irradiance": 800})
+
+        mock_config_entry.add_to_hass(hass)
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+        # Verify API was called
+        mock_api.assert_called_once()
+```
+
+#### Testing State Changes
+
+```python
+async def test_state_updates(hass, mock_config_entry):
+    """Test that entity states update correctly."""
+    mock_config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Get initial state
+    entity_id = "sensor.test_window_solar_irradiance"
+    initial_state = hass.states.get(entity_id)
+
+    # Trigger update (e.g., via service call or time change)
+    await trigger_update()
+
+    # Verify state changed
+    updated_state = hass.states.get(entity_id)
+    assert updated_state.state != initial_state.state
+```
+
+## Config Flow Testing
+
+### Main Configuration Flow
+
+```python
+@pytest.mark.asyncio
+async def test_config_flow_success(hass):
+    """Test successful config flow."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+
+    # Complete flow steps
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            "name": "Test Window",
+            "latitude": 52.0,
+            "longitude": 13.0,
+        }
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["data"]["name"] == "Test Window"
+```
+
+### Subentry Flow Testing
+
+#### Group Subentry Flow
+
+```python
+@pytest.mark.asyncio
+async def test_group_subentry_flow(hass, mock_config_entry):
+    """Test group subentry flow configuration."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Initialize subentry flow
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": "group",
+            "group_id": mock_config_entry.entry_id
+        }
+    )
+
+    # Configure group settings
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            "group_name": "Living Room Windows",
+            "window_count": 3,
+        }
+    )
+
+    assert result["type"] == "create_entry"
+```
+
+#### Window Subentry Flow
+
+```python
+@pytest.mark.asyncio
+async def test_window_subentry_flow(hass, mock_config_entry):
+    """Test window subentry flow configuration."""
+    mock_config_entry.add_to_hass(hass)
+
+    # Initialize window subentry flow
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": "window",
+            "window_id": "window_1"
+        }
+    )
+
+    # Configure window-specific settings
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            "window_name": "South Window",
+            "orientation": "south",
+            "tilt_angle": 30,
+        }
+    )
+
+    assert result["type"] == "create_entry"
+```
+
+### Important Testing Rules (2025-08)
+
+#### Current Architecture Requirements
+
+- **Main Config Flow**: Only for initial integration setup. Will abort with 'already_configured' for subsequent runs.
+- **Subentry Flows**: Required for group and window configuration. Use `GroupSubentryFlowHandler` and `WindowSubentryFlowHandler`.
+- **Options Flow**: Not supported for window or group configuration. Will abort with `reason: not_supported`.
+- **Legacy Patterns**: All tests using options flow for group/window config must be refactored to use subentry flows.
+
+#### Subentry Flow Testing Guidelines
+
+- **Direct Handler Instantiation**: Create subentry flow handlers directly instead of using options flow
+- **Proper Context**: Use correct context parameters (`group_id`, `window_id`) for subentry initialization
+- **Data Patching**: Mock subentry/group/global data as needed for isolated testing
+- **Flow Steps**: Drive flows through their proper steps (`async_step_user`, `async_step_enhanced`, etc.)
+- **No Options Flow**: Do not use OptionsFlow for window or group config/inheritance logic
+
+#### Deprecated Patterns (Do Not Use)
+
+- The legacy pattern of testing group/config inheritance via the options flow is no longer supported and will abort with `reason: not_supported`.
+- To test group/window inheritance, instantiate the appropriate subentry flow handler and drive it through its steps (`async_step_user`, `async_step_enhanced`, etc.), patching subentry/group/global data as needed.
+- Do not use OptionsFlow for window or group config/inheritance logic; this is reserved for other entity types if implemented.
+- See `test_group_flow.py`, `test_group_flow_fixed.py`, and `test_group_flow_defaults.py` for correct, modern test patterns.
 
 #### Deprecated: Window Options Flow Testing
 
@@ -146,8 +325,8 @@ def _ui_default(key: str) -> str:
 - The test `test_window_second_save_bug.py` was removed because it attempted to test window options flow, which is now architecturally unsupported. All window configuration/inheritance logic must be tested via the `WindowSubentryFlowHandler`.
 - If you need to test window config/inheritance, use the subentry flow handler directly as described above.
 
-
 #### Refactoring Note (2025-08)
+
 - All legacy group flow tests using the options flow have been refactored to use the subentry flow handler directly. This is now the only supported and future-proof approach. If you see a test using the options flow for group/window config, it is outdated and must be refactored.
 
 ### Test Refactoring Workflow
@@ -166,189 +345,3 @@ def _ui_default(key: str) -> str:
   - Always check Home Assistant documentation for current SubentryFlow testing patterns
 
 _These rules are based on recent refactoring and bugfixes (2025-08) and should be followed for all future test maintenance._
-
-# Solar Window System Integration Testing Guide (Updated 2025-08-15)
-
-This document describes the testing strategy and implementation for the Home Assistant integration `solar_window_system`, following the latest Home Assistant core and community best practices.
-
-## Table of Contents
-1. [Directory & File Structure](#directory--file-structure)
-2. [Test Types](#test-types)
-3. [Fixtures & Mocks](#fixtures--mocks)
-4. [Test Structure & Naming](#test-structure--naming)
-5. [Assertions & Error Handling](#assertions--error-handling)
-6. [Snapshot Testing](#snapshot-testing)
-7. [Running & Debugging Tests](#running--debugging-tests)
-8. [Quality Scale Requirements](#quality-scale-requirements)
-9. [Best Practices](#best-practices)
-
----
-
-## Directory & File Structure
-
-- All tests are in `tests/`.
-- Use one file per feature/domain (e.g., `test_config_flow.py`, `test_sensor.py`).
-- Include `__init__.py` and `conftest.py` for pytest discovery and shared fixtures.
-- Example:
-    ```
-    tests/
-        __init__.py
-        conftest.py
-        test_config_flow.py
-        test_entity_creation.py
-        test_smoke.py
-        ...
-    ```
-
-## Test Types
-
-- **Unit tests:** Test individual functions/classes in isolation.
-- **Integration tests:** Test the integration with Home Assistant's core interfaces (state machine, config entries, registries).
-- **Snapshot tests:** Use `syrupy` to assert large/complex outputs (e.g., diagnostics, entity state).
-
-## Fixtures & Mocks
-
-- Use pytest fixtures for all setup, teardown, and test data.
-- Use `MockConfigEntry` for config entry simulation.
-- Use `patch`/`AsyncMock` for mocking external dependencies.
-- Place all reusable fixtures in `conftest.py`.
-
-## Test Structure & Naming
-
-- Use `@pytest.mark.asyncio` for async tests.
-- Prefer function-based tests; use classes only for grouping/parameterization.
-- Each test should be independent and self-contained.
-- Test functions: `test_<what_is_tested>`.
-- Use clear, descriptive docstrings for every test.
-- Optionally use the GIVEN-WHEN-THEN pattern for readability.
-
-### Example
-```python
-@pytest.mark.asyncio
-async def test_entity_id_format(hass, global_config_entry):
-        """Test that entity IDs follow the required format."""
-        # GIVEN: a registered config entry
-        # WHEN: the integration is set up
-        # THEN: entity IDs are correct
-        ...
-```
-
-## Assertions & Error Handling
-
-- Assert both positive and negative paths.
-- Use `pytest.raises` for error/exception testing.
-- For config flows, assert on `result["type"]`, `result["step_id"]`, and data.
-
-### Example
-```python
-with pytest.raises(Exception) as excinfo:
-        await hass.config_entries.options.async_configure(...)
-assert "Schema validation failed" in str(excinfo.value)
-```
-
-## Snapshot Testing
-
-- Use `syrupy` for diagnostics and entity state snapshots.
-- Assert against the `snapshot` fixture.
-
-Short notes for contributors:
-
-- Location: syrupy snapshot files are stored next to the tests under `tests/**/__snapshots__/`.
-- Initial generation: run the specific test that uses snapshots with pytest and the `--snapshot-update` flag. Example:
-
-```bash
-pytest tests/diagnostics/test_diagnostics.py --snapshot-update
-```
-
-- Updating snapshots: only update snapshots when the change to the diagnostics (or other snapshot target) is intentional. Review the diff and commit the updated snapshot(s) alongside the code change.
-
-- Commit message guidance: use a Conventional Commit format. Example:
-
-```
-chore(tests): update diagnostics snapshots
-```
-
-- CI guidance: do NOT run tests under CI with `--snapshot-update`. CI should run plain `pytest` and fail if snapshots differ from the committed versions. This ensures snapshot regressions are caught in PRs.
-
-### Example
-```python
-async def test_diagnostics(hass, hass_client, init_integration, snapshot):
-    """Test diagnostics output matches the committed snapshot."""
-    assert (
-        await get_diagnostics_for_config_entry(hass, hass_client, init_integration)
-        == snapshot
-    )
-```
-
-Quick checklist when changing diagnostics output:
-1. Run the tests locally with `--snapshot-update` to generate the new snapshot.
-2. Inspect the generated files under `tests/**/__snapshots__/` to confirm intended changes.
-3. Commit code + snapshots together with an appropriate Conventional Commit message.
-
-## Running & Debugging Tests
-
-- Run all tests: `pytest tests/`
-- Run specific test: `pytest tests/test_config_flow.py::test_flow_happy_path`
-- Stop on first failure: `pytest -x`
-- Run by name: `pytest -k <name>`
-- Show slowest tests: `pytest --duration=10`
-- Coverage: `pytest --cov=custom_components.solar_window_system --cov-report term-missing`
-- Update snapshots: `pytest --snapshot-update`
-
-## Linting & Formatting
-
-- Run the project's lint script (formats then applies safe ruff fixes):
-
-```bash
-./scripts/lint
-```
-
-- Run checks without auto-fixing:
-
-```bash
-ruff check .
-```
-
-- To apply more aggressive automated fixes (use with caution and review diffs):
-
-```bash
-ruff check . --fix --unsafe-fixes
-```
-
-Common lint issues you'll see and how to address them:
-- TRY003 / EM102: long error messages or f-strings passed directly into exceptions — assign the message to a variable and raise the exception with that variable.
-- S101 (use of `assert`) appears in tests when linters expect explicit test helpers; in pytest tests `assert` is normal. If your CI flags S101 for tests, update `pyproject.toml`/ruff config to ignore S101 under the `tests/` path, or selectively replace complex assertions with `pytest` helpers.
-- SLF001: accessing private attributes (e.g., `_attr_suggested_object_id`) — prefer public properties or public APIs on entities.
-- ANN### / ARG###: missing type annotations on fixtures and test helpers — add annotations where helpful. Tests can also be excluded from strict typing if desired.
-- E501: line too long — wrap strings or split long expressions across lines.
-
-Workflow recommendation:
-1. Run `./scripts/lint` locally and inspect the output.
-2. Address high-value failures (private attribute access, incorrect public API usage) first; these are often actual test fragility issues.
-3. Fix stylistic/annotation issues next or add targeted ignores in the project's ruff config for tests.
-4. Re-run `pytest -q` to ensure tests still pass after fixes.
-
-CI note: Do not run `--snapshot-update` in CI. Ensure linter and tests pass locally before opening a PR.
-
-## Quality Scale Requirements
-
-- **Bronze:** Full config flow test coverage required.
-- **Silver:** >95% test coverage for all modules.
-- Tests must cover setup, error handling, and all config flows.
-
-## Best Practices
-
-1. **Test Both Paths:** Always test valid and invalid inputs.
-2. **Test Boundaries:** Check min/max values and edge cases.
-3. **Use Specific Assertions:** Assert on exact values and error messages.
-4. **Keep Tests Independent:** No dependencies between tests; use fixtures for setup.
-5. **DRY Principle:** Extract common code into fixtures or helpers.
-6. **Follow Naming Conventions:** Functions start with `test_`, clear docstrings.
-7. **Snapshot Testing:** Use for diagnostics and complex outputs.
-8. **Use Core Interfaces:** Prefer Home Assistant's public APIs for setup, state, and registry assertions.
-
----
-
-For more, see the [Home Assistant Developer Docs: Testing](https://developers.home-assistant.io/docs/development_testing) and [Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/rules).
-
-````
