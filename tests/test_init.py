@@ -177,7 +177,10 @@ class TestInitSetup:
             # Find the recalculate service registration
             recalculate_call = None
             for call in mock_hass.services.async_register.call_args_list:
-                if len(call[0]) >= 2 and call[0][1] == "recalculate":
+                if (
+                    len(call[0]) >= 2
+                    and call[0][1] == "solar_window_system_recalculate"
+                ):
                     recalculate_call = call
                     break
 
@@ -256,7 +259,7 @@ class TestInitSetup:
             assert mock_hass.services.async_register.called
             recalculate_handler = None
             for call in mock_hass.services.async_register.call_args_list:
-                if call[0][1] == "recalculate":
+                if call[0][1] == "solar_window_system_recalculate":
                     recalculate_handler = call[0][2]
                     break
             assert recalculate_handler is not None
@@ -299,7 +302,7 @@ class TestInitSetup:
             service_calls = mock_hass.services.async_register.call_args_list
             recalculate_handler = None
             for call in service_calls:
-                if call[0][1] == "recalculate":
+                if call[0][1] == "solar_window_system_recalculate":
                     recalculate_handler = call[0][2]
                     break
 
@@ -557,6 +560,205 @@ class TestInitSetup:
         mock_hass.config_entries.async_unload_platforms.assert_called_once_with(
             mock_entry_group_configs, ["select", "sensor"]
         )
+
+    @pytest.mark.asyncio
+    async def test_service_registration_debug_calculation(
+        self, mock_hass: HomeAssistant, mock_entry_global: ConfigEntry
+    ) -> None:
+        """Test that debug_calculation service is registered only once."""
+        # Mock device registry
+        mock_device_registry = Mock()
+        mock_device_registry.devices = Mock()
+        mock_device_registry.devices.get_entry = Mock(return_value=None)
+        mock_device_registry.async_get_or_create = Mock()
+
+        with patch(
+            "custom_components.solar_window_system.dr.async_get",
+            return_value=mock_device_registry,
+        ):
+            # First call should register the service
+            await self._call_async_setup_entry(mock_hass, mock_entry_global)
+
+            # Find the debug_calculation service registration
+            debug_calculation_call = None
+            for call in mock_hass.services.async_register.call_args_list:
+                if (
+                    len(call[0]) >= 2
+                    and call[0][1] == "solar_window_system_debug_calculation"
+                ):
+                    debug_calculation_call = call
+                    break
+
+            assert debug_calculation_call is not None
+
+    @pytest.mark.asyncio
+    async def test_debug_calculation_service_handler_success(
+        self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test debug_calculation service handler with successful execution."""
+        from custom_components.solar_window_system import (
+            _handle_debug_calculation_service,
+        )
+        from homeassistant.core import ServiceCall
+
+        # Mock service call
+        mock_call = Mock(spec=ServiceCall)
+        mock_call.data = {"window_id": "test_window", "filename": "test_debug.json"}
+
+        # Mock config entry
+        mock_config_entry = Mock()
+        mock_config_entry.data = {"entry_type": "window_configs"}
+        mock_config_entry.entry_id = "test_entry_id"
+
+        # Mock coordinator
+        mock_coordinator = AsyncMock()
+        mock_debug_data = {
+            "window_id": "test_window",
+            "timestamp": "2025-08-28T10:00:00Z",
+            "solar_radiation": 500.0,
+            "temperatures": {"indoor": 22.0, "outdoor": 25.0},
+            "calculation": {"power_total": 150.0, "shade_required": True},
+        }
+        mock_coordinator.create_debug_data.return_value = mock_debug_data
+
+        # Setup mock hass
+        mock_hass.config_entries.async_entries.return_value = [mock_config_entry]
+        mock_hass.data = {DOMAIN: {"test_entry_id": {"coordinator": mock_coordinator}}}
+        mock_hass.config.config_dir = "/tmp"
+
+        # Mock file operations
+        mock_file_handle = Mock()
+        mock_file_handle.__enter__ = Mock(return_value=mock_file_handle)
+        mock_file_handle.__exit__ = Mock(return_value=None)
+        with (
+            patch(
+                "pathlib.Path.open", Mock(return_value=mock_file_handle)
+            ) as mock_file,
+            patch("json.dump") as mock_json_dump,
+            patch.object(
+                mock_hass.services, "async_call", AsyncMock()
+            ) as mock_service_call,
+        ):
+            await _handle_debug_calculation_service(mock_hass, mock_call)
+
+            # Verify debug data was created
+            mock_coordinator.create_debug_data.assert_called_once_with("test_window")
+
+            # Verify file was written
+            mock_file.assert_called_once()
+            mock_json_dump.assert_called_once_with(
+                mock_debug_data,
+                mock_file.return_value.__enter__.return_value,
+                indent=2,
+                ensure_ascii=False,
+                default=str,
+            )
+
+            # Verify notification was sent
+            mock_service_call.assert_called_once_with(
+                "persistent_notification",
+                "create",
+                {
+                    "title": "Debug File Created",
+                    "message": "Debug calculation file saved to: test_debug.json",
+                },
+            )
+
+    @pytest.mark.asyncio
+    async def test_debug_calculation_service_handler_no_window_id(
+        self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test debug_calculation service handler without window_id."""
+        from custom_components.solar_window_system import (
+            _handle_debug_calculation_service,
+        )
+        from homeassistant.core import ServiceCall
+
+        # Mock service call without window_id
+        mock_call = Mock(spec=ServiceCall)
+        mock_call.data = {}
+
+        with patch("custom_components.solar_window_system._LOGGER") as mock_logger:
+            await _handle_debug_calculation_service(mock_hass, mock_call)
+
+            # Verify error was logged
+            mock_logger.error.assert_called_once_with(
+                "Window ID is required for debug calculation"
+            )
+
+    @pytest.mark.asyncio
+    async def test_debug_calculation_service_handler_no_debug_data(
+        self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test debug_calculation service handler when no debug data is created."""
+        from custom_components.solar_window_system import (
+            _handle_debug_calculation_service,
+        )
+        from homeassistant.core import ServiceCall
+
+        # Mock service call
+        mock_call = Mock(spec=ServiceCall)
+        mock_call.data = {"window_id": "test_window"}
+
+        # Mock config entry
+        mock_config_entry = Mock()
+        mock_config_entry.data = {"entry_type": "window_configs"}
+        mock_config_entry.entry_id = "test_entry_id"
+
+        # Mock coordinator that returns None
+        mock_coordinator = AsyncMock()
+        mock_coordinator.create_debug_data.return_value = None
+
+        # Setup mock hass
+        mock_hass.config_entries.async_entries.return_value = [mock_config_entry]
+        mock_hass.data = {DOMAIN: {"test_entry_id": {"coordinator": mock_coordinator}}}
+
+        with patch("custom_components.solar_window_system._LOGGER") as mock_logger:
+            await _handle_debug_calculation_service(mock_hass, mock_call)
+
+            # Verify error was logged
+            mock_logger.error.assert_called_once_with(
+                "Could not create debug data for window: %s", "test_window"
+            )
+
+    @pytest.mark.asyncio
+    async def test_debug_calculation_service_handler_file_error(
+        self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test debug_calculation service handler with file write error."""
+        from custom_components.solar_window_system import (
+            _handle_debug_calculation_service,
+        )
+        from homeassistant.core import ServiceCall
+
+        # Mock service call
+        mock_call = Mock(spec=ServiceCall)
+        mock_call.data = {"window_id": "test_window"}
+
+        # Mock config entry
+        mock_config_entry = Mock()
+        mock_config_entry.data = {"entry_type": "window_configs"}
+        mock_config_entry.entry_id = "test_entry_id"
+
+        # Mock coordinator
+        mock_coordinator = AsyncMock()
+        mock_debug_data = {"test": "data"}
+        mock_coordinator.create_debug_data.return_value = mock_debug_data
+
+        # Setup mock hass
+        mock_hass.config_entries.async_entries.return_value = [mock_config_entry]
+        mock_hass.data = {DOMAIN: {"test_entry_id": {"coordinator": mock_coordinator}}}
+        mock_hass.config.config_dir = "/tmp"
+
+        # Mock file operations to raise OSError
+        with (
+            patch("pathlib.Path.open", side_effect=OSError("Permission denied")),
+            patch("custom_components.solar_window_system._LOGGER") as mock_logger,
+        ):
+            await _handle_debug_calculation_service(mock_hass, mock_call)
+
+            # Verify exception was logged
+            mock_logger.exception.assert_called_once_with("Failed to create debug file")
 
     async def _call_async_setup_entry(
         self, hass: HomeAssistant, entry: ConfigEntry

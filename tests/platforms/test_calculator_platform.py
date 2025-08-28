@@ -37,6 +37,7 @@ class TestSolarWindowCalculator:
             entry_id="test_entry",
         )
 
+    @pytest.mark.filterwarnings("ignore::RuntimeWarning")
     def test_calculator_initialization(self, calculator: SolarWindowCalculator) -> None:
         """Test calculator initialization."""
         assert calculator.hass is not None
