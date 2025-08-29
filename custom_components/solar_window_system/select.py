@@ -11,6 +11,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
+from .global_config_entity import (
+    GlobalConfigEntityBase,
+    find_global_config_device,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -43,18 +47,7 @@ async def _setup_global_config_selects(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Global Configuration select entities."""
-    device_registry = dr.async_get(hass)
-    global_device = None
-
-    # Find the global configuration device
-    for device in device_registry.devices.values():
-        if device.config_entries and entry.entry_id in device.config_entries:
-            for identifier in device.identifiers:
-                if identifier[0] == DOMAIN and identifier[1] == "global_config":
-                    global_device = device
-                    break
-            if global_device:
-                break
+    global_device = find_global_config_device(hass, entry.entry_id)
 
     if global_device:
         # Get available entities for selectors
@@ -208,33 +201,21 @@ async def _get_temperature_sensor_entities(hass: HomeAssistant) -> list[str]:
     return temperature_entities
 
 
-class GlobalConfigSelectEntity(SelectEntity, RestoreEntity):
+class GlobalConfigSelectEntity(GlobalConfigEntityBase, SelectEntity, RestoreEntity):
     """Select entity for global configuration values."""
 
     def __init__(
         self,
         entity_key: str,
         config: dict,
-        device: dr.DeviceEntry,
+        device,  # type: ignore[no-untyped-def]
     ) -> None:
         """Initialize the select entity."""
-        self._entity_key = entity_key
-        self._config = config
-        self._device = device
-        # Stable ID and desired entity_id pattern: select.sws_global_*
-        self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        self._attr_name = f"SWS_GLOBAL {config['name']}"
-        self._attr_has_entity_name = False
+        # Initialize base class first
+        super().__init__(entity_key, config, device)
 
-        self._attr_device_info = {
-            "identifiers": device.identifiers,
-            "name": device.name,
-            "manufacturer": device.manufacturer,
-            "model": device.model,
-        }
+        # Set select-specific attributes
         self._attr_options = config["options"]
-        self._attr_icon = config.get("icon")
         # Set current option to default if it's in the options list
         if config["default"] and config["default"] in config["options"]:
             self._attr_current_option = config["default"]
@@ -246,20 +227,12 @@ class GlobalConfigSelectEntity(SelectEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+
         # Restore previous state if available
         if (
             restored_state := await self.async_get_last_state()
         ) is not None and restored_state.state in self._attr_options:
             self._attr_current_option = restored_state.state
-        # Set friendly name to config['name'] (e.g. 'Weather Warning Sensor')
-        entity_registry = er.async_get(self.hass)
-        if (
-            self.entity_id in entity_registry.entities
-            and (ent_reg_entry := entity_registry.entities[self.entity_id])
-            and ent_reg_entry.original_name
-            != (new_friendly_name := self._config.get("name"))
-        ):
-            entity_registry.async_update_entity(self.entity_id, name=new_friendly_name)
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selection and persist state."""
