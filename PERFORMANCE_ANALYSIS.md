@@ -196,47 +196,8 @@ class SolarWindowCalculator(CalculationsMixin, FlowIntegrationMixin, ...)
    - Parallele Verarbeitung ähnlicher Berechnungen
    - **Aufwand:** Mittel, **Risiko:** Niedrig, **Impact:** Mittel
 
-### **Phase 3: Fortgeschrittene Optimierungen (1-2 Wochen)**
-**Fokus:** Maximale Performance
 
-1. **🔄 Background Processing**
-   - Nicht-kritische Updates in separaten Tasks
-   - **Aufwand:** Hoch, **Risiko:** Mittel, **Impact:** Mittel
 
-2. **💾 Memory Pooling**
-   - Wiederverwendung von Datenstrukturen
-   - **Aufwand:** Hoch, **Risiko:** Mittel, **Impact:** Niedrig
-
-3. **📊 Profiling Integration**
-   - Laufzeit-Performance-Monitoring
-   - **Aufwand:** Mittel, **Risiko:** Niedrig, **Impact:** Niedrig
-
----
-
-## 🎛️ **Monitoring & Observability**
-
-### **Performance-Metriken implementieren:**
-
-```python
-@dataclass
-class PerformanceMetrics:
-    """Performance-Monitoring für Solar Window System"""
-    entity_lookup_time: float = 0.0
-    calculation_time: float = 0.0
-    cache_hit_rate: float = 0.0
-    async_conversion_savings: float = 0.0
-    total_update_time: float = 0.0
-    trigonometry_operations: int = 0
-    cache_invalidations: int = 0
-```
-
-### **Key Performance Indicators (KPIs):**
-
-1. **Response Time:** Zeit pro Update-Zyklus
-2. **Cache Hit Rate:** Prozentsatz erfolgreicher Cache-Treffer
-3. **Event Loop Blockierung:** Zeit in synchronen Operationen
-4. **CPU Usage:** Prozentsatz CPU-Zeit für Berechnungen
-5. **Memory Usage:** Stabiler Memory-Footprint
 
 ---
 
@@ -259,24 +220,6 @@ class PerformanceMetrics:
 
 ---
 
-## 🔮 **Erwartete Geschäftliche Auswirkungen**
-
-### **Endbenutzer-Impact:**
-- **🏃‍♂️ Schnellere Reaktionszeiten:** 5-9x schnellere Berechnungen
-- **🔋 Längere Battery-Life:** 30-50% weniger Energieverbrauch
-- **📱 Bessere UX:** Weniger Verzögerungen bei UI-Updates
-
-### **System-Impact:**
-- **⚡ Reduzierte Server-Last:** Weniger CPU und Memory-Verbrauch
-- **🌐 Weniger Netzwerk-Traffic:** Smart Updates statt regelmäßiger Polling
-- **🏗️ Bessere Skalierbarkeit:** Performante Verarbeitung vieler Fenster
-
-### **Entwicklungs-Impact:**
-- **🧪 Besseres Testing:** Performance-Metriken für Regression-Tests
-- **📊 Monitoring:** Laufzeit-Performance-Überwachung
-- **🔧 Wartbarkeit:** Optimierte Code-Struktur
-
----
 
 ## 📝 **Empfehlungen**
 

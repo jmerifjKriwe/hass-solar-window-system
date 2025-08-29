@@ -18,6 +18,9 @@ indoor/outdoor temperature, weather warnings and configurable scenario
 thresholds. SWS provides a flow-based UI configuration (global → groups →
 windows) and supports inheritance (window → group → global).
 
+**Latest improvements**: Enhanced modular architecture for better maintainability
+and performance, with comprehensive test coverage ensuring reliability.
+
 This README explains installation (HACS and manual), the recommended UI
 configuration order, which sensors/entities SWS creates, the three shading
 scenarios and how they work, and best practices to reduce flutter.

@@ -12,6 +12,7 @@ Checklist (what this page provides)
     factor
 - Detailed scenario logic (A/B/C) and inheritance rules
 - Performance & caching notes and recommended unit tests
+- **Modular architecture overview with mixin responsibilities**
 
 Audience: this is written for developers who want to understand or extend
 the calculation logic, add tests, or debug shading decisions.
@@ -29,6 +30,33 @@ the calculation logic, add tests, or debug shading decisions.
         when using the UI-based flow entries.
     - Main calculation API: `calculate_all_windows_from_flows()` returns a
         dict with `windows`, `groups` and `summary` ready for the coordinator.
+
+### Modular Architecture (Mixins)
+
+The calculator uses a modular architecture based on mixins to separate concerns
+and improve maintainability:
+
+- **CalculationsMixin**: Core solar power calculations, shadow factors, and
+    geometric computations
+- **DebugMixin**: Debug data collection, entity state analysis, and logging
+    utilities
+- **FlowIntegrationMixin**: Flow-based configuration management, inheritance
+    resolution, and subentry handling
+- **ShadingMixin**: Shading decision logic, scenario evaluation (A/B/C), and
+    threshold comparisons
+- **UtilsMixin**: Utility functions for safe state access, temperature
+    validation, and numeric conversions
+
+This modular design allows for:
+- Better separation of concerns
+- Easier testing of individual components
+- Improved code reusability
+- Cleaner dependency management
+- Enhanced maintainability and extensibility
+
+The main `SolarWindowCalculator` class inherits from all mixins and delegates
+method calls appropriately. Each mixin is designed to be self-contained with
+minimal interdependencies.
 
 ## Contracts
 
@@ -248,8 +276,3 @@ Insert debug logs or run unit tests that assert intermediate values (effective_c
 - Default physical values: g_value=0.5, frame_width=0.125 m, diffuse_factor=0.15, tilt=90°
 - Cache TTL per calculation run: 30 seconds
 
-If you want I can now:
-- produce a small test module exercising the shadow factor and scenario
-    decisions, or
-- add a small tracing helper that writes the `effective_config`, `solar_result`
-    and `shade_reason` to the log with a single call for easier debugging.

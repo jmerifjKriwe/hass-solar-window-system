@@ -133,20 +133,42 @@ class UtilsMixin:
 
     def _format_debug_value(self, value: Any, precision: int = 2) -> str:
         """Format value for debug output with proper precision."""
-        # Implementation will be moved from main calculator
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        if value is None:
+            return "None"
+        if isinstance(value, (int, float)):
+            return f"{value:.{precision}f}"
+        if isinstance(value, bool):
+            return "True" if value else "False"
+        return str(value)
 
     def _calculate_time_difference_minutes(
         self, start_time: str, end_time: str
     ) -> float:
         """Calculate time difference in minutes between two time strings."""
-        # Implementation will be moved from main calculator
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        try:
+            # Parse time strings (assuming HH:MM format)
+            start_hour, start_min = map(int, start_time.split(":"))
+            end_hour, end_min = map(int, end_time.split(":"))
+
+            # Convert to minutes
+            start_minutes = start_hour * 60 + start_min
+            end_minutes = end_hour * 60 + end_min
+
+            # Handle overnight time differences
+            if end_minutes < start_minutes:
+                end_minutes += 24 * 60  # Add 24 hours
+
+            return float(end_minutes - start_minutes)
+        except (ValueError, AttributeError):
+            _LOGGER.warning("Invalid time format: %s to %s", start_time, end_time)
+            return 0.0
 
     def _is_valid_entity_state(self, state: Any) -> bool:
         """Check if entity state is valid (not None, not unknown)."""
-        # Implementation will be moved from main calculator
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        if state is None:
+            return False
+        state_value = state.state if hasattr(state, "state") else state
+
+        # Check for invalid states
+        invalid_states = ["unknown", "unavailable", None, ""]
+        return state_value not in invalid_states

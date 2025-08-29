@@ -42,6 +42,7 @@ tests/
 - **Platform Tests**: Test entity platforms (sensors, switches, etc.)
 - **Config Flow Tests**: Test configuration and setup workflows
 - **Snapshot Tests**: Validate complex outputs using syrupy
+- **Modular Tests**: Test individual mixins and their interactions
 
 ## Running Tests
 
@@ -114,39 +115,81 @@ pytest -k "not slow"
 4. **Performance**: Tests should run efficiently
 5. **Reliability**: Tests should be deterministic and not flaky
 
-### Home Assistant Integration Testing
+### Modular Architecture Testing
 
-#### MockConfigEntry Setup
+The Solar Window System uses a modular architecture with mixins for better separation of concerns. The test suite includes comprehensive tests for each mixin:
+
+#### Mixin Test Categories
+
+- **CalculationsMixin Tests** (`tests/modules/test_calculations.py`):
+  - Solar power calculations
+  - Shadow factor computations
+  - Geometric and trigonometric functions
+  - Edge cases (sun below horizon, invalid inputs)
+
+- **DebugMixin Tests** (`tests/modules/test_debug.py`):
+  - Debug data collection
+  - Entity state analysis
+  - Logging utilities
+  - Error handling in debug operations
+
+- **FlowIntegrationMixin Tests** (`tests/modules/test_flow_integration.py`):
+  - Configuration inheritance
+  - Flow-based setup validation
+  - Subentry management
+  - Global/group/window precedence rules
+
+- **ShadingMixin Tests** (`tests/modules/test_shading.py`):
+  - Shading decision logic
+  - Scenario A/B/C evaluation
+  - Threshold comparisons
+  - Mock object handling
+
+- **UtilsMixin Tests** (`tests/modules/test_utils.py`):
+  - Safe state access functions
+  - Temperature validation
+  - Numeric conversion utilities
+  - Error handling and fallbacks
+
+#### Integration Testing for Mixins
 
 ```python
-from homeassistant import config_entries
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+# Test mixin composition and interaction
+def test_mixin_composition():
+    """Test that mixins work together correctly."""
+    class TestCalculator(
+        CalculationsMixin,
+        DebugMixin,
+        FlowIntegrationMixin,
+        ShadingMixin,
+        UtilsMixin,
+    ):
+        pass
 
-@pytest.fixture
-def mock_config_entry():
-    """Create a mock config entry for testing."""
-    return MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            "name": "Test Window",
-            "latitude": 52.0,
-            "longitude": 13.0,
-            # ... other config data
-        },
-        entry_id="test_entry_id",
-        version=1,
-    )
+    calculator = TestCalculator()
+    # Test integrated functionality
 ```
 
-#### Async Test Patterns
+#### Mock Handling in Tests
+
+The test suite includes robust Mock object handling to ensure tests work correctly with Home Assistant's testing framework:
 
 ```python
-@pytest.mark.asyncio
-async def test_async_function(hass, mock_config_entry):
-    """Test async function with proper setup."""
-    mock_config_entry.add_to_hass(hass)
+from unittest.mock import Mock
 
-    # Test async operations
+def test_mock_compatibility():
+    """Test that methods handle Mock objects gracefully."""
+    calculator = TestCalculator()
+    mock_request = Mock()
+    mock_request.effective_config = {"threshold": 100.0}
+    mock_request.solar_result = Mock()
+    mock_request.solar_result.power_total = Mock()
+
+    # Should not raise TypeError
+    result = calculator._should_shade_window_from_flows(mock_request)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+```
     result = await async_function_call()
     assert result is not None
 ```

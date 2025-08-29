@@ -10,6 +10,10 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
+from .calculations import CalculationsMixin
+from .debug import DebugMixin
+from .flow_integration import FlowIntegrationMixin
+
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
@@ -104,19 +108,35 @@ class SolarWindowCalculator:
         window_data: dict[str, Any],
         states: dict[str, Any],
     ) -> WindowCalculationResult:
-        """Calculate solar power for a window including shadow effects."""
-        # This will be implemented in calculations.py
-        msg = "Implemented in calculations module"
-        raise NotImplementedError(msg)
+        """
+        Calculate solar power for a window including shadow effects.
+
+        Delegates to the CalculationsMixin implementation.
+        """
+        # Create a temporary CalculationsMixin instance for delegation
+        calculations_mixin = CalculationsMixin()
+        return calculations_mixin.calculate_window_solar_power_with_shadow(
+            effective_config, window_data, states
+        )
 
     def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
-        """Create comprehensive debug data for a specific window."""
-        # This will be implemented in debug.py
-        msg = "Implemented in debug module"
-        raise NotImplementedError(msg)
+        """
+        Create comprehensive debug data for a specific window.
+
+        Delegates to the DebugMixin implementation.
+        """
+        # Create a temporary DebugMixin instance for delegation
+        debug_mixin = DebugMixin()
+        # Set required hass attribute for DebugMixin
+        debug_mixin.hass = self.hass
+        return debug_mixin.create_debug_data(window_id)
 
     def calculate_all_windows_from_flows(self) -> dict[str, Any]:
-        """Calculate all window shading requirements using flow-based configuration."""
-        # This will be implemented in flow_integration.py
-        msg = "Implemented in flow_integration module"
-        raise NotImplementedError(msg)
+        """
+        Calculate all window shading requirements using flow-based configuration.
+
+        Delegates to the FlowIntegrationMixin implementation.
+        """
+        # Create a temporary FlowIntegrationMixin instance for delegation
+        flow_mixin = FlowIntegrationMixin()
+        return flow_mixin.calculate_all_windows_from_flows()

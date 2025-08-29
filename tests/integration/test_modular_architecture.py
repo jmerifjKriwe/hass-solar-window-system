@@ -433,9 +433,12 @@ class TestModularArchitecture:
                     result = method("test_window")
                     assert isinstance(result, dict)
                 elif test_method == "_should_shade_window_from_flows":
-                    # This method is still a placeholder in ShadingMixin
-                    with pytest.raises(NotImplementedError):
-                        method(Mock())
+                    # This method is now implemented in ShadingMixin
+                    result = method(Mock())
+                    assert isinstance(result, tuple)
+                    assert len(result) == 2
+                    assert isinstance(result[0], bool)
+                    assert isinstance(result[1], str)
                 elif test_method == "_validate_temperature_range":
                     result = method(25.0)
                     assert isinstance(result, bool)
@@ -666,6 +669,9 @@ class TestModularArchitecture:
             except (AttributeError, TypeError, ValueError) as e:
                 pytest.fail(f"Method {description} should work but raised: {e}")
 
-        # Some methods still expect NotImplementedError (ShadingMixin)
-        with pytest.raises(NotImplementedError):
-            calculator._should_shade_window_from_flows(Mock())
+        # Test that _should_shade_window_from_flows now works correctly
+        result = calculator._should_shade_window_from_flows(Mock())
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        assert isinstance(result[0], bool)
+        assert isinstance(result[1], str)

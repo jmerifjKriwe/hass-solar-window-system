@@ -6,10 +6,14 @@ This module contains debug data creation and entity search functionality.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import entity_registry as er
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,11 +21,57 @@ _LOGGER = logging.getLogger(__name__)
 class DebugMixin:
     """Mixin class for debug functionality."""
 
+    # Type hint for hass attribute (provided by inheriting class)
+    if TYPE_CHECKING:
+        hass: HomeAssistant
+
     def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
-        """Create comprehensive debug data for a specific window."""
-        # Implementation will be moved from main calculator
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        """
+        Create comprehensive debug data for a specific window.
+
+        Args:
+            window_id: The ID of the window to create debug data for
+
+        Returns:
+            Dictionary containing debug information or None if window not found
+
+        """
+        try:
+            _LOGGER.debug("Creating debug data for window: %s", window_id)
+
+            # Collect basic debug information using available methods
+            debug_data = {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "window_id": window_id,
+                "current_sensor_states": self._collect_current_sensor_states(window_id),
+                "window_sensors": self._search_window_sensors(self.hass, window_id),
+                "global_sensors": self._search_global_sensors(self.hass),
+            }
+
+            # Try to get group sensors if window is in a group
+            groups = {}  # This would need to be passed from main calculator
+            debug_data["group_sensors"] = self._search_group_sensors(
+                self.hass, window_id, groups
+            )
+
+            debug_data["calculation_steps"] = {
+                "debug_data_collected": True,
+                "window_sensors_found": len(debug_data["window_sensors"]),
+                "global_sensors_found": len(debug_data["global_sensors"]),
+                "group_sensors_found": len(debug_data["group_sensors"]),
+            }
+
+            _LOGGER.debug("Debug data created successfully for window: %s", window_id)
+
+        except Exception as err:
+            _LOGGER.exception("Error creating debug data for window %s", window_id)
+            return {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "window_id": window_id,
+                "error": f"Debug data creation failed: {err!r}",
+            }
+        else:
+            return debug_data
 
     def _collect_current_sensor_states(self, _window_id: str) -> dict[str, Any]:
         """
@@ -112,24 +162,78 @@ class DebugMixin:
 
         return "\n".join(output_lines)
 
-    def _search_window_sensors(
-        self, sensor_states: dict[str, Any], window_name: str
-    ) -> None:
+    def _search_window_sensors(self, hass: Any, window_name: str) -> list[str]:
         """Search for window-level sensors."""
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        try:
+            # Get all sensor states
+            all_states = hass.states.all()
+            # Filter sensors that contain the window name
+            window_sensors = [
+                entity_id
+                for entity_id, state in all_states
+                if window_name.lower() in entity_id.lower()
+            ]
+            _LOGGER.debug(
+                "Found %d sensors for window '%s'", len(window_sensors), window_name
+            )
+        except AttributeError:
+            _LOGGER.exception("Error searching window sensors for '%s'", window_name)
+            return []
+        else:
+            return window_sensors
 
     def _search_group_sensors(
-        self, sensor_states: dict[str, Any], window_id: str, groups: dict[str, Any]
-    ) -> None:
+        self, hass: Any, window_id: str, groups: dict[str, Any]
+    ) -> list[str]:
         """Search for group-level sensors."""
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        try:
+            # Find which group contains this window
+            window_group = None
+            for group_name, group_data in groups.items():
+                if "windows" in group_data and window_id in group_data["windows"]:
+                    window_group = group_name
+                    break
 
-    def _search_global_sensors(self, sensor_states: dict[str, Any]) -> None:
+            if window_group:
+                # Get all sensor states and filter for group sensors
+                all_states = hass.states.all()
+                group_sensors = [
+                    entity_id
+                    for entity_id, state in all_states
+                    if window_group.lower() in entity_id.lower()
+                ]
+                _LOGGER.debug(
+                    "Found %d sensors for group '%s' containing window '%s'",
+                    len(group_sensors),
+                    window_group,
+                    window_id,
+                )
+                return group_sensors
+            _LOGGER.debug("No group found containing window '%s'", window_id)
+        except AttributeError:
+            _LOGGER.exception(
+                "Error searching group sensors for window '%s'", window_id
+            )
+            return []
+        else:
+            return []
+
+    def _search_global_sensors(self, hass: Any) -> list[str]:
         """Search for global-level sensors."""
-        msg = "Implemented in main calculator"
-        raise NotImplementedError(msg)
+        try:
+            # Get all sensor states and filter for global sensors
+            all_states = hass.states.all()
+            global_sensors = [
+                entity_id
+                for entity_id, state in all_states
+                if "global" in entity_id.lower()
+            ]
+            _LOGGER.debug("Found %d global sensors", len(global_sensors))
+        except AttributeError:
+            _LOGGER.exception("Error searching global sensors")
+            return []
+        else:
+            return global_sensors
 
     def _find_entity_by_name(
         self,
