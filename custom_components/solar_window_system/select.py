@@ -10,7 +10,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
+from .const import DOMAIN, GLOBAL_CONFIG_ENTITIES
 from .global_config_entity import (
     GlobalConfigEntityBase,
     find_global_config_device,
@@ -208,7 +208,7 @@ class GlobalConfigSelectEntity(GlobalConfigEntityBase, SelectEntity, RestoreEnti
         self,
         entity_key: str,
         config: dict,
-        device,  # type: ignore[no-untyped-def]
+        device: dr.DeviceEntry,
     ) -> None:
         """Initialize the select entity."""
         # Initialize base class first

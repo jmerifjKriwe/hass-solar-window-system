@@ -7,12 +7,9 @@ This module contains debug data creation and entity search functionality.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.helpers import entity_registry as er
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,9 +20,10 @@ class DebugMixin:
     def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
         """Create comprehensive debug data for a specific window."""
         # Implementation will be moved from main calculator
-        raise NotImplementedError("Implemented in main calculator")
+        msg = "Implemented in main calculator"
+        raise NotImplementedError(msg)
 
-    def _collect_current_sensor_states(self, window_id: str) -> dict[str, Any]:
+    def _collect_current_sensor_states(self, _window_id: str) -> dict[str, Any]:
         """
         Collect current states of all Solar Window System sensors.
 
@@ -34,6 +32,7 @@ class DebugMixin:
 
         Returns:
             Dictionary with current sensor states
+
         """
         sensor_states = {}
 
@@ -81,6 +80,7 @@ class DebugMixin:
 
         Returns:
             Dictionary with current sensor states
+
         """
         # This is an alias for _collect_current_sensor_states for backward compatibility
         return self._collect_current_sensor_states(window_id)
@@ -94,6 +94,7 @@ class DebugMixin:
 
         Returns:
             Formatted debug output string
+
         """
         if not sensor_states:
             return "No sensor states available"

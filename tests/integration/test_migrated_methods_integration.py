@@ -7,6 +7,7 @@ mock HA instances, and comprehensive parameter validation.
 
 import pytest
 import logging
+from typing import Any
 from unittest.mock import Mock
 
 from custom_components.solar_window_system.modules import (
@@ -26,8 +27,6 @@ class TestMigratedMethodsIntegration:
 
         class TestCalculator(CalculationsMixin):
             """Test calculator with calculations mixin."""
-
-            pass
 
         calculator = TestCalculator()
 
@@ -58,8 +57,6 @@ class TestMigratedMethodsIntegration:
 
         class TestCalculator(UtilsMixin):
             """Test calculator with utils mixin."""
-
-            pass
 
         calculator = TestCalculator()
 
@@ -98,8 +95,6 @@ class TestMigratedMethodsIntegration:
         class TestCalculator(DebugMixin):
             """Test calculator with debug mixin."""
 
-            pass
-
         calculator = TestCalculator()
 
         # Mock HA instance and entity registry
@@ -112,7 +107,7 @@ class TestMigratedMethodsIntegration:
 
         original_async_get = debug_module.er.async_get
 
-        def mock_async_get(hass):
+        def mock_async_get(hass: Any) -> Any:
             return mock_entity_reg
 
         debug_module.er.async_get = mock_async_get
@@ -138,8 +133,6 @@ class TestMigratedMethodsIntegration:
 
         class TestCalculator(CalculationsMixin, UtilsMixin):
             """Test calculator with multiple mixins."""
-
-            pass
 
         calculator = TestCalculator()
 
@@ -167,8 +160,6 @@ class TestMigratedMethodsIntegration:
 
         class TestCalculator(CalculationsMixin, UtilsMixin, DebugMixin):
             """Test calculator with realistic scenario testing."""
-
-            pass
 
         calculator = TestCalculator()
 
@@ -202,17 +193,17 @@ class TestMigratedMethodsIntegration:
                 f"shadow factor {result} below minimum {scenario['expected_min']}"
             )
 
-            assert 0.1 <= result <= 1.0, (
-                f"Scenario '{scenario['name']}' produced invalid shadow factor: {result}"
+            scenario_name = scenario["name"]
+            error_msg = (
+                f"Scenario '{scenario_name}' produced invalid shadow factor: {result}"
             )
+            assert 0.1 <= result <= 1.0, error_msg
 
     def test_mixin_interaction_patterns(self) -> None:
         """Test how migrated methods from different mixins work together."""
 
         class TestCalculator(CalculationsMixin, UtilsMixin, DebugMixin):
             """Test calculator for mixin interaction."""
-
-            pass
 
         calculator = TestCalculator()
 
@@ -318,10 +309,7 @@ class TestMigratedMethodsIntegration:
         class TestCalculator(CalculationsMixin, UtilsMixin):
             """Test calculator for performance testing."""
 
-            pass
-
         calculator = TestCalculator()
-        mock_hass = Mock()
 
         # Performance test for shadow calculations
         import time
@@ -353,8 +341,6 @@ class TestMigratedMethodsIntegration:
         class TestCalculator(CalculationsMixin, UtilsMixin, DebugMixin):
             """Test calculator for error handling."""
 
-            pass
-
         calculator = TestCalculator()
 
         # Test shadow calculation with extreme values
@@ -377,7 +363,7 @@ class TestMigratedMethodsIntegration:
             result = calculator.get_safe_state(mock_hass, "sensor.test", "fallback")
             # If we get here, the method handled the exception
             assert result == "fallback"
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
             # If exception propagates, the method didn't handle it properly
             pytest.fail("Method should handle HA errors gracefully and return fallback")
 
@@ -386,8 +372,6 @@ class TestMigratedMethodsIntegration:
 
         class TestCalculator(CalculationsMixin, UtilsMixin):
             """Test calculator for contract compliance."""
-
-            pass
 
         calculator = TestCalculator()
 

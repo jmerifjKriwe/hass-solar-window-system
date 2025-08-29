@@ -7,16 +7,12 @@ This module contains the main SolarWindowCalculator class and basic functionalit
 from __future__ import annotations
 
 import logging
-import math
 import time
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-
-from ..const import DOMAIN
-
 if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
     from .flow_integration import WindowCalculationResult
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,20 +47,21 @@ class SolarWindowCalculator:
         # Global entry reference (set by coordinator)
         self.global_entry: Any = None
 
-    def get_safe_state(self, entity_id: str, default: str | float = 0) -> Any:
+    def get_safe_state(self, entity_id: str, default: Any = 0) -> Any:
         """Get entity state safely with fallback."""
         try:
             state = self.hass.states.get(entity_id)
-            return state.state if state else default
-        except Exception:
+        except (AttributeError, KeyError, TypeError):
             return default
+        else:
+            return state.state if state else default
 
     def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
         """Get entity attribute safely with fallback."""
         try:
             state = self.hass.states.get(entity_id)
             return getattr(state, attr, default) if state else default
-        except Exception:
+        except (AttributeError, KeyError, TypeError):
             return default
 
     def _get_cached_entity_state(
@@ -109,14 +106,17 @@ class SolarWindowCalculator:
     ) -> WindowCalculationResult:
         """Calculate solar power for a window including shadow effects."""
         # This will be implemented in calculations.py
-        raise NotImplementedError("Implemented in calculations module")
+        msg = "Implemented in calculations module"
+        raise NotImplementedError(msg)
 
     def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
         """Create comprehensive debug data for a specific window."""
         # This will be implemented in debug.py
-        raise NotImplementedError("Implemented in debug module")
+        msg = "Implemented in debug module"
+        raise NotImplementedError(msg)
 
     def calculate_all_windows_from_flows(self) -> dict[str, Any]:
         """Calculate all window shading requirements using flow-based configuration."""
         # This will be implemented in flow_integration.py
-        raise NotImplementedError("Implemented in flow_integration module")
+        msg = "Implemented in flow_integration module"
+        raise NotImplementedError(msg)

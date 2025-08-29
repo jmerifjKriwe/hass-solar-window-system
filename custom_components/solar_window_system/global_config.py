@@ -245,7 +245,7 @@ class GlobalConfigSensor(GlobalConfigEntityBase, RestoreEntity, SensorEntity):
         self,
         entity_key: str,
         config: dict[str, Any],
-        device,  # type: ignore[no-untyped-def]
+        device: dr.DeviceEntry,
     ) -> None:
         """Initialize the sensor."""
         # Initialize base class first

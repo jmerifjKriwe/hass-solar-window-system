@@ -7,10 +7,13 @@ from typing import TYPE_CHECKING
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 
+if TYPE_CHECKING:
+    from homeassistant.helpers import device_registry as dr
+
 from .global_config_entity import (
     GlobalConfigEntityBase,
-    find_global_config_device,
     create_global_config_entities,
+    find_global_config_device,
 )
 
 if TYPE_CHECKING:
@@ -50,7 +53,7 @@ class GlobalConfigSwitchEntity(GlobalConfigEntityBase, SwitchEntity, RestoreEnti
         self,
         entity_key: str,
         config: dict,
-        device,  # type: ignore[no-untyped-def]
+        device: dr.DeviceEntry,
     ) -> None:
         """Initialize the switch entity."""
         # Initialize base class first

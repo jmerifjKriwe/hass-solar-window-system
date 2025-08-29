@@ -7,12 +7,9 @@ and window calculation results.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+import logging
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,19 +80,19 @@ class FlowIntegrationMixin:
 
         Returns:
             Window configuration dictionary
+
         """
         try:
             # Get window subentries
             windows = self._get_subentries_by_type("window")
-
+        except Exception:
+            _LOGGER.exception("Error getting window config from flow for %s", window_id)
+            return {}
+        else:
             if window_id in windows:
                 return windows[window_id]
 
             _LOGGER.warning("Window %s not found in flow configuration", window_id)
-            return {}
-
-        except Exception:
-            _LOGGER.exception("Error getting window config from flow for %s", window_id)
             return {}
 
     def _get_group_config_from_flow(self, group_id: str) -> dict[str, Any]:
@@ -107,19 +104,19 @@ class FlowIntegrationMixin:
 
         Returns:
             Group configuration dictionary
+
         """
         try:
             # Get group subentries
             groups = self._get_subentries_by_type("group")
-
+        except Exception:
+            _LOGGER.exception("Error getting group config from flow for %s", group_id)
+            return {}
+        else:
             if group_id in groups:
                 return groups[group_id]
 
             _LOGGER.warning("Group %s not found in flow configuration", group_id)
-            return {}
-
-        except Exception:
-            _LOGGER.exception("Error getting group config from flow for %s", group_id)
             return {}
 
     def _get_global_config_from_flow(self) -> dict[str, Any]:
@@ -128,11 +125,15 @@ class FlowIntegrationMixin:
 
         Returns:
             Global configuration dictionary
+
         """
         try:
             # Get global subentries
             global_config = self._get_subentries_by_type("global")
-
+        except Exception:
+            _LOGGER.exception("Error getting global config from flow")
+            return {}
+        else:
             # For global config, we typically expect a single entry or merged config
             if global_config:
                 # If there's a specific global entry, return it
@@ -142,8 +143,4 @@ class FlowIntegrationMixin:
                 return next(iter(global_config.values()))
 
             _LOGGER.warning("No global configuration found in flow setup")
-            return {}
-
-        except Exception:
-            _LOGGER.exception("Error getting global config from flow")
             return {}

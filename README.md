@@ -3,8 +3,8 @@
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/jmerifjKriwe/hass-solar-window-system/total)
 
-
 [![CI Status](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/ci-release.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/ci-release.yml)
+[![Coverage Badge](coverage.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/coverage.yml)
 
 
 

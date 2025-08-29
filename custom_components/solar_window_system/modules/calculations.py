@@ -7,6 +7,7 @@ and physical parameter handling.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import math
 from typing import TYPE_CHECKING, Any
@@ -15,6 +16,20 @@ if TYPE_CHECKING:
     from .flow_integration import WindowCalculationResult
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class SolarCalculationParams:
+    """Parameters for solar power calculations."""
+
+    solar_radiation: float
+    sun_elevation: float
+    sun_azimuth: float
+    window_azimuth: float = 180.0
+    area: float = 1.0
+    g_value: float = 0.8
+    tilt: float = 90.0
+    diffuse_factor: float = 0.3
 
 
 class CalculationsMixin:
@@ -28,7 +43,8 @@ class CalculationsMixin:
     ) -> WindowCalculationResult:
         """Calculate solar power for a window including shadow effects."""
         # Implementation will be moved from main calculator
-        raise NotImplementedError("Implemented in main calculator")
+        msg = "Implemented in main calculator"
+        raise NotImplementedError(msg)
 
     def _calculate_shadow_factor(
         self,
@@ -95,6 +111,7 @@ class CalculationsMixin:
 
         Returns:
             Direct solar power in watts
+
         """
         sun_el_rad = math.radians(params["sun_elevation"])
         sun_az_rad = math.radians(params["sun_azimuth"])
@@ -136,6 +153,7 @@ class CalculationsMixin:
 
         Returns:
             Tuple of (is_visible: bool, window_azimuth: float)
+
         """
 
         def safe_float(val: Any, default: float = 0.0) -> float:
@@ -180,42 +198,29 @@ class CalculationsMixin:
 
     def _calculate_solar_power_direct(
         self,
-        solar_radiation: float,
-        sun_elevation: float,
-        sun_azimuth: float,
-        window_azimuth: float = 180.0,
-        area: float = 1.0,
-        g_value: float = 0.8,
-        tilt: float = 90.0,
-        diffuse_factor: float = 0.3,
+        params: SolarCalculationParams,
     ) -> float:
         """
         Calculate direct solar power component.
 
         Args:
-            solar_radiation: Solar radiation in W/m²
-            sun_elevation: Sun elevation angle in degrees
-            sun_azimuth: Sun azimuth angle in degrees
-            window_azimuth: Window azimuth angle in degrees (default: 180.0)
-            area: Window area in m² (default: 1.0)
-            g_value: Solar heat gain coefficient (default: 0.8)
-            tilt: Window tilt angle in degrees (default: 90.0)
-            diffuse_factor: Fraction of diffuse radiation (default: 0.3)
+            params: Solar calculation parameters
 
         Returns:
             Direct solar power in watts
+
         """
         # Use the existing _calculate_direct_power method with proper parameters
-        params = {
-            "solar_radiation": solar_radiation,
-            "sun_elevation": sun_elevation,
-            "sun_azimuth": sun_azimuth,
-            "diffuse_factor": diffuse_factor,
-            "tilt": tilt,
-            "area": area,
-            "g_value": g_value,
+        params_dict = {
+            "solar_radiation": params.solar_radiation,
+            "sun_elevation": params.sun_elevation,
+            "sun_azimuth": params.sun_azimuth,
+            "diffuse_factor": params.diffuse_factor,
+            "tilt": params.tilt,
+            "area": params.area,
+            "g_value": params.g_value,
         }
-        return self._calculate_direct_power(params, window_azimuth)
+        return self._calculate_direct_power(params_dict, params.window_azimuth)
 
     def _calculate_solar_power_diffuse(
         self,
@@ -235,6 +240,7 @@ class CalculationsMixin:
 
         Returns:
             Diffuse solar power in watts
+
         """
         return solar_radiation * diffuse_factor * area * g_value
 
@@ -256,9 +262,10 @@ class CalculationsMixin:
 
         Returns:
             Total solar power in watts
+
         """
         # Total power = direct + diffuse
-        direct_power = self._calculate_solar_power_direct(
+        params = SolarCalculationParams(
             solar_radiation=solar_radiation,
             sun_elevation=45.0,  # Default values for simple calculation
             sun_azimuth=180.0,
@@ -266,6 +273,7 @@ class CalculationsMixin:
             g_value=g_value,
             diffuse_factor=diffuse_factor,
         )
+        direct_power = self._calculate_solar_power_direct(params)
         diffuse_power = self._calculate_solar_power_diffuse(
             solar_radiation, diffuse_factor, area, g_value
         )
@@ -285,6 +293,7 @@ class CalculationsMixin:
 
         Returns:
             Power per square meter in W/m²
+
         """
         if area <= 0:
             return 0.0

@@ -30,6 +30,7 @@ class UtilsMixin:
 
         Returns:
             True if temperature is within range, False otherwise
+
         """
         if not isinstance(temp, (int, float)):
             _LOGGER.warning("Invalid temperature type: %s, expected number", type(temp))
@@ -63,6 +64,7 @@ class UtilsMixin:
 
         Returns:
             Float value or default
+
         """
         if val in ("", None, "inherit", "-1", -1):
             return default

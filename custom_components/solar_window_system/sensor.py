@@ -113,64 +113,86 @@ async def _setup_group_power_sensors(
     if not entry.subentries:
         _LOGGER.warning("No group subentries found")
         return
+
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != "group":
             continue
-        group_name = subentry.title
-        group_device = None
-        for device in device_registry.devices.values():
-            if device.config_entries and entry.entry_id in device.config_entries:
-                subentries = device.config_entries_subentries
-                if (
-                    subentries
-                    and entry.entry_id in subentries
-                    and subentry_id in subentries[entry.entry_id]
-                ):
-                    for identifier in device.identifiers:
-                        if (
-                            identifier[0] == DOMAIN
-                            and identifier[1] == f"group_{subentry_id}"
-                        ):
-                            group_device = device
-                            break
-                    if group_device:
-                        break
+
+        group_device = _find_group_device(device_registry, entry, subentry_id)
         if not group_device:
-            _LOGGER.warning("Group device not found for: %s", group_name)
+            _LOGGER.warning("Group device not found for: %s", subentry.title)
             continue
 
-        entities = []
-        # Get the global coordinator that handles calculations
-        # Find the window_configs entry that contains the actual calculations
-        global_coordinator = None
-        domain_entries = hass.config_entries.async_entries(DOMAIN)
-        for domain_entry in domain_entries:
-            if domain_entry.data.get("entry_type") == "window_configs":
-                global_coordinator = hass.data[DOMAIN][domain_entry.entry_id][
-                    "coordinator"
-                ]
-                break
-
-        # Fallback to current entry's coordinator if no window_configs found
-        if not global_coordinator:
-            global_coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-
-        for key, label in (
-            ("total_power", "Total Power"),
-            ("total_power_direct", "Total Power Direct"),
-            ("total_power_diffuse", "Total Power Diffuse"),
-        ):
-            entities.append(
-                GroupWindowPowerSensor(
-                    kind="group",
-                    object_name=group_name,
-                    device=group_device,
-                    key_label=(key, label),
-                    coordinator=global_coordinator,
-                )
-            )
+        entities = _create_group_power_entities(
+            hass, entry, subentry.title, group_device
+        )
         if entities:
             async_add_entities(entities, config_subentry_id=subentry_id)
+
+
+def _find_group_device(
+    device_registry: dr.DeviceRegistry, entry: ConfigEntry, subentry_id: str
+) -> dr.DeviceEntry | None:
+    """Find the device for a group subentry."""
+    for device in device_registry.devices.values():
+        if not (device.config_entries and entry.entry_id in device.config_entries):
+            continue
+
+        subentries = device.config_entries_subentries
+        if not (
+            subentries
+            and entry.entry_id in subentries
+            and subentry_id in subentries[entry.entry_id]
+        ):
+            continue
+
+        for identifier in device.identifiers:
+            if identifier[0] == DOMAIN and identifier[1] == f"group_{subentry_id}":
+                return device
+
+    return None
+
+
+def _create_group_power_entities(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    group_name: str,
+    group_device: dr.DeviceEntry,
+) -> list[GroupWindowPowerSensor]:
+    """Create power sensor entities for a group."""
+    entities = []
+
+    # Get the global coordinator that handles calculations
+    global_coordinator = _find_global_coordinator(hass, entry)
+
+    for key, label in (
+        ("total_power", "Total Power"),
+        ("total_power_direct", "Total Power Direct"),
+        ("total_power_diffuse", "Total Power Diffuse"),
+    ):
+        entities.append(
+            GroupWindowPowerSensor(
+                kind="group",
+                object_name=group_name,
+                device=group_device,
+                key_label=(key, label),
+                coordinator=global_coordinator,
+            )
+        )
+
+    return entities
+
+
+def _find_global_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:
+    """Find the global coordinator for calculations."""
+    # Find the window_configs entry that contains the actual calculations
+    domain_entries = hass.config_entries.async_entries(DOMAIN)
+    for domain_entry in domain_entries:
+        if domain_entry.data.get("entry_type") == "window_configs":
+            return hass.data[DOMAIN][domain_entry.entry_id]["coordinator"]
+
+    # Fallback to current entry's coordinator if no window_configs found
+    return hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
 
 async def _setup_window_power_sensors(

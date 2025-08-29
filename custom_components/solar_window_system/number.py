@@ -7,17 +7,19 @@ from typing import TYPE_CHECKING
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 
+if TYPE_CHECKING:
+    from homeassistant.helpers import device_registry as dr
+
 from .global_config_entity import (
     GlobalConfigEntityBase,
-    find_global_config_device,
     create_global_config_entities,
+    find_global_config_device,
 )
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
-    from homeassistant.helpers import device_registry as dr
 
 import logging
 
@@ -51,7 +53,7 @@ class GlobalConfigNumberEntity(GlobalConfigEntityBase, NumberEntity, RestoreEnti
         self,
         entity_key: str,
         config: dict,
-        device,  # type: ignore[no-untyped-def]
+        device: dr.DeviceEntry,
     ) -> None:
         """Initialize the number entity."""
         # Initialize base class first

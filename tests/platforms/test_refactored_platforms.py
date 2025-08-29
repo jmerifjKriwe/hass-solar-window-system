@@ -113,7 +113,6 @@ class TestRefactoredPlatforms:
             async_setup_entry,
             GlobalConfigNumberEntity,
         )
-        from unittest.mock import AsyncMock
 
         # Mock hass and entry
         hass = Mock()
@@ -132,7 +131,7 @@ class TestRefactoredPlatforms:
         device_registry.devices.values.return_value = [device]
 
         # Mock async_add_entities
-        async_add_entities = AsyncMock()
+        async_add_entities = Mock()
 
         with patch(
             "custom_components.solar_window_system.global_config_entity.dr.async_get",
@@ -156,7 +155,6 @@ class TestRefactoredPlatforms:
             async_setup_entry,
             GlobalConfigSelectEntity,
         )
-        from unittest.mock import AsyncMock
 
         # Mock hass and entry
         hass = Mock()
@@ -176,7 +174,7 @@ class TestRefactoredPlatforms:
         device_registry.devices.values.return_value = [device]
 
         # Mock async_add_entities
-        async_add_entities = AsyncMock()
+        async_add_entities = Mock()
 
         with (
             patch(
@@ -214,7 +212,6 @@ class TestRefactoredPlatforms:
             async_setup_entry,
             GlobalConfigSwitchEntity,
         )
-        from unittest.mock import AsyncMock
 
         # Mock hass and entry
         hass = Mock()
@@ -233,7 +230,7 @@ class TestRefactoredPlatforms:
         device_registry.devices.values.return_value = [device]
 
         # Mock async_add_entities
-        async_add_entities = AsyncMock()
+        async_add_entities = Mock()
 
         with patch(
             "custom_components.solar_window_system.global_config_entity.dr.async_get",
@@ -257,7 +254,6 @@ class TestRefactoredPlatforms:
             async_setup_entry,
             GlobalConfigTextEntity,
         )
-        from unittest.mock import AsyncMock
 
         # Mock hass and entry
         hass = Mock()
@@ -276,7 +272,7 @@ class TestRefactoredPlatforms:
         device_registry.devices.values.return_value = [device]
 
         # Mock async_add_entities
-        async_add_entities = AsyncMock()
+        async_add_entities = Mock()
 
         with patch(
             "custom_components.solar_window_system.global_config_entity.dr.async_get",
@@ -302,7 +298,6 @@ class TestRefactoredPlatforms:
         from custom_components.solar_window_system.global_config import (
             GlobalConfigSensor,
         )
-        from unittest.mock import AsyncMock
 
         # Mock hass and entry
         hass = Mock()
@@ -322,7 +317,7 @@ class TestRefactoredPlatforms:
         device_registry.devices.values.return_value = [device]
 
         # Mock async_add_entities
-        async_add_entities = AsyncMock()
+        async_add_entities = Mock()
 
         with patch(
             "custom_components.solar_window_system.global_config_entity.dr.async_get",

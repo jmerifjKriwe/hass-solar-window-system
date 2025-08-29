@@ -470,7 +470,7 @@ async def test_group_window_entity_creation(hass: HomeAssistant) -> None:
         ),
     ):
         async_add_entities = Mock(
-            side_effect=lambda entities, **kwargs: (
+            side_effect=lambda entities, **_kwargs: (
                 created_group_entities.extend(entities)
             )
         )
@@ -534,7 +534,7 @@ async def test_window_entity_creation(hass: HomeAssistant) -> None:
         ),
     ):
         async_add_entities = Mock(
-            side_effect=lambda entities, **kwargs: (
+            side_effect=lambda entities, **_kwargs: (
                 created_window_entities.extend(entities)
             )
         )

@@ -1,14 +1,15 @@
 """Solar Window System integration package."""
 
-from datetime import UTC, datetime
 import asyncio
+from datetime import UTC, datetime
 import json
 import logging
 from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import SolarWindowSystemCoordinator
@@ -42,53 +43,49 @@ async def _resolve_to_subentry_id(hass: HomeAssistant, value: str) -> str:
     if not value:
         return value
 
-    # First, try to resolve as device id
-    dev_reg = dr.async_get(hass)
-    dev = dev_reg.devices.get(value) if isinstance(value, str) else None
-    if dev and dev.identifiers:
-        # Found a device, extract window identifier
-        for ident in dev.identifiers:
-            if (
-                isinstance(ident, tuple)
-                and len(ident) >= MIN_IDENT_TUPLE_LEN
-                and ident[0] == DOMAIN
-            ):
-                candidate = ident[1]
-                if isinstance(candidate, str) and candidate.startswith("window_"):
-                    # Return subentry_id without 'window_' prefix
-                    return candidate[7:]
+    # Handle direct subentry id cases first
+    if isinstance(value, str):
+        if not value.startswith("window_"):
+            return value
+        return value[7:]  # Remove 'window_' prefix
 
-    # Second, try to resolve as entity id
-    ent = None
+    # Try to resolve as device id or entity id
+    dev_reg = dr.async_get(hass)
+    subentry_id = await _extract_subentry_from_device(dev_reg, value)
+    if subentry_id:
+        return subentry_id
+
+    # Try to resolve as entity id
     if isinstance(value, str) and "." in value:
         ent_reg = er.async_get(hass)
         ent = ent_reg.async_get(value)
+        if ent and ent.device_id:
+            subentry_id = await _extract_subentry_from_device(dev_reg, ent.device_id)
+            if subentry_id:
+                return subentry_id
 
-    if ent and ent.device_id:
-        # Found entity with device, resolve the device
-        dev = dev_reg.async_get(ent.device_id)
-        if dev and dev.identifiers:
-            for ident in dev.identifiers:
-                if (
-                    isinstance(ident, tuple)
-                    and len(ident) >= MIN_IDENT_TUPLE_LEN
-                    and ident[0] == DOMAIN
-                ):
-                    candidate = ident[1]
-                    if isinstance(candidate, str) and candidate.startswith("window_"):
-                        # Return subentry_id without 'window_' prefix
-                        return candidate[7:]
-
-    # Third, if it already looks like a subentry id (no window_ prefix), return as-is
-    if isinstance(value, str) and not value.startswith("window_"):
-        return value
-
-    # Fourth, if it starts with window_, extract the subentry_id
-    if isinstance(value, str) and value.startswith("window_"):
-        return value[7:]  # Remove 'window_' prefix
-
-    # Fallback: return original value unchanged
     return value
+
+
+async def _extract_subentry_from_device(
+    dev_reg: dr.DeviceRegistry, device_id: str
+) -> str | None:
+    """Extract subentry id from device identifiers."""
+    dev = dev_reg.devices.get(device_id)
+    if not dev or not dev.identifiers:
+        return None
+
+    for ident in dev.identifiers:
+        if (
+            isinstance(ident, tuple)
+            and len(ident) >= MIN_IDENT_TUPLE_LEN
+            and ident[0] == DOMAIN
+        ):
+            candidate = ident[1]
+            if isinstance(candidate, str) and candidate.startswith("window_"):
+                return candidate[7:]  # Remove 'window_' prefix
+
+    return None
 
 
 def _get_integration_version() -> str:
@@ -110,7 +107,7 @@ async def _async_get_integration_version(hass: HomeAssistant) -> str:
         return hass.data[DOMAIN]["integration_version"]
 
     # Read version from manifest.json using thread pool to avoid blocking
-    def _read_version():
+    def _read_version() -> str:
         try:
             manifest_path = Path(__file__).parent / "manifest.json"
             with manifest_path.open("r", encoding="utf-8") as f:

@@ -8,10 +8,13 @@ from homeassistant.components.text import TextEntity
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.restore_state import RestoreEntity
 
+if TYPE_CHECKING:
+    from homeassistant.helpers import device_registry as dr
+
 from .global_config_entity import (
     GlobalConfigEntityBase,
-    find_global_config_device,
     create_global_config_entities,
+    find_global_config_device,
 )
 
 if TYPE_CHECKING:
@@ -51,7 +54,7 @@ class GlobalConfigTextEntity(GlobalConfigEntityBase, TextEntity, RestoreEntity):
         self,
         entity_key: str,
         config: dict,
-        device,  # type: ignore[no-untyped-def]
+        device: dr.DeviceEntry,
     ) -> None:
         """Initialize the text entity."""
         # Initialize base class first

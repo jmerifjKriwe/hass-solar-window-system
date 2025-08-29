@@ -7,8 +7,7 @@ the expected interfaces before implementing the actual migration.
 """
 
 import pytest
-from typing import Any
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 from custom_components.solar_window_system.modules import (
     CalculationsMixin,
@@ -16,6 +15,9 @@ from custom_components.solar_window_system.modules import (
     FlowIntegrationMixin,
     ShadingMixin,
     UtilsMixin,
+)
+from custom_components.solar_window_system.modules.calculations import (
+    SolarCalculationParams,
 )
 
 
@@ -78,8 +80,13 @@ class TestModularArchitecture:
         calculator = TestCalculator()
 
         # Test CalculationsMixin method signatures
+        params = SolarCalculationParams(
+            solar_radiation=1000.0,
+            sun_elevation=30.0,
+            sun_azimuth=45.0,
+        )
         with pytest.raises(NotImplementedError):
-            calculator._calculate_solar_power_direct(1000.0, 30.0, 45.0)
+            calculator._calculate_solar_power_direct(params)
 
         with pytest.raises(NotImplementedError):
             calculator._calculate_solar_power_diffuse(800.0, 0.3)
@@ -171,8 +178,6 @@ class TestModularArchitecture:
             UtilsMixin,
         ):
             """Test calculator for MRO."""
-
-        calculator = TestCalculator()
 
         # Check MRO
         mro = TestCalculator.__mro__
@@ -281,7 +286,6 @@ class TestModularArchitecture:
         self, mixin_class: type, expected_methods: list[str]
     ) -> None:
         """Test that each mixin has all expected methods."""
-
         for method_name in expected_methods:
             assert hasattr(mixin_class, method_name), (
                 f"Method {method_name} missing from {mixin_class.__name__}"
@@ -289,7 +293,6 @@ class TestModularArchitecture:
 
     def test_modular_architecture_readiness(self) -> None:
         """Test that the modular architecture is ready for migration."""
-
         # This test ensures our modular setup is complete
         required_mixins = [
             CalculationsMixin,
@@ -330,9 +333,12 @@ class TestModularArchitecture:
         calculator = TestCalculator()
 
         # Test that all methods raise NotImplementedError with proper messages
+        params = SolarCalculationParams(
+            solar_radiation=1000, sun_elevation=30, sun_azimuth=45
+        )
         test_cases = [
             (
-                lambda: calculator._calculate_solar_power_direct(1000, 30, 45),
+                lambda: calculator._calculate_solar_power_direct(params),
                 "solar power direct",
             ),
             (lambda: calculator._find_entity_by_name("test"), "entity search"),
@@ -355,11 +361,13 @@ class TestModularArchitecture:
                 test_func()
 
             # Verify error message indicates implementation location
-            assert "Implemented in main calculator" in str(exc_info.value), (
-                f"Error message for {description} doesn't indicate main calculator implementation"
+            error_msg = (
+                f"Error message for {description} doesn't indicate "
+                "main calculator implementation"
             )
+            assert "Implemented in main calculator" in str(exc_info.value), error_msg
 
-    def test_mixin_method_signatures(self):
+    def test_mixin_method_signatures(self) -> None:
         """Test that mixin methods have the expected signatures."""
 
         class TestCalculator(CalculationsMixin, UtilsMixin):
@@ -388,9 +396,8 @@ class TestModularArchitecture:
         except NotImplementedError:
             pytest.fail("_safe_float_conversion should be implemented in mixin")
 
-    def test_mixin_isolation(self):
+    def test_mixin_isolation(self) -> None:
         """Test that mixins don't interfere with each other."""
-
         # Test each mixin individually
         mixins_to_test = [
             (CalculationsMixin, "_calculate_solar_power_direct"),
@@ -405,8 +412,6 @@ class TestModularArchitecture:
             class TestCalculator(mixin_class):
                 """Single mixin test calculator."""
 
-                pass
-
             calculator = TestCalculator()
 
             # Verify only the expected method is available
@@ -416,11 +421,14 @@ class TestModularArchitecture:
             method = getattr(calculator, test_method)
             try:
                 if test_method == "_calculate_solar_power_direct":
-                    result = method(1000.0, 30.0, 45.0)
+                    params = SolarCalculationParams(
+                        solar_radiation=1000.0, sun_elevation=30.0, sun_azimuth=45.0
+                    )
+                    result = method(params)
                     assert isinstance(result, float)
                 elif test_method == "_find_entity_by_name":
                     result = method(None, "test_entity")
-                    assert result is None or isinstance(result, str)
+                    assert result is None
                 elif test_method == "_get_window_config_from_flow":
                     result = method("test_window")
                     assert isinstance(result, dict)
@@ -434,7 +442,7 @@ class TestModularArchitecture:
             except NotImplementedError:
                 pytest.fail(f"Method {test_method} should be implemented in mixin")
 
-    def test_mixin_composition_patterns(self):
+    def test_mixin_composition_patterns(self) -> None:
         """Test different composition patterns for mixins."""
 
         # Pattern 1: All mixins together
@@ -447,19 +455,13 @@ class TestModularArchitecture:
         ):
             """Full calculator with all mixins."""
 
-            pass
-
         # Pattern 2: Core functionality only
         class CoreCalculator(CalculationsMixin, UtilsMixin):
             """Core calculator with essential mixins."""
 
-            pass
-
         # Pattern 3: Debug-focused calculator
         class DebugCalculator(DebugMixin, UtilsMixin):
             """Debug-focused calculator."""
-
-            pass
 
         # Test all patterns can be instantiated
         full_calc = FullCalculator()
@@ -470,7 +472,7 @@ class TestModularArchitecture:
         assert core_calc is not None
         assert debug_calc is not None
 
-    def test_mixin_method_resolution_order(self):
+    def test_mixin_method_resolution_order(self) -> None:
         """Test method resolution order (MRO) for mixins."""
 
         class TestCalculator(
@@ -482,10 +484,6 @@ class TestModularArchitecture:
         ):
             """Test calculator for MRO."""
 
-            pass
-
-        calculator = TestCalculator()
-
         # Check MRO
         mro = TestCalculator.__mro__
         assert CalculationsMixin in mro
@@ -494,9 +492,8 @@ class TestModularArchitecture:
         assert ShadingMixin in mro
         assert UtilsMixin in mro
 
-    def test_future_integration_points(self):
+    def test_future_integration_points(self) -> None:
         """Define integration points that will be tested after migration."""
-
         # This test defines what we expect to work after migration
         integration_points = {
             "solar_calculations": [
@@ -523,7 +520,7 @@ class TestModularArchitecture:
         }
 
         # Verify all expected methods are defined in mixins
-        for category, methods in integration_points.items():
+        for methods in integration_points.values():
             for method in methods:
                 found_in_mixin = False
                 mixins_to_check = [
@@ -542,7 +539,7 @@ class TestModularArchitecture:
                 assert found_in_mixin, f"Method {method} not found in any mixin"
 
     @pytest.mark.parametrize(
-        "mixin_class,expected_methods",
+        ("mixin_class", "expected_methods"),
         [
             (
                 CalculationsMixin,
@@ -590,17 +587,17 @@ class TestModularArchitecture:
             ),
         ],
     )
-    def test_mixin_method_completeness(self, mixin_class, expected_methods):
+    def test_mixin_method_completeness(
+        self, mixin_class: type, expected_methods: list[str]
+    ) -> None:
         """Test that each mixin has all expected methods."""
-
         for method_name in expected_methods:
             assert hasattr(mixin_class, method_name), (
                 f"Method {method_name} missing from {mixin_class.__name__}"
             )
 
-    def test_modular_architecture_readiness(self):
+    def test_modular_architecture_readiness(self) -> None:
         """Test that the modular architecture is ready for migration."""
-
         # This test ensures our modular setup is complete
         required_mixins = [
             CalculationsMixin,
@@ -626,7 +623,7 @@ class TestModularArchitecture:
             ]
             assert len(methods) > 0, f"Mixin {mixin.__name__} appears empty"
 
-    def test_migration_placeholder_behavior(self):
+    def test_migration_placeholder_behavior(self) -> None:
         """Test that all methods work correctly (no longer placeholders)."""
 
         class TestCalculator(
@@ -638,14 +635,15 @@ class TestModularArchitecture:
         ):
             """Test calculator for method behavior."""
 
-            pass
-
         calculator = TestCalculator()
 
         # Test that all methods work correctly (previously were placeholders)
+        params = SolarCalculationParams(
+            solar_radiation=1000, sun_elevation=30, sun_azimuth=45
+        )
         test_cases = [
             (
-                lambda: calculator._calculate_solar_power_direct(1000, 30, 45),
+                lambda: calculator._calculate_solar_power_direct(params),
                 "solar power direct",
                 lambda result: isinstance(result, float),
             ),

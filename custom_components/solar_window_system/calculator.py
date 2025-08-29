@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import logging
-import math
 import time
 from typing import TYPE_CHECKING, Any, NamedTuple
 
@@ -125,15 +124,17 @@ class SolarWindowCalculator(
 
     def get_safe_state(self, entity_id: str, default: str | float = 0) -> Any:
         """
-        Safely get the state of an entity, returning a default if it is.
+        Safely get the state of an entity, returning a default if unavailable.
 
-        unavailable, unknown, or not found.
+        Returns a default value if the entity is unavailable, unknown, or not found.
         Uses the modular UtilsMixin implementation.
         """
         return super().get_safe_state(self.hass, entity_id, default)
 
     def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
-        """Safely get an attribute of an entity, returning a default if unavailable.
+        """
+        Safely get an attribute of an entity, returning a default if unavailable.
+
         Uses the modular UtilsMixin implementation.
         """
         return super().get_safe_attr(self.hass, entity_id, attr, default)
@@ -146,7 +147,6 @@ class SolarWindowCalculator(
 
         Robust gegen ungültige Werte.
         """
-
         # Schwellenwerte robust casten
         config["thresholds"]["direct"] = self._safe_float_conversion(
             config["thresholds"].get("direct", 200), 200
@@ -537,7 +537,6 @@ class SolarWindowCalculator(
         states: dict[str, Any],
     ) -> tuple[float, float, float, float, float, float, float, float, float]:
         """Extract and validate calculation parameters."""
-
         solar_radiation = self._safe_float_conversion(
             states.get("solar_radiation", 0.0), 0.0
         )
@@ -614,6 +613,7 @@ class SolarWindowCalculator(
     ) -> float:
         """
         Calculate direct solar power component.
+
         Uses the modular CalculationsMixin implementation.
         """
         return super()._calculate_direct_power(params, window_azimuth)
@@ -1486,15 +1486,68 @@ class SolarWindowCalculator(
 
         Returns:
             Dictionary with current sensor states organized by level
-        Uses the modular DebugMixin implementation.
+
         """
-        return super()._collect_current_sensor_states(window_id)
+        # Get base sensor states from DebugMixin
+        sensor_states = super()._collect_current_sensor_states(window_id)
+
+        # Initialize debug_info section if not present
+        if "debug_info" not in sensor_states:
+            sensor_states["debug_info"] = {
+                "entities_found": 0,
+                "search_attempts": [],
+                "total_entities_in_registry": 0,
+            }
+
+        # Update total entities count
+        try:
+            entity_reg = er.async_get(self.hass)
+            sensor_states["debug_info"]["total_entities_in_registry"] = len(
+                [
+                    entity_id
+                    for entity_id in entity_reg.entities
+                    if entity_id.startswith("sensor.sws_")
+                ]
+            )
+        except Exception:
+            _LOGGER.exception("Error getting entity registry count")
+
+        # Initialize level-specific sections
+        sensor_states["window_level"] = {}
+        sensor_states["group_level"] = {}
+        sensor_states["global_level"] = {}
+
+        # Get window and group names for searching
+        try:
+            windows = self._get_subentries_by_type("window")
+            if window_id in windows:
+                window_config = windows[window_id]
+                window_name = window_config.get("name", window_id)
+
+                # Search for window-level sensors
+                self._search_window_sensors(sensor_states, window_name)
+
+                # Search for group-level sensors if window has a group
+                group_id = window_config.get("linked_group_id")
+                if group_id:
+                    groups = self._get_subentries_by_type("group")
+                    if group_id in groups:
+                        self._search_group_sensors(sensor_states, window_id, groups)
+
+            # Search for global-level sensors
+            self._search_global_sensors(sensor_states)
+
+        except Exception:
+            _LOGGER.exception("Error during sensor search")
+
+        return sensor_states
 
     def _validate_temperature_range(
         self, temp: float, min_temp: float = -50.0, max_temp: float = 60.0
     ) -> bool:
         """
         Validate temperature is within reasonable range.
+
         Uses the modular UtilsMixin implementation.
         """
         return super()._validate_temperature_range(temp, min_temp, max_temp)
@@ -1627,7 +1680,9 @@ class SolarWindowCalculator(
 
         Returns:
             Entity ID if found, None otherwise
+
         Uses the modular DebugMixin implementation.
+
         """
         return super()._find_entity_by_name(
             self.hass, entity_name, entity_type, window_name, group_name
