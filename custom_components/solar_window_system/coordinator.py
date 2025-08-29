@@ -113,8 +113,12 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if self.update_interval
                         else 0
                     ),
-                    "last_update": None,
-                    "next_update": None,
+                    "last_update": datetime.now(UTC).isoformat(),
+                    "next_update": (
+                        (datetime.now(UTC) + self.update_interval).isoformat()
+                        if self.update_interval
+                        else None
+                    ),
                 }
 
                 return debug_data

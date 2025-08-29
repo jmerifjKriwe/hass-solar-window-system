@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -20,18 +18,6 @@ if TYPE_CHECKING:
     from homeassistant.helpers import device_registry as dr
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _get_integration_version() -> str:
-    """Get the integration version from manifest.json."""
-    try:
-        manifest_path = Path(__file__).parent / "manifest.json"
-        with manifest_path.open("r", encoding="utf-8") as f:
-            manifest = json.load(f)
-        return manifest.get("version", "unknown")
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
-        _LOGGER.warning("Could not read version from manifest.json")
-        return "unknown"
 
 
 async def async_create_global_config_entities(
@@ -326,9 +312,10 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         # Register listeners for all coordinators
         domain_data = self.hass.data.get(DOMAIN, {})
         for entry_data in domain_data.values():
-            coordinator = entry_data.get("coordinator")
-            if coordinator:
-                coordinator.async_add_listener(_coordinator_updated)
+            if isinstance(entry_data, dict):
+                coordinator = entry_data.get("coordinator")
+                if coordinator:
+                    coordinator.async_add_listener(_coordinator_updated)
 
     @property
     def state(self) -> Any:  # type: ignore[override]
@@ -345,7 +332,9 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
 
         # Special handling for version sensor
         if self._entity_key == "integration_version":
-            return _get_integration_version()
+            # Get cached version from hass.data to avoid blocking I/O
+            domain_data = self.hass.data.get(DOMAIN, {})
+            return domain_data.get("integration_version", "unknown")
 
         return self._state
 
@@ -360,6 +349,10 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         domain_data = self.hass.data.get(DOMAIN, {})
 
         for entry_data in domain_data.values():
+            # Skip non-entry data like "integration_version"
+            if not isinstance(entry_data, dict) or "coordinator" not in entry_data:
+                continue
+
             coordinator = entry_data.get("coordinator")
             if coordinator and coordinator.data:
                 # Aggregate from summary data

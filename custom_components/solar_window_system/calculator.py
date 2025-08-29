@@ -10,6 +10,7 @@ import time
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -1441,9 +1442,22 @@ class SolarWindowCalculator:
                 "calculation_timestamp": datetime.now(UTC).isoformat(),
             }
 
+            # Add calculated sensor values for all levels
+            debug_data["calculated_sensors"] = {
+                "window_level": window_result,
+                "group_level": results.get("groups", {}),
+                "global_level": results.get("summary", {}),
+            }
+
+            debug_data["current_sensor_states"] = self._collect_current_sensor_states(
+                window_id
+            )
+
             debug_data["calculation_steps"] = {
                 "full_calculation_completed": True,
                 "window_found_in_results": window_id in results.get("windows", {}),
+                "groups_calculated": len(results.get("groups", {})),
+                "summary_available": bool(results.get("summary")),
             }
 
             _LOGGER.debug("Debug data created successfully for window: %s", window_id)
@@ -1461,8 +1475,15 @@ class SolarWindowCalculator:
         windows = self._get_subentries_by_type("window")
         window_config = windows.get(window_id, {})
 
+        # Also collect linked group configuration if available
+        group_config = {}
+        if window_config.get("linked_group_id"):
+            groups = self._get_subentries_by_type("group")
+            group_config = groups.get(window_config["linked_group_id"], {})
+
         return {
             "window_config": window_config,
+            "group_config": group_config,
             "global_config": self._get_global_data_merged(),
         }
 
@@ -1497,3 +1518,201 @@ class SolarWindowCalculator:
                 }
 
         return sensor_data
+
+    def _collect_current_sensor_states(self, window_id: str) -> dict[str, Any]:
+        """
+        Collect current states of all Solar Window System sensors.
+
+        Args:
+            window_id: The ID of the window to collect sensor states for
+
+        Returns:
+            Dictionary with current sensor states organized by level
+        """
+        sensor_states = {
+            "window_level": {},
+            "group_level": {},
+            "global_level": {},
+            "debug_info": {
+                "window_id": window_id,
+                "entity_registry_available": False,
+                "entities_found": 0,
+                "search_attempts": [],
+            },
+        }
+
+        try:
+            # Get configurations
+            windows = self._get_subentries_by_type("window")
+            groups = self._get_subentries_by_type("group")
+            window_config = windows.get(window_id, {})
+            window_name = window_config.get("window_name", window_id)
+
+            # Check entity registry
+            try:
+                entity_reg = er.async_get(self.hass)
+                sensor_states["debug_info"]["entity_registry_available"] = True
+                total_entities = len(entity_reg.entities)
+                sensor_states["debug_info"]["total_entities_in_registry"] = (
+                    total_entities
+                )
+
+                # Sample entities for debugging
+                sample_entities = []
+                max_sample_entities = 5
+                for i, (entity_id, entity_entry) in enumerate(
+                    entity_reg.entities.items()
+                ):
+                    if i < max_sample_entities:
+                        sample_entities.append(
+                            {"entity_id": entity_id, "name": entity_entry.name}
+                        )
+                sensor_states["debug_info"]["sample_entities"] = sample_entities
+
+            except (AttributeError, ImportError) as reg_error:
+                sensor_states["debug_info"]["entity_registry_error"] = str(reg_error)
+                _LOGGER.warning("Entity registry not available: %s", reg_error)
+                return sensor_states
+
+            # Search for sensors at all levels
+            self._search_window_sensors(sensor_states, window_name)
+            self._search_group_sensors(sensor_states, window_id, groups)
+            self._search_global_sensors(sensor_states)
+
+        except Exception as e:
+            _LOGGER.exception("Error collecting sensor states")
+            sensor_states["collection_error"] = {
+                "message": str(e),
+                "type": type(e).__name__,
+            }
+
+        return sensor_states
+
+    def _search_window_sensors(
+        self, sensor_states: dict[str, Any], window_name: str
+    ) -> None:
+        """Search for window-level sensors."""
+        window_sensor_labels = [
+            "Total Power",
+            "Total Power Direct",
+            "Total Power Diffuse",
+            "Power/m² Total",
+            "Power/m² Diffuse",
+            "Power/m² Direct",
+            "Power/m² Raw",
+            "Total Power Raw",
+        ]
+
+        for label in window_sensor_labels:
+            # Use the actual entity name format from the registry
+            entity_name = label
+            sensor_states["debug_info"]["search_attempts"].append(
+                {"searched_name": entity_name, "level": "window"}
+            )
+
+            entity_id = self._find_entity_by_name(entity_name)
+            if entity_id:
+                state = self.hass.states.get(entity_id)
+                key = label.lower().replace("/", "_").replace(" ", "_")
+                sensor_states["window_level"][key] = {
+                    "entity_id": entity_id,
+                    "state": state.state if state else None,
+                    "available": state is not None,
+                    "last_updated": (state.last_updated.isoformat() if state else None),
+                }
+                sensor_states["debug_info"]["entities_found"] += 1
+
+    def _search_group_sensors(
+        self, sensor_states: dict[str, Any], window_id: str, groups: dict[str, Any]
+    ) -> None:
+        """Search for group-level sensors."""
+        # Find group that contains this window
+        window_group_id = None
+        for group_id, group_config in groups.items():
+            if window_id in group_config.get("windows", []):
+                window_group_id = group_id
+                break
+
+        if not window_group_id:
+            return
+
+        group_config = groups.get(window_group_id, {})
+
+        group_sensor_labels = [
+            "Total Power",
+            "Total Power Direct",
+            "Total Power Diffuse",
+        ]
+
+        for label in group_sensor_labels:
+            # Use the actual entity name format from the registry
+            entity_name = label
+            sensor_states["debug_info"]["search_attempts"].append(
+                {"searched_name": entity_name, "level": "group"}
+            )
+
+            entity_id = self._find_entity_by_name(entity_name)
+            if entity_id:
+                state = self.hass.states.get(entity_id)
+                key = label.lower().replace("/", "_").replace(" ", "_")
+                sensor_states["group_level"][key] = {
+                    "entity_id": entity_id,
+                    "state": state.state if state else None,
+                    "available": state is not None,
+                    "last_updated": (state.last_updated.isoformat() if state else None),
+                }
+                sensor_states["debug_info"]["entities_found"] += 1
+
+    def _search_global_sensors(self, sensor_states: dict[str, Any]) -> None:
+        """Search for global-level sensors."""
+        global_sensor_labels = [
+            "Total Power",
+            "Total Power Direct",
+            "Total Power Diffuse",
+            "Windows with Shading",
+            "Window Count",
+            "Shading Count",
+        ]
+
+        for label in global_sensor_labels:
+            # Use the actual entity name format from the registry
+            entity_name = label
+            sensor_states["debug_info"]["search_attempts"].append(
+                {"searched_name": entity_name, "level": "global"}
+            )
+
+            entity_id = self._find_entity_by_name(entity_name)
+            if entity_id:
+                state = self.hass.states.get(entity_id)
+                key = label.lower().replace("/", "_").replace(" ", "_")
+                sensor_states["global_level"][key] = {
+                    "entity_id": entity_id,
+                    "state": state.state if state else None,
+                    "available": state is not None,
+                    "last_updated": (state.last_updated.isoformat() if state else None),
+                }
+                sensor_states["debug_info"]["entities_found"] += 1
+
+    def _find_entity_by_name(self, entity_name: str) -> str | None:
+        """
+        Find entity ID by entity name.
+
+        Args:
+            entity_name: The name of the entity to find
+
+        Returns:
+            Entity ID if found, None otherwise
+        """
+        try:
+            # Get entity registry
+            entity_reg = er.async_get(self.hass)
+
+            # Search for entity by name
+            for entity_id, entity_entry in entity_reg.entities.items():
+                if entity_entry.name == entity_name:
+                    return entity_id
+
+        except Exception:
+            _LOGGER.exception("Error finding entity by name '%s'", entity_name)
+
+        return None

@@ -161,6 +161,7 @@ class TestInitSetup:
         mock_device_registry = Mock()
         mock_device_registry.devices = Mock()
         mock_device_registry.devices.get_entry = Mock(return_value=None)
+        mock_device_registry.devices.get = Mock(return_value=None)
         mock_device_registry.async_get_or_create = Mock()
 
         with patch(
@@ -207,6 +208,7 @@ class TestInitSetup:
         mock_device_registry = Mock()
         mock_device_registry.devices = Mock()
         mock_device_registry.devices.get_entry = Mock(return_value=None)
+        mock_device_registry.devices.get = Mock(return_value=None)
         mock_device_registry.async_get_or_create = Mock()
 
         with patch(
@@ -570,6 +572,7 @@ class TestInitSetup:
         mock_device_registry = Mock()
         mock_device_registry.devices = Mock()
         mock_device_registry.devices.get_entry = Mock(return_value=None)
+        mock_device_registry.devices.get = Mock(return_value=None)
         mock_device_registry.async_get_or_create = Mock()
 
         with patch(
@@ -626,6 +629,11 @@ class TestInitSetup:
         mock_hass.data = {DOMAIN: {"test_entry_id": {"coordinator": mock_coordinator}}}
         mock_hass.config.config_dir = "/tmp"
 
+        # Mock device registry
+        mock_device_registry = Mock()
+        mock_device_registry.devices = Mock()
+        mock_device_registry.devices.get = Mock(return_value=None)
+
         # Mock file operations
         mock_file_handle = Mock()
         mock_file_handle.__enter__ = Mock(return_value=mock_file_handle)
@@ -638,6 +646,10 @@ class TestInitSetup:
             patch.object(
                 mock_hass.services, "async_call", AsyncMock()
             ) as mock_service_call,
+            patch(
+                "custom_components.solar_window_system.dr.async_get",
+                return_value=mock_device_registry,
+            ),
         ):
             await _handle_debug_calculation_service(mock_hass, mock_call)
 
@@ -713,7 +725,18 @@ class TestInitSetup:
         mock_hass.config_entries.async_entries.return_value = [mock_config_entry]
         mock_hass.data = {DOMAIN: {"test_entry_id": {"coordinator": mock_coordinator}}}
 
-        with patch("custom_components.solar_window_system._LOGGER") as mock_logger:
+        # Mock device registry
+        mock_device_registry = Mock()
+        mock_device_registry.devices = Mock()
+        mock_device_registry.devices.get = Mock(return_value=None)
+
+        with (
+            patch("custom_components.solar_window_system._LOGGER") as mock_logger,
+            patch(
+                "custom_components.solar_window_system.dr.async_get",
+                return_value=mock_device_registry,
+            ),
+        ):
             await _handle_debug_calculation_service(mock_hass, mock_call)
 
             # Verify error was logged
@@ -750,10 +773,19 @@ class TestInitSetup:
         mock_hass.data = {DOMAIN: {"test_entry_id": {"coordinator": mock_coordinator}}}
         mock_hass.config.config_dir = "/tmp"
 
+        # Mock device registry
+        mock_device_registry = Mock()
+        mock_device_registry.devices = Mock()
+        mock_device_registry.devices.get = Mock(return_value=None)
+
         # Mock file operations to raise OSError
         with (
             patch("pathlib.Path.open", side_effect=OSError("Permission denied")),
             patch("custom_components.solar_window_system._LOGGER") as mock_logger,
+            patch(
+                "custom_components.solar_window_system.dr.async_get",
+                return_value=mock_device_registry,
+            ),
         ):
             await _handle_debug_calculation_service(mock_hass, mock_call)
 

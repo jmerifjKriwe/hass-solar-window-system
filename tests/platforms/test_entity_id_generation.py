@@ -9,12 +9,12 @@ from custom_components.solar_window_system.const import (
 from tests.helpers.test_framework import BaseTestCase
 
 # Constants for expected values
-EXPECTED_TOTAL_ENTITIES = 13
+EXPECTED_TOTAL_ENTITIES = 14
 EXPECTED_NUMBER_ENTITIES = 3
 EXPECTED_TEXT_ENTITIES = 1
 EXPECTED_SELECT_ENTITIES = 2
 EXPECTED_BOOLEAN_ENTITIES = 3
-EXPECTED_SENSOR_ENTITIES = 4
+EXPECTED_SENSOR_ENTITIES = 5
 EXPECTED_DEBUG_ENTITIES = 1
 
 

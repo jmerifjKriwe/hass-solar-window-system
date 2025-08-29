@@ -1,6 +1,7 @@
 """Solar Window System integration package."""
 
 from datetime import UTC, datetime
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -31,7 +32,7 @@ async def _resolve_to_subentry_id(hass: HomeAssistant, value: str) -> str:
 
     # First, try to resolve as device id
     dev_reg = dr.async_get(hass)
-    dev = dev_reg.async_get(value) if isinstance(value, str) else None
+    dev = dev_reg.devices.get(value) if isinstance(value, str) else None
     if dev and dev.identifiers:
         # Found a device, extract window identifier
         for ident in dev.identifiers:
@@ -88,6 +89,34 @@ def _get_integration_version() -> str:
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
         _LOGGER.warning("Could not read version from manifest.json")
         return "unknown"
+
+
+async def _async_get_integration_version(hass: HomeAssistant) -> str:
+    """Get the integration version from manifest.json (async version)."""
+    # Check if version is already cached
+    if DOMAIN in hass.data and "integration_version" in hass.data[DOMAIN]:
+        return hass.data[DOMAIN]["integration_version"]
+
+    # Read version from manifest.json using thread pool to avoid blocking
+    def _read_version():
+        try:
+            manifest_path = Path(__file__).parent / "manifest.json"
+            with manifest_path.open("r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            return manifest.get("version", "unknown")
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            _LOGGER.warning("Could not read version from manifest.json")
+            return "unknown"
+
+    # Run the blocking I/O in a thread pool
+    loop = asyncio.get_event_loop()
+    version = await loop.run_in_executor(None, _read_version)
+
+    # Cache the version
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["integration_version"] = version
+
+    return version
 
 
 def _register_services(hass: HomeAssistant) -> None:
@@ -213,13 +242,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create device for global config
     if entry.title == "Solar Window System":
         _LOGGER.debug("Creating device for global config")
+        version = await _async_get_integration_version(hass)
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, "global_config")},
             name="Solar Window System",
             manufacturer="SolarWindowSystem",
             model="GlobalConfig",
-            sw_version=_get_integration_version(),
+            sw_version=version,
         )
 
         # Set up all platforms for this entry
