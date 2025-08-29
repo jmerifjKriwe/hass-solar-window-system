@@ -7,12 +7,75 @@ from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import SolarWindowSystemCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Minimum length for device identifier tuples (domain, identifier)
+MIN_IDENT_TUPLE_LEN = 2
+
+
+async def _resolve_to_subentry_id(hass: HomeAssistant, value: str) -> str:
+    """
+    Resolve a provided value to a subentry window id.
+
+    Accepts raw subentry ids (returned unchanged), entity ids, or device ids.
+    Resolves entity -> device -> device.identifiers and returns the
+    subentry_id (without 'window_' prefix) for this domain.
+    """
+    if not value:
+        return value
+
+    # First, try to resolve as device id
+    dev_reg = dr.async_get(hass)
+    dev = dev_reg.async_get(value) if isinstance(value, str) else None
+    if dev and dev.identifiers:
+        # Found a device, extract window identifier
+        for ident in dev.identifiers:
+            if (
+                isinstance(ident, tuple)
+                and len(ident) >= MIN_IDENT_TUPLE_LEN
+                and ident[0] == DOMAIN
+            ):
+                candidate = ident[1]
+                if isinstance(candidate, str) and candidate.startswith("window_"):
+                    # Return subentry_id without 'window_' prefix
+                    return candidate[7:]
+
+    # Second, try to resolve as entity id
+    ent = None
+    if isinstance(value, str) and "." in value:
+        ent_reg = er.async_get(hass)
+        ent = ent_reg.async_get(value)
+
+    if ent and ent.device_id:
+        # Found entity with device, resolve the device
+        dev = dev_reg.async_get(ent.device_id)
+        if dev and dev.identifiers:
+            for ident in dev.identifiers:
+                if (
+                    isinstance(ident, tuple)
+                    and len(ident) >= MIN_IDENT_TUPLE_LEN
+                    and ident[0] == DOMAIN
+                ):
+                    candidate = ident[1]
+                    if isinstance(candidate, str) and candidate.startswith("window_"):
+                        # Return subentry_id without 'window_' prefix
+                        return candidate[7:]
+
+    # Third, if it already looks like a subentry id (no window_ prefix), return as-is
+    if isinstance(value, str) and not value.startswith("window_"):
+        return value
+
+    # Fourth, if it starts with window_, extract the subentry_id
+    if isinstance(value, str) and value.startswith("window_"):
+        return value[7:]  # Remove 'window_' prefix
+
+    # Fallback: return original value unchanged
+    return value
 
 
 def _get_integration_version() -> str:
@@ -66,6 +129,9 @@ def _register_services(hass: HomeAssistant) -> None:
                 _LOGGER.error("Window ID is required for debug calculation")
                 return
 
+            # Resolve the window_id to a proper subentry id
+            resolved_window_id = await _resolve_to_subentry_id(hass, window_id)
+
             # Find the coordinator for this window
             for config_entry in hass.config_entries.async_entries(DOMAIN):
                 if config_entry.data.get("entry_type") == "window_configs":
@@ -74,13 +140,13 @@ def _register_services(hass: HomeAssistant) -> None:
                     ]
 
                     # Create debug data
-                    debug_data = await coordinator.create_debug_data(window_id)
+                    debug_data = await coordinator.create_debug_data(resolved_window_id)
 
                     if debug_data:
                         # Generate filename if not provided
                         if not filename:
                             timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                            filename = f"debug_{window_id}_{timestamp}.json"
+                            filename = f"debug_{resolved_window_id}_{timestamp}.json"
 
                         # Save to config directory
                         config_dir = Path(hass.config.config_dir)
@@ -114,7 +180,8 @@ def _register_services(hass: HomeAssistant) -> None:
 
                     else:
                         _LOGGER.error(
-                            "Could not create debug data for window: %s", window_id
+                            "Could not create debug data for window: %s",
+                            resolved_window_id,
                         )
 
         hass.services.async_register(
@@ -239,19 +306,22 @@ async def _handle_debug_calculation_service(
         _LOGGER.error("Window ID is required for debug calculation")
         return
 
+    # Resolve the window_id to a proper subentry id
+    resolved_window_id = await _resolve_to_subentry_id(hass, window_id)
+
     # Find the coordinator for this window
     for config_entry in hass.config_entries.async_entries(DOMAIN):
         if config_entry.data.get("entry_type") == "window_configs":
             coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
             # Create debug data
-            debug_data = await coordinator.create_debug_data(window_id)
+            debug_data = await coordinator.create_debug_data(resolved_window_id)
 
             if debug_data:
                 # Generate filename if not provided
                 if not filename:
                     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                    filename = f"debug_{window_id}_{timestamp}.json"
+                    filename = f"debug_{resolved_window_id}_{timestamp}.json"
 
                 # Save to config directory
                 config_dir = Path(hass.config.config_dir)
@@ -278,7 +348,9 @@ async def _handle_debug_calculation_service(
                 except OSError:
                     _LOGGER.exception("Failed to create debug file")
             else:
-                _LOGGER.error("Could not create debug data for window: %s", window_id)
+                _LOGGER.error(
+                    "Could not create debug data for window: %s", resolved_window_id
+                )
 
 
 @callback
