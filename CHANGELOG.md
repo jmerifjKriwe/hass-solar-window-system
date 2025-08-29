@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.2.0 (2025-08-29)
+
+### Documentation
+
+- Update coverage badge
+  ([`879e44e`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/879e44e5435964331222820ce3ac72e723367807))
+
+### Features
+
+- Add debug calculation service and comprehensive tests
+  ([`582b923`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/582b923a02f6c5d34d4258b61f45a47f34fd74fc))
+
+
 ## v1.1.1 (2025-08-28)
 
 ### Bug Fixes
