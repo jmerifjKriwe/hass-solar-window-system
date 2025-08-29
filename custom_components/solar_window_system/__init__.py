@@ -19,6 +19,18 @@ _LOGGER = logging.getLogger(__name__)
 MIN_IDENT_TUPLE_LEN = 2
 
 
+def _write_debug_file(file_path: Path, debug_data: dict) -> None:
+    """Write debug data to file (blocking operation for thread executor)."""
+    with file_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            debug_data,
+            f,
+            indent=2,
+            ensure_ascii=False,
+            default=str,
+        )
+
+
 async def _resolve_to_subentry_id(hass: HomeAssistant, value: str) -> str:
     """
     Resolve a provided value to a subentry window id.
@@ -182,14 +194,12 @@ def _register_services(hass: HomeAssistant) -> None:
                         file_path = config_dir / filename
 
                         try:
-                            with file_path.open("w", encoding="utf-8") as f:
-                                json.dump(
-                                    debug_data,
-                                    f,
-                                    indent=2,
-                                    ensure_ascii=False,
-                                    default=str,
-                                )
+                            # Write debug data to file using thread executor
+                            # to avoid blocking the event loop
+                            loop = asyncio.get_event_loop()
+                            await loop.run_in_executor(
+                                None, _write_debug_file, file_path, debug_data
+                            )
 
                             _LOGGER.info("Debug file created: %s", file_path)
 
@@ -358,10 +368,12 @@ async def _handle_debug_calculation_service(
                 file_path = config_dir / filename
 
                 try:
-                    with file_path.open("w", encoding="utf-8") as f:
-                        json.dump(
-                            debug_data, f, indent=2, ensure_ascii=False, default=str
-                        )
+                    # Write debug data to file using thread executor
+                    # to avoid blocking the event loop
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(
+                        None, _write_debug_file, file_path, debug_data
+                    )
 
                     _LOGGER.info("Debug file created: %s", file_path)
 

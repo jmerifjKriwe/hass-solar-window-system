@@ -1610,7 +1610,9 @@ class SolarWindowCalculator:
                 {"searched_name": entity_name, "level": "window"}
             )
 
-            entity_id = self._find_entity_by_name(entity_name)
+            entity_id = self._find_entity_by_name(
+                entity_name, "window", window_name, None
+            )
             if entity_id:
                 state = self.hass.states.get(entity_id)
                 key = label.lower().replace("/", "_").replace(" ", "_")
@@ -1637,6 +1639,7 @@ class SolarWindowCalculator:
             return
 
         group_config = groups.get(window_group_id, {})
+        group_name = group_config.get("name", window_group_id)
 
         group_sensor_labels = [
             "Total Power",
@@ -1651,7 +1654,9 @@ class SolarWindowCalculator:
                 {"searched_name": entity_name, "level": "group"}
             )
 
-            entity_id = self._find_entity_by_name(entity_name)
+            entity_id = self._find_entity_by_name(
+                entity_name, "group", None, group_name
+            )
             if entity_id:
                 state = self.hass.states.get(entity_id)
                 key = label.lower().replace("/", "_").replace(" ", "_")
@@ -1681,7 +1686,9 @@ class SolarWindowCalculator:
                 {"searched_name": entity_name, "level": "global"}
             )
 
-            entity_id = self._find_entity_by_name(entity_name)
+            entity_id = self._find_entity_by_name(
+                entity_name, "global", None, None
+            )
             if entity_id:
                 state = self.hass.states.get(entity_id)
                 key = label.lower().replace("/", "_").replace(" ", "_")
@@ -1693,26 +1700,85 @@ class SolarWindowCalculator:
                 }
                 sensor_states["debug_info"]["entities_found"] += 1
 
-    def _find_entity_by_name(self, entity_name: str) -> str | None:
+    def _find_entity_by_name(
+        self,
+        entity_name: str,
+        entity_type: str = "global",
+        window_name: str | None = None,
+        group_name: str | None = None
+    ) -> str | None:
         """
-        Find entity ID by entity name.
+        Find entity ID by entity name with Solar Window System specific search.
 
         Args:
             entity_name: The name of the entity to find
+            entity_type: Type of entity ("window", "group", "global")
+            window_name: Window name for window-specific entities
+            group_name: Group name for group-specific entities
 
         Returns:
             Entity ID if found, None otherwise
+
         """
         try:
             # Get entity registry
             entity_reg = er.async_get(self.hass)
 
-            # Search for entity by name
+            # Build expected entity ID patterns based on type
+            expected_patterns = []
+            sensor_key = (entity_name.lower()
+                         .replace("/", "_")
+                         .replace(" ", "_")
+                         .replace("²", "2"))
+
+            if entity_type == "window" and window_name:
+                # Window-specific patterns
+                expected_patterns = [
+                    f"sensor.sws_window_{window_name}_{sensor_key}",
+                    f"sensor.sws_window_{window_name.lower()}_{sensor_key}",
+                ]
+            elif entity_type == "group" and group_name:
+                # Group-specific patterns
+                expected_patterns = [
+                    f"sensor.sws_group_{group_name}_{sensor_key}",
+                    f"sensor.sws_group_{group_name.lower()}_{sensor_key}",
+                ]
+            else:
+                # Global patterns
+                expected_patterns = [
+                    f"sensor.sws_global_{sensor_key}",
+                    f"sensor.sws_{sensor_key}",
+                ]
+
+            # First try: Search for exact entity ID matches
+            for pattern in expected_patterns:
+                if pattern in entity_reg.entities:
+                    entity_entry = entity_reg.entities[pattern]
+                    if entity_entry.name == entity_name:
+                        return pattern
+
+            # Second try: Search by name but filter for SWS entities only
             for entity_id, entity_entry in entity_reg.entities.items():
-                if entity_entry.name == entity_name:
-                    return entity_id
+                if (entity_entry.name == entity_name and
+                    entity_id.startswith("sensor.sws_")):
+                    # Additional validation based on type
+                    if (entity_type == "window" and window_name and
+                        (f"window_{window_name}" in entity_id or
+                         f"window_{window_name.lower()}" in entity_id)):
+                        return entity_id
+                    if (entity_type == "group" and group_name and
+                        (f"group_{group_name}" in entity_id or
+                         f"group_{group_name.lower()}" in entity_id)):
+                        return entity_id
+                    if (entity_type == "global" and
+                        ("global" in entity_id or
+                         not any(x in entity_id for x in ["window_", "group_"]))):
+                        return entity_id
 
         except Exception:
-            _LOGGER.exception("Error finding entity by name '%s'", entity_name)
+            _LOGGER.exception(
+                "Error finding entity by name '%s' (type: %s)",
+                entity_name, entity_type
+            )
 
         return None
