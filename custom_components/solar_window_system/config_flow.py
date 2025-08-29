@@ -20,7 +20,7 @@ from homeassistant.helpers import selector
 import voluptuous as vol
 
 from .const import DOMAIN
-from .helpers import get_temperature_sensor_entities
+from .global_config_entity import get_temperature_sensor_entities
 from .options_flow import SolarWindowSystemOptionsFlow
 
 if TYPE_CHECKING:

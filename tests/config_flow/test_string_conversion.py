@@ -42,7 +42,7 @@ class TestSecondSaveBugFix:
                 return_value=config_entries.SOURCE_USER,
             ),
             patch(
-                "custom_components.solar_window_system.helpers.get_temperature_sensor_entities",
+                "custom_components.solar_window_system.global_config_entity.get_temperature_sensor_entities",
                 return_value=[],
             ),
         ):
@@ -81,7 +81,7 @@ class TestSecondSaveBugFix:
                 return_value=AsyncMock(data=stored_data),
             ),
             patch(
-                "custom_components.solar_window_system.helpers.get_temperature_sensor_entities",
+                "custom_components.solar_window_system.global_config_entity.get_temperature_sensor_entities",
                 return_value=[],
             ),
         ):
@@ -120,7 +120,7 @@ class TestSecondSaveBugFix:
                 return_value=config_entries.SOURCE_USER,
             ),
             patch(
-                "custom_components.solar_window_system.helpers.get_temperature_sensor_entities",
+                "custom_components.solar_window_system.global_config_entity.get_temperature_sensor_entities",
                 return_value=[],
             ),
             patch.object(
@@ -168,7 +168,7 @@ class TestSecondSaveBugFix:
                 return_value=AsyncMock(data=stored_data),
             ),
             patch(
-                "custom_components.solar_window_system.helpers.get_temperature_sensor_entities",
+                "custom_components.solar_window_system.global_config_entity.get_temperature_sensor_entities",
                 return_value=[],
             ),
             patch.object(
