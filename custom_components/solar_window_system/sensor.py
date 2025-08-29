@@ -140,8 +140,21 @@ async def _setup_group_power_sensors(
             continue
 
         entities = []
-        # Get coordinator from hass.data
-        coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+        # Get the global coordinator that handles calculations
+        # Find the window_configs entry that contains the actual calculations
+        global_coordinator = None
+        domain_entries = hass.config_entries.async_entries(DOMAIN)
+        for domain_entry in domain_entries:
+            if domain_entry.data.get("entry_type") == "window_configs":
+                global_coordinator = hass.data[DOMAIN][domain_entry.entry_id][
+                    "coordinator"
+                ]
+                break
+
+        # Fallback to current entry's coordinator if no window_configs found
+        if not global_coordinator:
+            global_coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
         for key, label in (
             ("total_power", "Total Power"),
             ("total_power_direct", "Total Power Direct"),
@@ -153,7 +166,7 @@ async def _setup_group_power_sensors(
                     object_name=group_name,
                     device=group_device,
                     key_label=(key, label),
-                    coordinator=coordinator,
+                    coordinator=global_coordinator,
                 )
             )
         if entities:
@@ -274,9 +287,14 @@ class GroupWindowPowerSensor(CoordinatorEntity, RestoreEntity):
                         return win_data.get(self._key)
             elif self._kind == "group":
                 groups = self.coordinator.data.get("groups", {})
+                # Try to find by name first (for backward compatibility)
                 for group_data in groups.values():
                     if group_data.get("name") == self._object_name:
                         return group_data.get(self._key)
+                # If not found by name, try to find by ID (new approach)
+                group_data = groups.get(self._object_name)
+                if group_data:
+                    return group_data.get(self._key)
         # If no data, return restored state if available
         return getattr(self, "_restored_state", None)
 

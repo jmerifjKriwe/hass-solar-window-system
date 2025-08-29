@@ -12,6 +12,13 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
+# Import mixins for modular functionality
+from .modules.calculations import CalculationsMixin
+from .modules.debug import DebugMixin
+from .modules.flow_integration import FlowIntegrationMixin
+from .modules.shading import ShadingMixin
+from .modules.utils import UtilsMixin
+
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
@@ -52,12 +59,20 @@ class ShadeRequestFlow(NamedTuple):
     solar_result: WindowCalculationResult
 
 
-class SolarWindowCalculator:
+class SolarWindowCalculator(
+    CalculationsMixin,
+    DebugMixin,
+    FlowIntegrationMixin,
+    ShadingMixin,
+    UtilsMixin,
+):
     """
     Calculator for solar window shading requirements.
 
     This class handles all calculations related to determining when windows
     should be shaded based on solar radiation, elevation, and other factors.
+
+    Now uses modular mixins for better maintainability and testing.
     """
 
     def _calculate_shadow_factor(
@@ -72,44 +87,11 @@ class SolarWindowCalculator:
         Calculate the geometric shadow factor for a window.
 
         Returns a value between 0.1 (full shadow) and 1.0 (no shadow).
+        Uses the modular CalculationsMixin implementation.
         """
-        # If no shadow geometry, return 1.0 (no shadow)
-        if shadow_depth <= 0 and shadow_offset <= 0:
-            return 1.0
-
-        # Projected shadow length on the window plane
-        # sun_elevation in degrees, convert to radians
-        sun_el_rad = math.radians(sun_elevation)
-        if sun_el_rad <= 0:
-            return 1.0  # sun below horizon, no shadow
-
-        # Calculate the angle difference between sun and window azimuth
-        az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
-        az_factor = max(
-            0.0, math.cos(math.radians(az_diff))
-        )  # 1.0 = direct, 0.0 = perpendicular
-
-        # Shadow length: shadow_depth / tan(sun_elevation)
-        try:
-            shadow_length = shadow_depth / max(math.tan(sun_el_rad), 1e-3)
-        except (ValueError, ZeroDivisionError):
-            shadow_length = 0.0
-
-        # Effective shadow on window: shadow_length - shadow_offset
-        effective_shadow = max(0.0, shadow_length - shadow_offset)
-
-        # Heuristic: if effective_shadow is large, strong shadow; if small, weak shadow
-        # For simplicity, assume window height = 1.0m (normalized)
-        window_height = 1.0
-        if effective_shadow <= 0:
-            return 1.0  # no shadow
-        if effective_shadow >= window_height:
-            return 0.1  # full shadow (minimum factor)
-        # Linear interpolation between 1.0 (no shadow) and 0.1 (full shadow)
-        factor = 1.0 - 0.9 * (effective_shadow / window_height)
-        # Angle dependency: more shadow if sun is direct, less if angled
-        factor = factor * az_factor + (1.0 - az_factor)
-        return max(0.1, min(1.0, factor))
+        return super()._calculate_shadow_factor(
+            sun_elevation, sun_azimuth, window_azimuth, shadow_depth, shadow_offset
+        )
 
     def __init__(
         self,
@@ -146,38 +128,15 @@ class SolarWindowCalculator:
         Safely get the state of an entity, returning a default if it is.
 
         unavailable, unknown, or not found.
+        Uses the modular UtilsMixin implementation.
         """
-        if not entity_id:
-            return default
-
-        state = self.hass.states.get(entity_id)
-
-        if state is None or state.state in ["unknown", "unavailable"]:
-            _LOGGER.warning(
-                "Entity %s not found or unavailable, returning default value.",
-                entity_id,
-            )
-            return default
-
-        return state.state
+        return super().get_safe_state(self.hass, entity_id, default)
 
     def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
-        """Safely get an attribute of an entity, returning a default if unavailable."""
-        if not entity_id:
-            return default
-
-        state = self.hass.states.get(entity_id)
-
-        if state is None or state.state in ["unknown", "unavailable"]:
-            _LOGGER.warning(
-                "Entity %s not found or unavailable, returning default value "
-                "for attribute %s.",
-                entity_id,
-                attr,
-            )
-            return default
-
-        return state.attributes.get(attr, default)
+        """Safely get an attribute of an entity, returning a default if unavailable.
+        Uses the modular UtilsMixin implementation.
+        """
+        return super().get_safe_attr(self.hass, entity_id, attr, default)
 
     def apply_global_factors(
         self, config: dict[str, Any], group_type: str, states: dict[str, Any]
@@ -188,40 +147,36 @@ class SolarWindowCalculator:
         Robust gegen ungültige Werte.
         """
 
-        def safe_float(val: Any, default: float = 0.0) -> float:
-            if val in ("", None, "inherit", "-1", -1):
-                return default
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
-
         # Schwellenwerte robust casten
-        config["thresholds"]["direct"] = safe_float(
+        config["thresholds"]["direct"] = self._safe_float_conversion(
             config["thresholds"].get("direct", 200), 200
         )
-        config["thresholds"]["diffuse"] = safe_float(
+        config["thresholds"]["diffuse"] = self._safe_float_conversion(
             config["thresholds"].get("diffuse", 150), 150
         )
 
-        sensitivity = safe_float(states.get("sensitivity", 1.0), 1.0)
+        sensitivity = self._safe_float_conversion(states.get("sensitivity", 1.0), 1.0)
         config["thresholds"]["direct"] /= sensitivity
         config["thresholds"]["diffuse"] /= sensitivity
 
         if group_type == "children":
-            factor = safe_float(states.get("children_factor", 1.0), 1.0)
+            factor = self._safe_float_conversion(
+                states.get("children_factor", 1.0), 1.0
+            )
             config["thresholds"]["direct"] *= factor
             config["thresholds"]["diffuse"] *= factor
 
         # Temperaturen robust casten
-        config["temperatures"]["indoor_base"] = safe_float(
+        config["temperatures"]["indoor_base"] = self._safe_float_conversion(
             config["temperatures"].get("indoor_base", 23.0), 23.0
         )
-        config["temperatures"]["outdoor_base"] = safe_float(
+        config["temperatures"]["outdoor_base"] = self._safe_float_conversion(
             config["temperatures"].get("outdoor_base", 19.5), 19.5
         )
 
-        temp_offset = safe_float(states.get("temperature_offset", 0.0), 0.0)
+        temp_offset = self._safe_float_conversion(
+            states.get("temperature_offset", 0.0), 0.0
+        )
         config["temperatures"]["indoor_base"] += temp_offset
         config["temperatures"]["outdoor_base"] += temp_offset
 
@@ -583,38 +538,46 @@ class SolarWindowCalculator:
     ) -> tuple[float, float, float, float, float, float, float, float, float]:
         """Extract and validate calculation parameters."""
 
-        def safe_float(val: Any, default: float = 0.0) -> float:
-            if val in ("", None, "inherit", "-1", -1):
-                return default
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
-
-        solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
-        sun_azimuth = safe_float(states.get("sun_azimuth", 0.0), 0.0)
-        sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
+        solar_radiation = self._safe_float_conversion(
+            states.get("solar_radiation", 0.0), 0.0
+        )
+        sun_azimuth = self._safe_float_conversion(states.get("sun_azimuth", 0.0), 0.0)
+        sun_elevation = self._safe_float_conversion(
+            states.get("sun_elevation", 0.0), 0.0
+        )
 
         # Physical parameters
-        g_value = safe_float(effective_config["physical"].get("g_value", 0.5), 0.5)
-        frame_width = safe_float(
+        g_value = self._safe_float_conversion(
+            effective_config["physical"].get("g_value", 0.5), 0.5
+        )
+        frame_width = self._safe_float_conversion(
             effective_config["physical"].get("frame_width", 0.125), 0.125
         )
-        diffuse_factor = safe_float(
+        diffuse_factor = self._safe_float_conversion(
             effective_config["physical"].get("diffuse_factor", 0.15), 0.15
         )
-        tilt = safe_float(effective_config["physical"].get("tilt", 90.0), 90.0)
+        tilt = self._safe_float_conversion(
+            effective_config["physical"].get("tilt", 90.0), 90.0
+        )
 
         # Window dimensions
-        window_width = safe_float(window_data.get("window_width", 1.0), 1.0)
-        window_height = safe_float(window_data.get("window_height", 1.0), 1.0)
+        window_width = self._safe_float_conversion(
+            window_data.get("window_width", 1.0), 1.0
+        )
+        window_height = self._safe_float_conversion(
+            window_data.get("window_height", 1.0), 1.0
+        )
         glass_width = max(0, window_width - 2 * frame_width)
         glass_height = max(0, window_height - 2 * frame_width)
         area = glass_width * glass_height
 
         # Shadow parameters
-        shadow_depth = safe_float(window_data.get("shadow_depth", 0), 0.0)
-        shadow_offset = safe_float(window_data.get("shadow_offset", 0), 0.0)
+        shadow_depth = self._safe_float_conversion(
+            window_data.get("shadow_depth", 0), 0.0
+        )
+        shadow_offset = self._safe_float_conversion(
+            window_data.get("shadow_offset", 0), 0.0
+        )
 
         return (
             solar_radiation,
@@ -633,58 +596,27 @@ class SolarWindowCalculator:
         sun_elevation: float,
         sun_azimuth: float,
         window_data: dict[str, Any],
+        effective_config: dict[str, Any] | None = None,
     ) -> tuple[bool, float]:
-        """Check if sun is visible to window and return window azimuth."""
+        """
+        Check if sun is visible to window and return window azimuth.
 
-        def safe_float(val: Any, default: float = 0.0) -> float:
-            if val in ("", None, "inherit", "-1", -1):
-                return default
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
-
-        elevation_min = safe_float(window_data.get("elevation_min", 0), 0.0)
-        elevation_max = safe_float(window_data.get("elevation_max", 90), 90.0)
-        azimuth_min = safe_float(window_data.get("azimuth_min", -90), -90.0)
-        azimuth_max = safe_float(window_data.get("azimuth_max", 90), 90.0)
-        window_azimuth = safe_float(window_data.get("azimuth", 180), 180.0)
-
-        is_visible = False
-        if elevation_min <= sun_elevation <= elevation_max:
-            az_diff = ((sun_azimuth - window_azimuth + 180) % 360) - 180
-            if azimuth_min <= az_diff <= azimuth_max:
-                is_visible = True
-
-        return is_visible, window_azimuth
+        Uses the modular CalculationsMixin implementation.
+        """
+        return super()._check_window_visibility(
+            sun_elevation, sun_azimuth, window_data, effective_config
+        )
 
     def _calculate_direct_power(
         self,
         params: dict[str, float],
         window_azimuth: float,
     ) -> float:
-        """Calculate direct solar power component."""
-        sun_el_rad = math.radians(params["sun_elevation"])
-        sun_az_rad = math.radians(params["sun_azimuth"])
-        win_az_rad = math.radians(window_azimuth)
-        tilt_rad = math.radians(params["tilt"])
-
-        cos_incidence = math.sin(sun_el_rad) * math.cos(tilt_rad) + math.cos(
-            sun_el_rad
-        ) * math.sin(tilt_rad) * math.cos(sun_az_rad - win_az_rad)
-
-        if cos_incidence > 0 and sun_el_rad > 0:
-            return (
-                (
-                    params["solar_radiation"]
-                    * (1 - params["diffuse_factor"])
-                    * cos_incidence
-                    / math.sin(sun_el_rad)
-                )
-                * params["area"]
-                * params["g_value"]
-            )
-        return 0.0
+        """
+        Calculate direct solar power component.
+        Uses the modular CalculationsMixin implementation.
+        """
+        return super()._calculate_direct_power(params, window_azimuth)
 
     def calculate_window_solar_power_with_shadow(
         self,
@@ -748,7 +680,7 @@ class SolarWindowCalculator:
 
         # Check window visibility
         is_visible, window_azimuth = self._check_window_visibility(
-            sun_elevation, sun_azimuth, window_data
+            sun_elevation, sun_azimuth, window_data, effective_config
         )
 
         _LOGGER.debug(
@@ -1481,10 +1413,18 @@ class SolarWindowCalculator:
             groups = self._get_subentries_by_type("group")
             group_config = groups.get(window_config["linked_group_id"], {})
 
+        # Get effective configuration (with inheritance resolved)
+        effective_config = {}
+        try:
+            effective_config, _ = self.get_effective_config_from_flows(window_id)
+        except (ValueError, KeyError) as e:
+            _LOGGER.warning("Could not get effective config for %s: %s", window_id, e)
+
         return {
             "window_config": window_config,
             "group_config": group_config,
             "global_config": self._get_global_data_merged(),
+            "effective_config": effective_config,
         }
 
     def _collect_sensor_data(self) -> dict[str, Any]:
@@ -1517,6 +1457,24 @@ class SolarWindowCalculator:
                     "available": False,
                 }
 
+        # Add sun.sun position data for debugging visibility calculations
+        sun_entity_id = "sun.sun"
+        sun_state = self.hass.states.get(sun_entity_id)
+        if sun_state and sun_state.attributes:
+            sensor_data["sun_position"] = {
+                "entity_id": sun_entity_id,
+                "elevation": sun_state.attributes.get("elevation", 0),
+                "azimuth": sun_state.attributes.get("azimuth", 0),
+                "available": True,
+            }
+        else:
+            sensor_data["sun_position"] = {
+                "entity_id": sun_entity_id,
+                "elevation": 0,
+                "azimuth": 0,
+                "available": False,
+            }
+
         return sensor_data
 
     def _collect_current_sensor_states(self, window_id: str) -> dict[str, Any]:
@@ -1528,65 +1486,18 @@ class SolarWindowCalculator:
 
         Returns:
             Dictionary with current sensor states organized by level
+        Uses the modular DebugMixin implementation.
         """
-        sensor_states = {
-            "window_level": {},
-            "group_level": {},
-            "global_level": {},
-            "debug_info": {
-                "window_id": window_id,
-                "entity_registry_available": False,
-                "entities_found": 0,
-                "search_attempts": [],
-            },
-        }
+        return super()._collect_current_sensor_states(window_id)
 
-        try:
-            # Get configurations
-            windows = self._get_subentries_by_type("window")
-            groups = self._get_subentries_by_type("group")
-            window_config = windows.get(window_id, {})
-            window_name = window_config.get("window_name", window_id)
-
-            # Check entity registry
-            try:
-                entity_reg = er.async_get(self.hass)
-                sensor_states["debug_info"]["entity_registry_available"] = True
-                total_entities = len(entity_reg.entities)
-                sensor_states["debug_info"]["total_entities_in_registry"] = (
-                    total_entities
-                )
-
-                # Sample entities for debugging
-                sample_entities = []
-                max_sample_entities = 5
-                for i, (entity_id, entity_entry) in enumerate(
-                    entity_reg.entities.items()
-                ):
-                    if i < max_sample_entities:
-                        sample_entities.append(
-                            {"entity_id": entity_id, "name": entity_entry.name}
-                        )
-                sensor_states["debug_info"]["sample_entities"] = sample_entities
-
-            except (AttributeError, ImportError) as reg_error:
-                sensor_states["debug_info"]["entity_registry_error"] = str(reg_error)
-                _LOGGER.warning("Entity registry not available: %s", reg_error)
-                return sensor_states
-
-            # Search for sensors at all levels
-            self._search_window_sensors(sensor_states, window_name)
-            self._search_group_sensors(sensor_states, window_id, groups)
-            self._search_global_sensors(sensor_states)
-
-        except Exception as e:
-            _LOGGER.exception("Error collecting sensor states")
-            sensor_states["collection_error"] = {
-                "message": str(e),
-                "type": type(e).__name__,
-            }
-
-        return sensor_states
+    def _validate_temperature_range(
+        self, temp: float, min_temp: float = -50.0, max_temp: float = 60.0
+    ) -> bool:
+        """
+        Validate temperature is within reasonable range.
+        Uses the modular UtilsMixin implementation.
+        """
+        return super()._validate_temperature_range(temp, min_temp, max_temp)
 
     def _search_window_sensors(
         self, sensor_states: dict[str, Any], window_name: str
@@ -1686,9 +1597,7 @@ class SolarWindowCalculator:
                 {"searched_name": entity_name, "level": "global"}
             )
 
-            entity_id = self._find_entity_by_name(
-                entity_name, "global", None, None
-            )
+            entity_id = self._find_entity_by_name(entity_name, "global", None, None)
             if entity_id:
                 state = self.hass.states.get(entity_id)
                 key = label.lower().replace("/", "_").replace(" ", "_")
@@ -1705,7 +1614,7 @@ class SolarWindowCalculator:
         entity_name: str,
         entity_type: str = "global",
         window_name: str | None = None,
-        group_name: str | None = None
+        group_name: str | None = None,
     ) -> str | None:
         """
         Find entity ID by entity name with Solar Window System specific search.
@@ -1718,67 +1627,8 @@ class SolarWindowCalculator:
 
         Returns:
             Entity ID if found, None otherwise
-
+        Uses the modular DebugMixin implementation.
         """
-        try:
-            # Get entity registry
-            entity_reg = er.async_get(self.hass)
-
-            # Build expected entity ID patterns based on type
-            expected_patterns = []
-            sensor_key = (entity_name.lower()
-                         .replace("/", "_")
-                         .replace(" ", "_")
-                         .replace("²", "2"))
-
-            if entity_type == "window" and window_name:
-                # Window-specific patterns
-                expected_patterns = [
-                    f"sensor.sws_window_{window_name}_{sensor_key}",
-                    f"sensor.sws_window_{window_name.lower()}_{sensor_key}",
-                ]
-            elif entity_type == "group" and group_name:
-                # Group-specific patterns
-                expected_patterns = [
-                    f"sensor.sws_group_{group_name}_{sensor_key}",
-                    f"sensor.sws_group_{group_name.lower()}_{sensor_key}",
-                ]
-            else:
-                # Global patterns
-                expected_patterns = [
-                    f"sensor.sws_global_{sensor_key}",
-                    f"sensor.sws_{sensor_key}",
-                ]
-
-            # First try: Search for exact entity ID matches
-            for pattern in expected_patterns:
-                if pattern in entity_reg.entities:
-                    entity_entry = entity_reg.entities[pattern]
-                    if entity_entry.name == entity_name:
-                        return pattern
-
-            # Second try: Search by name but filter for SWS entities only
-            for entity_id, entity_entry in entity_reg.entities.items():
-                if (entity_entry.name == entity_name and
-                    entity_id.startswith("sensor.sws_")):
-                    # Additional validation based on type
-                    if (entity_type == "window" and window_name and
-                        (f"window_{window_name}" in entity_id or
-                         f"window_{window_name.lower()}" in entity_id)):
-                        return entity_id
-                    if (entity_type == "group" and group_name and
-                        (f"group_{group_name}" in entity_id or
-                         f"group_{group_name.lower()}" in entity_id)):
-                        return entity_id
-                    if (entity_type == "global" and
-                        ("global" in entity_id or
-                         not any(x in entity_id for x in ["window_", "group_"]))):
-                        return entity_id
-
-        except Exception:
-            _LOGGER.exception(
-                "Error finding entity by name '%s' (type: %s)",
-                entity_name, entity_type
-            )
-
-        return None
+        return super()._find_entity_by_name(
+            self.hass, entity_name, entity_type, window_name, group_name
+        )
