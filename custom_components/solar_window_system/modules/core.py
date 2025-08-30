@@ -23,7 +23,11 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class SolarWindowCalculator:
+class SolarWindowCalculator(
+    CalculationsMixin,
+    DebugMixin,
+    FlowIntegrationMixin,
+):
     """
     Main calculator class for Solar Window System calculations.
 
@@ -44,8 +48,12 @@ class SolarWindowCalculator:
         self.groups_config = groups_config or {}
         self.windows_config = windows_config or {}
 
+        # Flow-based attributes - will be set by __init_flow_based__
+        self.global_entry = None
+
         # Entity cache for performance
         self._entity_cache: dict[str, Any] = {}
+        self._entity_cache_timestamps: dict[str, float] = {}
         self._cache_timestamp: float | None = None
         self._cache_ttl = 30  # seconds
 
@@ -134,29 +142,44 @@ class SolarWindowCalculator:
         """Get cached entity state with smart TTL invalidation."""
         current_time = time.time()
 
-        # Smart cache invalidation: remove only expired entries
-        if (
-            self._cache_timestamp is None
-            or current_time - self._cache_timestamp > self._cache_ttl
-        ):
-            # Instead of clearing all, remove only expired entries
-            expired_keys = [
-                key
-                for key, (_, timestamp) in self._lru_cache.items()
-                if current_time - timestamp > self._cache_ttl
-            ]
-            for key in expired_keys:
-                del self._lru_cache[key]
+        # Always check for expired entries and clean them up
+        # Remove expired entries from LRU cache
+        expired_lru_keys = [
+            key
+            for key, (_, timestamp) in self._lru_cache.items()
+            if current_time - timestamp > self._cache_ttl
+        ]
+        for key in expired_lru_keys:
+            del self._lru_cache[key]
 
-            self._cache_timestamp = current_time
+        # Remove expired entries from entity cache
+        expired_entity_keys = [
+            key
+            for key, timestamp in getattr(self, "_entity_cache_timestamps", {}).items()
+            if current_time - timestamp > self._cache_ttl
+        ]
+        for key in expired_entity_keys:
+            if key in self._entity_cache:
+                del self._entity_cache[key]
+            if key in getattr(self, "_entity_cache_timestamps", {}):
+                del self._entity_cache_timestamps[key]
 
-        # Return cached value if available
+        # Update cache timestamp
+        self._cache_timestamp = current_time
+
+        # Return cached value if available (and not expired)
         if entity_id in self._entity_cache:
             return self._entity_cache[entity_id]
 
         # Get fresh value and cache it
         value = self.get_safe_state(entity_id, default_value)
         self._entity_cache[entity_id] = value
+
+        # Initialize timestamps dict if it doesn't exist
+        if not hasattr(self, "_entity_cache_timestamps"):
+            self._entity_cache_timestamps = {}
+        self._entity_cache_timestamps[entity_id] = current_time
+
         return value
 
     def _resolve_entity_state_with_fallback(
@@ -179,11 +202,9 @@ class SolarWindowCalculator:
         """
         Calculate solar power for a window including shadow effects.
 
-        Delegates to the CalculationsMixin implementation.
+        Uses the modular CalculationsMixin implementation.
         """
-        # Create a temporary CalculationsMixin instance for delegation
-        calculations_mixin = CalculationsMixin()
-        return calculations_mixin.calculate_window_solar_power_with_shadow(
+        return super().calculate_window_solar_power_with_shadow(
             effective_config, window_data, states
         )
 
@@ -191,20 +212,14 @@ class SolarWindowCalculator:
         """
         Create comprehensive debug data for a specific window.
 
-        Delegates to the DebugMixin implementation.
+        Uses the modular DebugMixin implementation.
         """
-        # Create a temporary DebugMixin instance for delegation
-        debug_mixin = DebugMixin()
-        # Set required hass attribute for DebugMixin
-        debug_mixin.hass = self.hass
-        return debug_mixin.create_debug_data(window_id)
+        return super().create_debug_data(window_id)
 
     def calculate_all_windows_from_flows(self) -> dict[str, Any]:
         """
         Calculate all window shading requirements using flow-based configuration.
 
-        Delegates to the FlowIntegrationMixin implementation.
+        Uses the modular FlowIntegrationMixin implementation.
         """
-        # Create a temporary FlowIntegrationMixin instance for delegation
-        flow_mixin = FlowIntegrationMixin()
-        return flow_mixin.calculate_all_windows_from_flows()
+        return super().calculate_all_windows_from_flows()

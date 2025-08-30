@@ -288,7 +288,7 @@ class TestCalculationsMixin:
         )
 
         assert is_visible is True
-        assert window_azimuth == 200.0
+        assert window_azimuth == 180.0  # window_azimuth should come from window_data
 
     def test_check_window_visibility_default_values(self) -> None:
         """Test window visibility with default configuration values."""
@@ -346,3 +346,460 @@ class TestCalculationsMixin:
         calc = CalculationsMixin()
         result = calc._calculate_power_per_square_meter(total_power, area)
         assert result == expected
+
+
+class TestCalculationsUtilities:
+    """Test suite for calculation utility functions."""
+
+    def test_get_trig_values_lookup_table(self) -> None:
+        """Test trigonometric lookup table function."""
+        from custom_components.solar_window_system.modules.calculations import (
+            get_trig_values,
+        )
+
+        # Test with integer angle in LUT
+        result = get_trig_values(45.0)
+        assert "radians" in result
+        assert "cos" in result
+        assert "sin" in result
+        assert abs(result["cos"] - 0.7071067811865476) < 1e-10
+        assert abs(result["sin"] - 0.7071067811865475) < 1e-10
+
+    def test_get_trig_values_non_integer(self) -> None:
+        """Test trigonometric function with non-integer angle."""
+        from custom_components.solar_window_system.modules.calculations import (
+            get_trig_values,
+        )
+
+        # Test with non-integer angle
+        result = get_trig_values(45.5)
+        assert "radians" in result
+        assert "cos" in result
+        assert "sin" in result
+        assert result["radians"] == pytest.approx(0.8028514559173916, abs=1e-10)
+
+    def test_get_trig_values_out_of_range(self) -> None:
+        """Test trigonometric function with angle outside LUT range."""
+        from custom_components.solar_window_system.modules.calculations import (
+            get_trig_values,
+        )
+
+        # Test with angle > 90
+        result = get_trig_values(120.0)
+        assert "radians" in result
+        assert "cos" in result
+        assert "sin" in result
+        assert result["radians"] == pytest.approx(2.0943951023931953, abs=1e-10)
+
+
+class TestWindowCalculationResultPool:
+    """Test suite for WindowCalculationResultPool."""
+
+    def test_pool_initialization(self) -> None:
+        """Test pool initialization."""
+        from custom_components.solar_window_system.modules.calculations import (
+            WindowCalculationResultPool,
+        )
+
+        pool = WindowCalculationResultPool(max_size=50)
+        assert pool._max_size == 50
+        assert pool._pool == []
+        assert pool._borrowed == 0
+
+    def test_pool_acquire_new(self) -> None:
+        """Test acquiring from empty pool."""
+        from custom_components.solar_window_system.modules.calculations import (
+            WindowCalculationResultPool,
+        )
+
+        pool = WindowCalculationResultPool()
+        result = pool.acquire()
+
+        assert isinstance(result, WindowCalculationResult)
+        assert pool._borrowed == 1
+        assert len(pool._pool) == 0
+
+    def test_pool_acquire_reuse(self) -> None:
+        """Test acquiring reused object from pool."""
+        from custom_components.solar_window_system.modules.calculations import (
+            WindowCalculationResultPool,
+        )
+
+        pool = WindowCalculationResultPool()
+        result1 = pool.acquire()
+        pool.release(result1)
+        result2 = pool.acquire()
+
+        assert result2 is result1  # Should be the same object
+        assert pool._borrowed == 1
+        assert len(pool._pool) == 0
+
+    def test_pool_release(self) -> None:
+        """Test releasing object back to pool."""
+        from custom_components.solar_window_system.modules.calculations import (
+            WindowCalculationResultPool,
+        )
+
+        pool = WindowCalculationResultPool()
+        result = pool.acquire()
+        pool.release(result)
+
+        assert pool._borrowed == 0
+        assert len(pool._pool) == 1
+
+    def test_pool_release_over_max_size(self) -> None:
+        """Test releasing when pool is at max size."""
+        from custom_components.solar_window_system.modules.calculations import (
+            WindowCalculationResultPool,
+        )
+
+        pool = WindowCalculationResultPool(max_size=2)
+        result1 = pool.acquire()
+        result2 = pool.acquire()
+        result3 = pool.acquire()
+
+        pool.release(result1)
+        pool.release(result2)
+        pool.release(result3)  # This should not be added due to max_size
+
+        assert len(pool._pool) == 2
+        assert pool._borrowed == 0
+
+    def test_pool_get_stats(self) -> None:
+        """Test getting pool statistics."""
+        from custom_components.solar_window_system.modules.calculations import (
+            WindowCalculationResultPool,
+        )
+
+        pool = WindowCalculationResultPool(max_size=10)
+        result = pool.acquire()
+
+        stats = pool.get_stats()
+        assert stats["pool_size"] == 0
+        assert stats["borrowed"] == 1
+        assert stats["max_size"] == 10
+
+        pool.release(result)
+        stats = pool.get_stats()
+        assert stats["pool_size"] == 1
+        assert stats["borrowed"] == 0
+
+
+class TestPoolFunctions:
+    """Test suite for global pool functions."""
+
+    def test_get_pooled_result(self) -> None:
+        """Test getting pooled result."""
+        from custom_components.solar_window_system.modules.calculations import (
+            get_pooled_result,
+        )
+
+        result = get_pooled_result()
+        assert isinstance(result, WindowCalculationResult)
+
+    def test_release_pooled_result(self) -> None:
+        """Test releasing pooled result."""
+        from custom_components.solar_window_system.modules.calculations import (
+            get_pooled_result,
+            release_pooled_result,
+            get_pool_stats,
+        )
+
+        result = get_pooled_result()
+        initial_stats = get_pool_stats()
+
+        release_pooled_result(result)
+        final_stats = get_pool_stats()
+
+        assert final_stats["pool_size"] == initial_stats["pool_size"] + 1
+
+    def test_get_pool_stats(self) -> None:
+        """Test getting pool statistics."""
+        from custom_components.solar_window_system.modules.calculations import (
+            get_pool_stats,
+        )
+
+        stats = get_pool_stats()
+        assert isinstance(stats, dict)
+        assert "pool_size" in stats
+        assert "borrowed" in stats
+        assert "max_size" in stats
+
+
+class TestBatchCalculations:
+    """Test suite for batch calculation methods."""
+
+    @pytest.mark.asyncio
+    async def test_batch_calculate_windows_empty(self) -> None:
+        """Test batch calculation with empty input."""
+        calc = CalculationsMixin()
+
+        result = await calc.batch_calculate_windows([], [], {})
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_batch_calculate_windows_single(self) -> None:
+        """Test batch calculation with single window."""
+        calc = CalculationsMixin()
+
+        windows_data = [{"name": "window1", "azimuth": 180.0, "area": 2.0}]
+        effective_configs = [{"shadow_depth": 1.0}]
+        states = {"solar_radiation": 800.0, "sun_elevation": 45.0, "sun_azimuth": 180.0}
+
+        result = await calc.batch_calculate_windows(
+            windows_data, effective_configs, states
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], WindowCalculationResult)
+        assert result[0].area_m2 == 2.0
+
+    def test_batch_calculate_windows_sequential_empty(self) -> None:
+        """Test sequential batch calculation with empty input."""
+        calc = CalculationsMixin()
+
+        result = calc._batch_calculate_windows_sequential([], [], {})
+        assert result == []
+
+    def test_batch_calculate_windows_sequential_single(self) -> None:
+        """Test sequential batch calculation with single window."""
+        calc = CalculationsMixin()
+
+        windows_data = [{"name": "window1", "azimuth": 180.0, "area": 2.0}]
+        effective_configs = [{"shadow_depth": 1.0}]
+        states = {"solar_radiation": 800.0, "sun_elevation": 45.0, "sun_azimuth": 180.0}
+
+        result = calc._batch_calculate_windows_sequential(
+            windows_data, effective_configs, states
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], WindowCalculationResult)
+
+    @pytest.mark.asyncio
+    async def test_calculate_window_task(self) -> None:
+        """Test individual window calculation task."""
+        calc = CalculationsMixin()
+
+        effective_config = {"shadow_depth": 1.0}
+        window_data = {"name": "window1", "azimuth": 180.0, "area": 2.0}
+        states = {"solar_radiation": 800.0, "sun_elevation": 45.0, "sun_azimuth": 180.0}
+
+        result = await calc._calculate_window_task(
+            effective_config, window_data, states
+        )
+
+        assert isinstance(result, WindowCalculationResult)
+        assert result.area_m2 == 2.0
+
+
+class TestAsyncCalculations:
+    """Test suite for async calculation methods."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_window_solar_power_with_shadow_async(self) -> None:
+        """Test async window solar power calculation."""
+        calc = CalculationsMixin()
+
+        effective_config = {"shadow_depth": 1.0, "shadow_offset": 0.0}
+        window_data = {"name": "window1", "azimuth": 180.0, "area": 2.0}
+        states = {"solar_radiation": 800.0, "sun_elevation": 45.0, "sun_azimuth": 180.0}
+
+        result = await calc.calculate_window_solar_power_with_shadow_async(
+            effective_config, window_data, states
+        )
+
+        assert isinstance(result, WindowCalculationResult)
+        assert result.area_m2 == 2.0
+        assert result.shadow_factor <= 1.0
+        assert result.shadow_factor >= 0.1
+
+    @pytest.mark.asyncio
+    async def test_calculate_window_solar_power_with_shadow_async_error(self) -> None:
+        """Test async calculation with error handling."""
+        calc = CalculationsMixin()
+
+        # Pass data that will cause an exception
+        effective_config = {"shadow_depth": -1.0}  # Use numeric value instead of string
+        window_data = {"azimuth": 180.0, "area": 2.0}
+        states = {"solar_radiation": 800.0, "sun_elevation": 45.0, "sun_azimuth": 180.0}
+
+        result = await calc.calculate_window_solar_power_with_shadow_async(
+            effective_config, window_data, states
+        )
+
+        # Should still return a result, but with error indication
+        assert isinstance(result, WindowCalculationResult)
+        # Should succeed with default values despite invalid shadow_depth
+
+
+class TestDirectPowerCalculations:
+    """Test suite for direct power calculation methods."""
+
+    def test_calculate_direct_power_perpendicular_sun(self) -> None:
+        """Test direct power calculation with perpendicular sun."""
+        calc = CalculationsMixin()
+
+        params = {
+            "solar_radiation": 1000.0,
+            "sun_elevation": 45.0,
+            "sun_azimuth": 180.0,
+            "diffuse_factor": 0.3,
+            "tilt": 90.0,
+            "area": 2.0,
+            "g_value": 0.8,
+        }
+        window_azimuth = 180.0
+
+        result = calc._calculate_direct_power(params, window_azimuth)
+        assert result >= 0.0
+
+    def test_calculate_direct_power_no_sun(self) -> None:
+        """Test direct power calculation with no sun."""
+        calc = CalculationsMixin()
+
+        params = {
+            "solar_radiation": 1000.0,
+            "sun_elevation": -5.0,  # Below horizon
+            "sun_azimuth": 180.0,
+            "diffuse_factor": 0.3,
+            "tilt": 90.0,
+            "area": 2.0,
+            "g_value": 0.8,
+        }
+        window_azimuth = 180.0
+
+        result = calc._calculate_direct_power(params, window_azimuth)
+        assert result == 0.0
+
+    def test_calculate_solar_power_direct(self) -> None:
+        """Test solar power direct calculation with SolarCalculationParams."""
+        calc = CalculationsMixin()
+
+        params = SolarCalculationParams(
+            solar_radiation=1000.0,
+            sun_elevation=45.0,
+            sun_azimuth=180.0,
+            window_azimuth=180.0,
+            area=2.0,
+            g_value=0.8,
+            tilt=90.0,
+            diffuse_factor=0.3,
+        )
+
+        result = calc._calculate_solar_power_direct(params)
+        assert result >= 0.0
+
+
+class TestParameterExtraction:
+    """Test suite for parameter extraction methods."""
+
+    def test_extract_calculation_parameters_complete(self) -> None:
+        """Test parameter extraction with complete data."""
+        calc = CalculationsMixin()
+
+        effective_config = {"diffuse_factor": 0.3, "shadow_depth": 1.0}
+        window_data = {
+            "azimuth": 180.0,
+            "area": 2.0,
+            "g_value": 0.8,
+            "tilt": 90.0,
+        }
+        states = {
+            "solar_radiation": 1000.0,
+            "sun_elevation": 45.0,
+            "sun_azimuth": 180.0,
+        }
+
+        result = calc._extract_calculation_parameters(
+            effective_config, window_data, states
+        )
+
+        assert len(result) == 9
+        assert result[0] == 1000.0  # solar_radiation
+        assert result[1] == 45.0  # sun_elevation
+        assert result[2] == 180.0  # sun_azimuth
+        assert result[3] == 180.0  # window_azimuth
+        assert result[4] == 2.0  # area
+        assert result[5] == 0.8  # g_value
+        assert result[6] == 90.0  # tilt
+        assert result[7] == 0.3  # diffuse_factor
+        assert result[8] == 1.0  # shadow_depth
+
+    def test_extract_calculation_parameters_defaults(self) -> None:
+        """Test parameter extraction with missing data (defaults)."""
+        calc = CalculationsMixin()
+
+        effective_config = {}
+        window_data = {}
+        states = {}
+
+        result = calc._extract_calculation_parameters(
+            effective_config, window_data, states
+        )
+
+        assert len(result) == 9
+        assert result[0] == 0.0  # solar_radiation default
+        assert result[1] == 0.0  # sun_elevation default
+        assert result[2] == 180.0  # sun_azimuth default
+        assert result[3] == 180.0  # window_azimuth default
+        assert result[4] == 1.0  # area default
+        assert result[5] == 0.8  # g_value default
+        assert result[6] == 90.0  # tilt default
+        assert result[7] == 0.3  # diffuse_factor default
+        assert result[8] == 0.0  # shadow_depth default
+
+
+class TestPowerCalculations:
+    """Test suite for power calculation methods."""
+
+    def test_calculate_solar_power_diffuse(self) -> None:
+        """Test diffuse solar power calculation."""
+        calc = CalculationsMixin()
+
+        result = calc._calculate_solar_power_diffuse(
+            solar_radiation=1000.0,
+            diffuse_factor=0.3,
+            area=2.0,
+            g_value=0.8,
+        )
+
+        expected = 1000.0 * 0.3 * 2.0 * 0.8  # 480.0
+        assert result == expected
+
+    def test_calculate_total_solar_power(self) -> None:
+        """Test total solar power calculation."""
+        calc = CalculationsMixin()
+
+        result = calc._calculate_total_solar_power(
+            solar_radiation=1000.0,
+            diffuse_factor=0.3,
+            area=2.0,
+            g_value=0.8,
+        )
+
+        # Should be direct + diffuse
+        assert result >= 0.0
+        assert isinstance(result, float)
+
+    def test_calculate_power_per_square_meter(self) -> None:
+        """Test power per square meter calculation."""
+        calc = CalculationsMixin()
+
+        result = calc._calculate_power_per_square_meter(
+            total_power=1000.0,
+            area=2.0,
+        )
+
+        assert result == 500.0
+
+    def test_calculate_power_per_square_meter_zero_area(self) -> None:
+        """Test power per square meter with zero area."""
+        calc = CalculationsMixin()
+
+        result = calc._calculate_power_per_square_meter(
+            total_power=1000.0,
+            area=0.0,
+        )
+
+        assert result == 0.0

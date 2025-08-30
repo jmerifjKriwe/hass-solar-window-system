@@ -561,7 +561,8 @@ class CalculationsMixin:
         elevation_max = safe_float(config_source.get("elevation_max", 90), 90.0)
         azimuth_min = safe_float(config_source.get("azimuth_min", -90), -90.0)
         azimuth_max = safe_float(config_source.get("azimuth_max", 90), 90.0)
-        window_azimuth = safe_float(config_source.get("azimuth", 180), 180.0)
+        # Always get window_azimuth from window_data, not from config
+        window_azimuth = safe_float(window_data.get("azimuth", 180), 180.0)
 
         is_visible = False
         if elevation_min <= sun_elevation <= elevation_max:

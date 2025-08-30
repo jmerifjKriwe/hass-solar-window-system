@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
@@ -739,35 +740,39 @@ class TestSolarWindowCalculator:
         assert result.area_m2 >= 0.0
 
     def test_calculate_all_windows_error_handling(
-        self, hass: HomeAssistant, mock_config_entry: MockConfigEntry
+        self,
+        hass: HomeAssistant,
+        mock_config_entry: MockConfigEntry,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test error handling in calculate_all_windows_from_flows."""
         calculator = SolarWindowCalculator.from_flows(hass, mock_config_entry)
 
-        with (
-            patch.object(calculator, "_get_subentries_by_type") as mock_get,
-            patch.object(calculator, "_get_global_data_merged") as mock_global,
-            patch.object(
-                calculator, "get_effective_config_from_flows"
-            ) as mock_effective,
-        ):
-            mock_get.return_value = {"window1": {"name": "Test Window"}}
-            mock_global.return_value = {"solar_radiation_sensor": "sensor.solar"}
-            mock_effective.side_effect = Exception("Test error")
-
-            # Mock external states
+        with caplog.at_level(logging.ERROR):
             with (
+                patch.object(calculator, "_get_subentries_by_type") as mock_get,
+                patch.object(calculator, "_get_global_data_merged") as mock_global,
                 patch.object(
-                    calculator, "_get_cached_entity_state", return_value="500.0"
-                ),
-                patch.object(calculator, "get_safe_attr", return_value="45.0"),
+                    calculator, "get_effective_config_from_flows"
+                ) as mock_effective,
             ):
-                result = calculator.calculate_all_windows_from_flows()
+                mock_get.return_value = {"window1": {"name": "Test Window"}}
+                mock_global.return_value = {"solar_radiation_sensor": "sensor.solar"}
+                mock_effective.side_effect = Exception("Test error")
 
-                # Should handle error gracefully
-                assert "window1" in result["windows"]
-                window_result = result["windows"]["window1"]
-                assert window_result["shade_required"] is False
+                # Mock external states
+                with (
+                    patch.object(
+                        calculator, "_get_cached_entity_state", return_value="500.0"
+                    ),
+                    patch.object(calculator, "get_safe_attr", return_value="45.0"),
+                ):
+                    result = calculator.calculate_all_windows_from_flows()
+
+                    # Should handle error gracefully
+                    assert "window1" in result["windows"]
+                    window_result = result["windows"]["window1"]
+                    assert window_result["shade_required"] is False
                 assert "Calculation error" in window_result["shade_reason"]
 
     def test_calculate_all_windows_group_aggregation(

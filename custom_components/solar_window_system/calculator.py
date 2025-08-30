@@ -581,12 +581,14 @@ class SolarWindowCalculator(
         glass_height = max(0, window_height - 2 * frame_width)
         area = glass_width * glass_height
 
-        # Shadow parameters
+        # Shadow parameters - check effective_config first, then window_data
         shadow_depth = self._safe_float_conversion(
-            window_data.get("shadow_depth", 0), 0.0
+            effective_config.get("shadow_depth", window_data.get("shadow_depth", 0)),
+            0.0,
         )
         shadow_offset = self._safe_float_conversion(
-            window_data.get("shadow_offset", 0), 0.0
+            effective_config.get("shadow_offset", window_data.get("shadow_offset", 0)),
+            0.0,
         )
 
         return (

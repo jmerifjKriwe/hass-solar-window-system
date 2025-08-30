@@ -7,6 +7,8 @@ functionality including data classes and mixin methods.
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 from unittest.mock import Mock
 
@@ -215,14 +217,17 @@ class TestFlowIntegrationMixin:
         assert result == {}
         mixin._get_subentries_by_type.assert_called_once_with("window")
 
-    def test_get_window_config_from_flow_exception_handling(self) -> None:
+    def test_get_window_config_from_flow_exception_handling(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test window config retrieval with exception handling."""
         mixin = FlowIntegrationMixin()
 
         # Mock the _get_subentries_by_type method to raise exception
         mixin._get_subentries_by_type = Mock(side_effect=Exception("Test error"))
 
-        result = mixin._get_window_config_from_flow("window1")
+        with caplog.at_level(logging.ERROR):
+            result = mixin._get_window_config_from_flow("window1")
 
         assert result == {}
         mixin._get_subentries_by_type.assert_called_once_with("window")
@@ -254,14 +259,17 @@ class TestFlowIntegrationMixin:
         assert result == {}
         mixin._get_subentries_by_type.assert_called_once_with("group")
 
-    def test_get_group_config_from_flow_exception_handling(self) -> None:
+    def test_get_group_config_from_flow_exception_handling(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test group config retrieval with exception handling."""
         mixin = FlowIntegrationMixin()
 
         # Mock the _get_subentries_by_type method to raise exception
         mixin._get_subentries_by_type = Mock(side_effect=Exception("Test error"))
 
-        result = mixin._get_group_config_from_flow("group1")
+        with caplog.at_level(logging.ERROR):
+            result = mixin._get_group_config_from_flow("group1")
 
         assert result == {}
         mixin._get_subentries_by_type.assert_called_once_with("group")
@@ -307,14 +315,17 @@ class TestFlowIntegrationMixin:
         assert result == {}
         mixin._get_subentries_by_type.assert_called_once_with("global")
 
-    def test_get_global_config_from_flow_exception_handling(self) -> None:
+    def test_get_global_config_from_flow_exception_handling(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test global config retrieval with exception handling."""
         mixin = FlowIntegrationMixin()
 
         # Mock the _get_subentries_by_type method to raise exception
         mixin._get_subentries_by_type = Mock(side_effect=Exception("Test error"))
 
-        result = mixin._get_global_config_from_flow()
+        with caplog.at_level(logging.ERROR):
+            result = mixin._get_global_config_from_flow()
 
         assert result == {}
         mixin._get_subentries_by_type.assert_called_once_with("global")

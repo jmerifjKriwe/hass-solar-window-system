@@ -24,13 +24,6 @@ class ShadingMixin:
     ) -> tuple[bool, str]:
         """Flow-based shading decision with full scenario logic."""
         try:
-            # Handle Mock objects gracefully - check if this is test data
-            mock_check = hasattr(shade_request, "_mock_name") or "Mock" in str(
-                type(shade_request)
-            )
-            if mock_check:
-                return False, "Mock data - cannot determine shading requirement"
-
             # Basic implementation: shade if solar power exceeds threshold
             threshold = shade_request.effective_config.get("threshold", 100.0)
 
@@ -49,10 +42,13 @@ class ShadingMixin:
                         )
                         return True, reason
                 else:
-                    # Mock objects or non-numeric values - return default behavior
-                    return False, "Mock data - cannot determine shading requirement"
+                    # Non-numeric values - return default behavior
+                    return (
+                        False,
+                        "Invalid solar data - cannot determine shading requirement",
+                    )
             except (AttributeError, TypeError):
-                # Mock objects or invalid data
+                # Invalid data
                 return (
                     False,
                     "Invalid solar data - cannot determine shading requirement",

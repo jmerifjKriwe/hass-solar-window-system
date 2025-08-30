@@ -6,6 +6,8 @@ and that all components integrate properly. It follows TDD principles by definin
 the expected interfaces before implementing the actual migration.
 """
 
+import logging
+
 import pytest
 from unittest.mock import Mock
 
@@ -98,7 +100,7 @@ class TestModularArchitecture:
         with pytest.raises(NotImplementedError):
             calculator._safe_float_conversion("25.5")
 
-    def test_mixin_isolation(self) -> None:
+    def test_mixin_isolation(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test that mixins don't interfere with each other."""
         # Test each mixin individually
         mixins_to_test = [
@@ -109,15 +111,16 @@ class TestModularArchitecture:
             (UtilsMixin, "_validate_temperature_range"),
         ]
 
-        for mixin_class, test_method in mixins_to_test:
+        with caplog.at_level(logging.ERROR):
+            for mixin_class, test_method in mixins_to_test:
 
-            class TestCalculator(mixin_class):
-                """Single mixin test calculator."""
+                class TestCalculator(mixin_class):
+                    """Single mixin test calculator."""
 
-            calculator = TestCalculator()
+                calculator = TestCalculator()
 
-            # Verify only the expected method is available
-            assert hasattr(calculator, test_method), f"Missing {test_method}"
+                # Verify only the expected method is available
+                assert hasattr(calculator, test_method), f"Missing {test_method}"
 
             # Verify method raises NotImplementedError
             method = getattr(calculator, test_method)

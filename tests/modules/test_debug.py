@@ -6,6 +6,8 @@ in the DebugMixin class, including entity search, sensor state collection,
 and debug output generation.
 """
 
+import logging
+
 import pytest
 from unittest.mock import Mock
 
@@ -124,7 +126,9 @@ class TestDebugMixin:
         finally:
             debug_module.er.async_get = original_async_get
 
-    def test_collect_current_sensor_states_with_entity_registry_error(self) -> None:
+    def test_collect_current_sensor_states_with_entity_registry_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test collecting sensor states when entity registry fails."""
         mock_hass = Mock()
 
@@ -138,7 +142,8 @@ class TestDebugMixin:
             debug = DebugMixin()
             debug.hass = mock_hass
 
-            result = debug._collect_current_sensor_states("window1")
+            with caplog.at_level(logging.ERROR):
+                result = debug._collect_current_sensor_states("window1")
 
             # Should return empty dict on error
             assert result == {}
@@ -325,7 +330,9 @@ class TestDebugMixin:
         finally:
             debug_module.er.async_get = original_async_get
 
-    def test_find_entity_by_name_with_registry_error(self) -> None:
+    def test_find_entity_by_name_with_registry_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test finding an entity when entity registry fails."""
         mock_hass = Mock()
 
@@ -338,9 +345,10 @@ class TestDebugMixin:
         try:
             debug = DebugMixin()
 
-            result = debug._find_entity_by_name(
-                mock_hass, "Temperature Sensor", "global"
-            )
+            with caplog.at_level(logging.ERROR):
+                result = debug._find_entity_by_name(
+                    mock_hass, "Temperature Sensor", "global"
+                )
 
             assert result is None
 
@@ -376,22 +384,25 @@ class TestDebugMixin:
         finally:
             debug_module.er.async_get = original_async_get
 
-    def test_placeholder_methods_raise_not_implemented(self) -> None:
+    def test_placeholder_methods_raise_not_implemented(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test that placeholder methods are now implemented and work correctly."""
         debug = DebugMixin()
 
         # Test main debug method - now implemented
         # Note: This will fail because DebugMixin doesn't have hass attribute
         # but the method is implemented
-        try:
-            result = debug.create_debug_data("window1")
-            # If it doesn't raise an exception, it should return a dict
-            assert isinstance(result, dict)
-            assert "window_id" in result
-            assert "error" in result  # Expected due to missing hass
-        except AttributeError:
-            # Expected when hass is not available
-            pass
+        with caplog.at_level(logging.ERROR):
+            try:
+                result = debug.create_debug_data("window1")
+                # If it doesn't raise an exception, it should return a dict
+                assert isinstance(result, dict)
+                assert "window_id" in result
+                assert "error" in result  # Expected due to missing hass
+            except AttributeError:
+                # Expected when hass is not available
+                pass
 
         # Test search methods - now implemented
         mock_hass = Mock()
