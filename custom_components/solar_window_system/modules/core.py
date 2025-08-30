@@ -6,6 +6,7 @@ This module contains the main SolarWindowCalculator class and basic functionalit
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import TYPE_CHECKING, Any
@@ -48,22 +49,81 @@ class SolarWindowCalculator:
         self._cache_timestamp: float | None = None
         self._cache_ttl = 30  # seconds
 
-        # Global entry reference (set by coordinator)
-        self.global_entry: Any = None
+        # LRU cache for entity states (max 100 entries)
+        self._lru_cache: dict[str, tuple[Any, float]] = {}
+        self._lru_max_size = 100
+
+    async def _get_lru_cached_entity_state_async(self, entity_id: str) -> Any:
+        """Get entity state with LRU caching (async version)."""
+        current_time = time.time()
+
+        # Check LRU cache first
+        if entity_id in self._lru_cache:
+            value, timestamp = self._lru_cache[entity_id]
+            if current_time - timestamp < self._cache_ttl:
+                return value
+            # Expired, remove from cache
+            del self._lru_cache[entity_id]
+
+        # Get fresh value asynchronously
+        try:
+            # Use thread executor to avoid blocking event loop
+            loop = asyncio.get_event_loop()
+            state = await loop.run_in_executor(None, self.hass.states.get, entity_id)
+            value = state.state if state else None
+        except (AttributeError, KeyError, TypeError):
+            value = None
+
+        # Add to LRU cache
+        if len(self._lru_cache) >= self._lru_max_size:
+            # Remove oldest entry (simple FIFO)
+            oldest_key = next(iter(self._lru_cache))
+            del self._lru_cache[oldest_key]
+
+        self._lru_cache[entity_id] = (value, current_time)
+        return value
+
+    def _get_lru_cached_entity_state(self, entity_id: str) -> Any:
+        """Get entity state with LRU caching (synchronous version)."""
+        current_time = time.time()
+
+        # Check LRU cache first
+        if entity_id in self._lru_cache:
+            value, timestamp = self._lru_cache[entity_id]
+            if current_time - timestamp < self._cache_ttl:
+                return value
+            # Expired, remove from cache
+            del self._lru_cache[entity_id]
+
+        # Get fresh value synchronously
+        try:
+            state = self.hass.states.get(entity_id)
+            value = state.state if state else None
+        except (AttributeError, KeyError, TypeError):
+            value = None
+
+        # Add to LRU cache
+        if len(self._lru_cache) >= self._lru_max_size:
+            # Remove oldest entry (simple FIFO)
+            oldest_key = next(iter(self._lru_cache))
+            del self._lru_cache[oldest_key]
+
+        self._lru_cache[entity_id] = (value, current_time)
+        return value
 
     def get_safe_state(self, entity_id: str, default: Any = 0) -> Any:
-        """Get entity state safely with fallback."""
-        try:
-            state = self.hass.states.get(entity_id)
-        except (AttributeError, KeyError, TypeError):
-            return default
-        else:
-            return state.state if state else default
+        """Get entity state safely with fallback (synchronous version)."""
+        value = self._get_lru_cached_entity_state(entity_id)
+        return value if value is not None else default
 
-    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
-        """Get entity attribute safely with fallback."""
+    async def get_safe_attr_async(
+        self, entity_id: str, attr: str, default: str | float = 0
+    ) -> Any:
+        """Get entity attribute safely with fallback (async version)."""
         try:
-            state = self.hass.states.get(entity_id)
+            # Use thread executor for attribute access
+            loop = asyncio.get_event_loop()
+            state = await loop.run_in_executor(None, self.hass.states.get, entity_id)
             return getattr(state, attr, default) if state else default
         except (AttributeError, KeyError, TypeError):
             return default
@@ -71,15 +131,23 @@ class SolarWindowCalculator:
     def _get_cached_entity_state(
         self, entity_id: str, default_value: Any | None = None
     ) -> Any:
-        """Get cached entity state with TTL."""
+        """Get cached entity state with smart TTL invalidation."""
         current_time = time.time()
 
-        # Check if cache is still valid
+        # Smart cache invalidation: remove only expired entries
         if (
             self._cache_timestamp is None
             or current_time - self._cache_timestamp > self._cache_ttl
         ):
-            self._entity_cache.clear()
+            # Instead of clearing all, remove only expired entries
+            expired_keys = [
+                key
+                for key, (_, timestamp) in self._lru_cache.items()
+                if current_time - timestamp > self._cache_ttl
+            ]
+            for key in expired_keys:
+                del self._lru_cache[key]
+
             self._cache_timestamp = current_time
 
         # Return cached value if available

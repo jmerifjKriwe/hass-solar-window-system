@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import logging
@@ -15,6 +16,9 @@ from homeassistant.helpers import entity_registry as er
 from .modules.calculations import CalculationsMixin
 from .modules.debug import DebugMixin
 from .modules.flow_integration import FlowIntegrationMixin
+from .modules.flow_integration import (
+    WindowCalculationResult as FlowWindowCalculationResult,
+)
 from .modules.shading import ShadingMixin
 from .modules.utils import UtilsMixin
 
@@ -55,7 +59,7 @@ class ShadeRequestFlow(NamedTuple):
     external_states: dict[str, Any]
     scenario_b_enabled: bool
     scenario_c_enabled: bool
-    solar_result: WindowCalculationResult
+    solar_result: WindowCalculationResult | FlowWindowCalculationResult
 
 
 class SolarWindowCalculator(
@@ -225,8 +229,15 @@ class SolarWindowCalculator(
         if entity_id in self._entity_cache:
             value = self._entity_cache[entity_id]
         else:
-            # Get from HomeAssistant
-            state = self.hass.states.get(entity_id)
+            # Get from HomeAssistant using executor to avoid blocking
+            try:
+                loop = asyncio.get_running_loop()
+                state = loop.run_until_complete(
+                    self.hass.async_add_executor_job(self.hass.states.get, entity_id)
+                )
+            except RuntimeError:
+                # No running loop, use synchronous call
+                state = self.hass.states.get(entity_id)
             value = state.state if state else default_value
             # Cache the result
             self._entity_cache[entity_id] = value
@@ -796,6 +807,58 @@ class SolarWindowCalculator(
         _LOGGER.debug("calculation cycle finished")
         return results
 
+    async def calculate_all_windows_from_flows_async(self) -> dict[str, Any]:
+        """
+        Calculate all window shading requirements using flow-based configuration.
+
+        Async version with parallel batch processing.
+
+        Returns:
+            Dictionary with calculation results for all windows
+
+        """
+        # Clear cache at start of calculation run
+        self._entity_cache.clear()
+        self._cache_timestamp = time.time()
+
+        global_data = self._get_global_data_merged()
+
+        # Check if this coordinator should calculate windows
+        if not self._should_calculate_windows():
+            return self._get_empty_window_results()
+
+        # Get windows and check if any exist
+        windows = self._get_subentries_by_type("window")
+        if not windows:
+            _LOGGER.debug("No window subentries found; skipping calculations.")
+            return {"windows": {}}
+
+        # Get external states and perform calculations
+        external_states = await self._prepare_external_states_async(global_data)
+
+        # Check minimum calculation conditions
+        if not self._meets_calculation_conditions(external_states, global_data):
+            return self._get_zero_window_results_for_windows(windows)
+
+        # Perform main window calculations with async batch processing
+        window_results = await self._calculate_window_results_async(
+            windows, external_states
+        )
+
+        # Calculate group aggregations and summary
+        group_results = self._calculate_group_results(windows, window_results)
+        summary = self._calculate_summary(window_results)
+
+        # Return results in the structure expected by coordinator
+        results = {
+            "windows": window_results,
+            "groups": group_results,
+            "summary": summary,
+        }
+
+        _LOGGER.debug("async calculation cycle finished")
+        return results
+
     def _should_calculate_windows(self) -> bool:
         """Check if this coordinator should calculate windows."""
         entry_type = getattr(self.global_entry, "data", {}).get("entry_type", "")
@@ -812,6 +875,50 @@ class SolarWindowCalculator(
 
     def _prepare_external_states(self, global_data: dict[str, Any]) -> dict[str, Any]:
         """Prepare external states from global data."""
+        _LOGGER.debug(
+            "Using entity IDs: solar_radiation='%s', outdoor_temp='%s', "
+            "forecast_temp='%s', weather_warning='%s'",
+            global_data.get("solar_radiation_sensor", ""),
+            global_data.get("outdoor_temperature_sensor", ""),
+            global_data.get("weather_forecast_temperature_sensor", ""),
+            global_data.get("weather_warning_sensor", ""),
+        )
+
+        return {
+            "sensitivity": global_data.get("global_sensitivity", 1.0),
+            "children_factor": global_data.get("children_factor", 0.8),
+            "temperature_offset": global_data.get("temperature_offset", 0.0),
+            "scenario_b_enabled": global_data.get("scenario_b_enabled", False),
+            "scenario_c_enabled": global_data.get("scenario_c_enabled", False),
+            "debug_mode": global_data.get("debug_mode", False),
+            "maintenance_mode": global_data.get("maintenance_mode", False),
+            "solar_radiation": float(
+                self._get_cached_entity_state(
+                    global_data.get("solar_radiation_sensor", ""), 0
+                )
+            ),
+            "sun_azimuth": float(self.get_safe_attr("sun.sun", "azimuth", 0)),
+            "sun_elevation": float(self.get_safe_attr("sun.sun", "elevation", 0)),
+            "outdoor_temp": float(
+                self._get_cached_entity_state(
+                    global_data.get("outdoor_temperature_sensor", ""), 0
+                )
+            ),
+            "forecast_temp": float(
+                self._get_cached_entity_state(
+                    global_data.get("weather_forecast_temperature_sensor", ""), 0
+                )
+            ),
+            "weather_warning": self._get_cached_entity_state(
+                global_data.get("weather_warning_sensor", ""), "off"
+            )
+            == "on",
+        }
+
+    async def _prepare_external_states_async(
+        self, global_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Prepare external states from global data (async version)."""
         _LOGGER.debug(
             "Using entity IDs: solar_radiation='%s', outdoor_temp='%s', "
             "forecast_temp='%s', weather_warning='%s'",
@@ -918,6 +1025,144 @@ class SolarWindowCalculator(
                 )
 
         return window_results
+
+    async def _calculate_window_results_async(
+        self, windows: dict[str, Any], external_states: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Calculate results for all windows (async version)."""
+        window_results = {}
+        total_power = 0
+        shading_count = 0
+
+        # Prepare window data for batch processing
+        window_data_list = []
+        window_ids = []
+
+        for window_subentry_id, window_data in windows.items():
+            window_ids.append(window_subentry_id)
+            window_data_list.append((window_subentry_id, window_data))
+
+        # Process windows in parallel using batch calculation
+        batch_results = await self._batch_calculate_windows_async(
+            window_data_list, external_states
+        )
+
+        # Process results
+        for i, result in enumerate(batch_results):
+            window_subentry_id = window_ids[i]
+            try:
+                window_results[window_subentry_id] = result
+                total_power += result["total_power"]
+                if result["shade_required"]:
+                    shading_count += 1
+            except (ValueError, TypeError, KeyError, Exception) as err:
+                _LOGGER.exception("Error processing window %s", window_subentry_id)
+                window_results[window_subentry_id] = self._get_error_window_result(
+                    windows[window_subentry_id], window_subentry_id, err
+                )
+
+        return window_results
+
+    async def _batch_calculate_windows_async(
+        self,
+        window_data_list: list[tuple[str, dict[str, Any]]],
+        external_states: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Batch calculate multiple windows asynchronously."""
+        # Prepare data for batch processing
+        windows_data = []
+        effective_configs = []
+
+        for window_subentry_id, window_data in window_data_list:
+            # Get effective configuration
+            effective_config, _ = self.get_effective_config_from_flows(
+                window_subentry_id
+            )
+
+            # Apply global factors
+            group_type = window_data.get("group_type", "default")
+            effective_config = self.apply_global_factors(
+                effective_config, group_type, external_states
+            )
+
+            windows_data.append(window_data)
+            effective_configs.append(effective_config)
+
+        # Use the async batch calculation from CalculationsMixin
+        solar_results = await self.batch_calculate_windows(
+            windows_data, effective_configs, external_states
+        )
+
+        # Convert WindowCalculationResult objects to dictionaries
+        results = []
+        for i, solar_result in enumerate(solar_results):
+            window_subentry_id = window_data_list[i][0]
+            window_data = window_data_list[i][1]
+
+            result = self._convert_solar_result_to_dict(
+                solar_result, window_subentry_id, window_data, external_states
+            )
+            results.append(result)
+
+        return results
+
+    def _convert_solar_result_to_dict(
+        self,
+        solar_result: FlowWindowCalculationResult,
+        window_subentry_id: str,
+        window_data: dict[str, Any],
+        external_states: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Convert WindowCalculationResult to dictionary format."""
+        # Get scenario enables for this window with inheritance logic
+        (
+            scenario_b_enabled,
+            scenario_c_enabled,
+        ) = self._get_scenario_enables_from_flows(window_subentry_id, external_states)
+
+        # Get effective configuration for shading logic
+        effective_config, _ = self.get_effective_config_from_flows(window_subentry_id)
+
+        # Check shading requirement with full scenario logic
+        shade_request = ShadeRequestFlow(
+            window_data=window_data,
+            effective_config=effective_config,
+            external_states=external_states,
+            scenario_b_enabled=scenario_b_enabled,
+            scenario_c_enabled=scenario_c_enabled,
+            solar_result=solar_result,
+        )
+        shade_required, shade_reason = self._should_shade_window_from_flows(
+            shade_request
+        )
+
+        # Update result
+        solar_result.shade_required = shade_required
+        solar_result.shade_reason = shade_reason
+
+        # Calculate additional metrics using the correct raw power values
+        power_raw = solar_result.power_total_raw
+        # Avoid division by zero
+        area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
+
+        # Return results in the correct structure for coordinator
+        return {
+            "name": window_data.get("name", window_subentry_id),
+            "total_power": round(solar_result.power_total, 2),
+            "total_power_direct": round(solar_result.power_direct, 2),
+            "total_power_diffuse": round(solar_result.power_diffuse, 2),
+            "total_power_raw": round(power_raw, 2),
+            "power_m2_total": round(solar_result.power_total / area, 2),
+            "power_m2_direct": round(solar_result.power_direct / area, 2),
+            "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
+            "power_m2_raw": round(power_raw / area, 2),
+            "shadow_factor": solar_result.shadow_factor,
+            "area_m2": solar_result.area_m2,
+            "is_visible": solar_result.is_visible,
+            "shade_required": solar_result.shade_required,
+            "shade_reason": solar_result.shade_reason,
+            "effective_threshold": solar_result.effective_threshold,
+        }
 
     def _calculate_single_window(
         self,
