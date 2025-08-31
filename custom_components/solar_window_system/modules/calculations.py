@@ -63,8 +63,21 @@ class WindowCalculationResultPool:
         self._borrowed += 1
 
         if self._pool:
-            # Reuse existing object
-            return self._pool.pop()
+            # Reuse existing object - reset all values to defaults
+            result = self._pool.pop()
+            result.power_total = 0.0
+            result.power_direct = 0.0
+            result.power_diffuse = 0.0
+            result.power_direct_raw = 0.0
+            result.power_diffuse_raw = 0.0
+            result.power_total_raw = 0.0
+            result.shadow_factor = 1.0
+            result.is_visible = False
+            result.area_m2 = 0.0
+            result.shade_required = False
+            result.shade_reason = ""
+            result.effective_threshold = 0.0
+            return result
 
         # Create new object with default values
         return WindowCalculationResult(
@@ -341,9 +354,9 @@ class CalculationsMixin:
 
     def calculate_window_solar_power_with_shadow(
         self,
-        effective_config: dict[str, Any],
+        effective_config: dict[str, Any],  # noqa: ARG002 - kept for API compatibility
         window_data: dict[str, Any],
-        states: dict[str, Any],  # noqa: ARG002 - kept for API compatibility
+        states: dict[str, Any],  # kept for API compatibility
     ) -> WindowCalculationResult:
         """
         Calculate solar power for a window including shadow effects.
@@ -358,14 +371,16 @@ class CalculationsMixin:
 
         """
         try:
-            # Use default values for calculation
-            sun_elevation = 45.0
-            sun_azimuth = 180.0
+            # Extract values from states and window_data
+            sun_elevation = states.get("sun_elevation", 45.0)
+            sun_azimuth = states.get("sun_azimuth", 180.0)
             window_azimuth = window_data.get("azimuth", 180.0)
-            shadow_depth = effective_config.get("shadow_depth", 1.0)
-            shadow_offset = effective_config.get("shadow_offset", 0.0)
-            solar_irradiance = 800.0  # W/m²
-            window_area = window_data.get("area", 2.0)  # m²
+            shadow_depth = window_data.get("shadow_depth", 0.0)
+            shadow_offset = window_data.get("shadow_offset", 0.0)
+            solar_irradiance = states.get("solar_radiation", 800.0)
+            window_area = window_data.get("window_width", 2.0) * window_data.get(
+                "window_height", 1.5
+            )
 
             # Calculate shadow factor
             shadow_factor = self._calculate_shadow_factor(
@@ -584,35 +599,64 @@ class CalculationsMixin:
         states: dict[str, Any],
     ) -> tuple[float, float, float, float, float, float, float, float, float]:
         """Extract and validate calculation parameters."""
-        # Extract solar radiation
-        solar_radiation = float(states.get("solar_radiation", 0.0))
 
-        # Extract sun position
-        sun_elevation = float(states.get("sun_elevation", 0.0))
-        sun_azimuth = float(states.get("sun_azimuth", 180.0))
+        # Helper function for safe float conversion
+        def safe_float(value: Any, default: float) -> float:
+            """Safely convert value to float with fallback to default."""
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
 
-        # Extract window parameters
-        window_azimuth = float(window_data.get("azimuth", 180.0))
-        area = float(window_data.get("area", 1.0))
-        g_value = float(window_data.get("g_value", 0.8))
-        tilt = float(window_data.get("tilt", 90.0))
+        # Extract solar radiation with safe conversion
+        solar_radiation = safe_float(states.get("solar_radiation", 0.0), 0.0)
 
-        # Extract diffuse factor from config
-        diffuse_factor = float(effective_config.get("diffuse_factor", 0.3))
+        # Extract sun position with safe conversion
+        sun_elevation = safe_float(states.get("sun_elevation", 0.0), 0.0)
+        sun_azimuth = safe_float(states.get("sun_azimuth", 180.0), 180.0)
 
-        # Extract shadow parameters (only depth is used in return tuple)
-        shadow_depth = float(effective_config.get("shadow_depth", 0.0))
+        # Extract window parameters with safe conversion
+        # Calculate area from dimensions if not explicitly provided
+        if "area" in window_data:
+            area = safe_float(window_data["area"], 1.0)
+        else:
+            window_width = safe_float(window_data.get("window_width", 1.0), 1.0)
+            window_height = safe_float(window_data.get("window_height", 1.0), 1.0)
+            frame_width = safe_float(
+                effective_config.get("physical", {}).get("frame_width", 0.125), 0.125
+            )
+            glass_width = max(0, window_width - 2 * frame_width)
+            glass_height = max(0, window_height - 2 * frame_width)
+            area = glass_width * glass_height
+
+        g_value = safe_float(window_data.get("g_value", 0.8), 0.8)
+        tilt = safe_float(window_data.get("tilt", 90.0), 90.0)
+
+        # Extract diffuse factor from config with safe conversion
+        diffuse_factor = safe_float(effective_config.get("diffuse_factor", 0.3), 0.3)
+
+        # Extract shadow parameters from window_data first, then effective_config
+        shadow_depth = safe_float(
+            window_data.get("shadow_depth", effective_config.get("shadow_depth", 0.0)),
+            0.0,
+        )
+        shadow_offset = safe_float(
+            window_data.get(
+                "shadow_offset", effective_config.get("shadow_offset", 0.0)
+            ),
+            0.0,
+        )
 
         return (
             solar_radiation,
-            sun_elevation,
             sun_azimuth,
-            window_azimuth,
-            area,
+            sun_elevation,
             g_value,
-            tilt,
             diffuse_factor,
+            tilt,
+            area,
             shadow_depth,
+            shadow_offset,
         )
 
     def _calculate_solar_power_direct(

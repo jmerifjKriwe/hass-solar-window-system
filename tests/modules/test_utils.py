@@ -204,7 +204,7 @@ class TestUtilsMixin:
         # Mock Home Assistant and entity state with attributes
         mock_hass = Mock()
         mock_state = Mock()
-        mock_state.state = "25.5"
+        mock_state.state = "available"  # Ensure state is not unknown/unavailable
         mock_state.attributes = {"unit": "°C", "friendly_name": "Temperature"}
         mock_hass.states.get.return_value = mock_state
 

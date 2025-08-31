@@ -717,14 +717,14 @@ class TestParameterExtraction:
 
         assert len(result) == 9
         assert result[0] == 1000.0  # solar_radiation
-        assert result[1] == 45.0  # sun_elevation
-        assert result[2] == 180.0  # sun_azimuth
-        assert result[3] == 180.0  # window_azimuth
-        assert result[4] == 2.0  # area
-        assert result[5] == 0.8  # g_value
-        assert result[6] == 90.0  # tilt
-        assert result[7] == 0.3  # diffuse_factor
-        assert result[8] == 1.0  # shadow_depth
+        assert result[1] == 180.0  # sun_azimuth
+        assert result[2] == 45.0  # sun_elevation
+        assert result[3] == 0.8  # g_value
+        assert result[4] == 0.3  # diffuse_factor
+        assert result[5] == 90.0  # tilt
+        assert result[6] == 2.0  # area
+        assert result[7] == 1.0  # shadow_depth
+        assert result[8] == 0.0  # shadow_offset
 
     def test_extract_calculation_parameters_defaults(self) -> None:
         """Test parameter extraction with missing data (defaults)."""
@@ -740,14 +740,14 @@ class TestParameterExtraction:
 
         assert len(result) == 9
         assert result[0] == 0.0  # solar_radiation default
-        assert result[1] == 0.0  # sun_elevation default
-        assert result[2] == 180.0  # sun_azimuth default
-        assert result[3] == 180.0  # window_azimuth default
-        assert result[4] == 1.0  # area default
-        assert result[5] == 0.8  # g_value default
-        assert result[6] == 90.0  # tilt default
-        assert result[7] == 0.3  # diffuse_factor default
-        assert result[8] == 0.0  # shadow_depth default
+        assert result[1] == 180.0  # sun_azimuth default
+        assert result[2] == 0.0  # sun_elevation default
+        assert result[3] == 0.8  # g_value default
+        assert result[4] == 0.3  # diffuse_factor default
+        assert result[5] == 90.0  # tilt default
+        assert result[6] == 0.5625  # area default (1.0*1.0 - 2*0.125 frame)
+        assert result[7] == 0.0  # shadow_depth default
+        assert result[8] == 0.0  # shadow_offset default
 
 
 class TestPowerCalculations:

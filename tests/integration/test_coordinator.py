@@ -5,14 +5,16 @@ from __future__ import annotations
 
 import logging
 import types
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, Mock, patch
-
-import pytest
 
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
 from custom_components.solar_window_system.coordinator import (
     SolarWindowSystemCoordinator,
 )
+
+if TYPE_CHECKING:
+    import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from tests.helpers.test_framework import IntegrationTestCase
 

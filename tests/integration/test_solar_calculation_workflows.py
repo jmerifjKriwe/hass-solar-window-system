@@ -161,7 +161,7 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
         # Mock states for Scenario B conditions
         mock_states = Mock()
         mock_states.get.side_effect = lambda entity_id: {
-            "sensor.solar_radiation": Mock(state="170.0"),  # Above diffuse threshold
+            "sensor.solar_radiation": Mock(state="120.0"),  # Between thresholds
             "sensor.outdoor_temp": Mock(state="28.0"),  # Above outdoor offset
             "sensor.kitchen_temp": Mock(state="25.5"),  # Above indoor offset
             "sun.sun": Mock(attributes={"elevation": 30.0, "azimuth": 90.0}),
@@ -191,7 +191,7 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
                 effective_config,
                 window_config,
                 {
-                    "solar_radiation": 170.0,
+                    "solar_radiation": 120.0,
                     "sun_azimuth": 90.0,
                     "sun_elevation": 30.0,
                     "outdoor_temp": 28.0,
@@ -250,7 +250,7 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
         # Mock states for Scenario C conditions
         mock_states = Mock()
         mock_states.get.side_effect = lambda entity_id: {
-            "sensor.solar_radiation": Mock(state="80.0"),  # Below thresholds
+            "sensor.solar_radiation": Mock(state="10.0"),  # Very low radiation
             "sensor.outdoor_temp": Mock(state="22.0"),
             "sensor.weather_forecast": Mock(state="30.0"),  # Above forecast threshold
             "sensor.bedroom_temp": Mock(state="25.0"),  # Above indoor base
@@ -286,7 +286,7 @@ class TestSolarCalculationWorkflows(IntegrationTestCase):
                 effective_config,
                 window_config,
                 {
-                    "solar_radiation": 80.0,
+                    "solar_radiation": 10.0,
                     "sun_azimuth": 270.0,
                     "sun_elevation": 20.0,
                     "outdoor_temp": 22.0,

@@ -176,6 +176,10 @@ class TestFlowIntegrationMixin:
     def test_placeholder_methods_raise_not_implemented(self) -> None:
         """Test that placeholder methods are now implemented and work correctly."""
         mixin = FlowIntegrationMixin()
+        # Mock hass for the mixin
+        mixin.hass = Mock()
+        mixin.hass.config_entries = Mock()
+        mixin.hass.config_entries.async_entries = Mock(return_value=[])
 
         # Test _get_subentries_by_type - now implemented
         result = mixin._get_subentries_by_type("window")

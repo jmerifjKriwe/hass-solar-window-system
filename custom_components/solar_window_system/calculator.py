@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
-import asyncio
-from dataclasses import dataclass
 from datetime import UTC, datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
+from .modules.cache import CacheMixin
+
 # Import mixins for modular functionality
 from .modules.calculations import CalculationsMixin
+from .modules.config import ConfigMixin
 from .modules.debug import DebugMixin
-from .modules.flow_integration import FlowIntegrationMixin
+from .modules.flow_integration import (
+    FlowIntegrationMixin,
+    ShadeRequestFlow,
+    WindowCalculationResult,
+)
 from .modules.flow_integration import (
     WindowCalculationResult as FlowWindowCalculationResult,
 )
@@ -33,37 +38,10 @@ class SolarCalculationError(HomeAssistantError):
     """Exception for solar calculation errors."""
 
 
-@dataclass
-class WindowCalculationResult:
-    """Results from solar power calculation for a window."""
-
-    power_total: float
-    power_direct: float
-    power_diffuse: float
-    power_direct_raw: float  # Raw direct power before shadow factor
-    power_diffuse_raw: float  # Raw diffuse power (same as power_diffuse)
-    power_total_raw: float  # Raw total power before shadow factor
-    shadow_factor: float
-    is_visible: bool
-    area_m2: float
-    shade_required: bool
-    shade_reason: str
-    effective_threshold: float
-
-
-class ShadeRequestFlow(NamedTuple):
-    """Parameters for flow-based shading decision."""
-
-    window_data: dict[str, Any]
-    effective_config: dict[str, Any]
-    external_states: dict[str, Any]
-    scenario_b_enabled: bool
-    scenario_c_enabled: bool
-    solar_result: WindowCalculationResult | FlowWindowCalculationResult
-
-
 class SolarWindowCalculator(
     CalculationsMixin,
+    CacheMixin,
+    ConfigMixin,
     DebugMixin,
     FlowIntegrationMixin,
     ShadingMixin,
@@ -77,24 +55,6 @@ class SolarWindowCalculator(
 
     Now uses modular mixins for better maintainability and testing.
     """
-
-    def _calculate_shadow_factor(
-        self,
-        sun_elevation: float,
-        sun_azimuth: float,
-        window_azimuth: float,
-        shadow_depth: float,
-        shadow_offset: float,
-    ) -> float:
-        """
-        Calculate the geometric shadow factor for a window.
-
-        Returns a value between 0.1 (full shadow) and 1.0 (no shadow).
-        Uses the modular CalculationsMixin implementation.
-        """
-        return super()._calculate_shadow_factor(
-            sun_elevation, sun_azimuth, window_azimuth, shadow_depth, shadow_offset
-        )
 
     def __init__(
         self,
@@ -120,28 +80,13 @@ class SolarWindowCalculator(
 
         # Flow-based attributes - will be set by __init_flow_based__
         self.global_entry = None
+
+        # Cache attributes for backward compatibility with tests
         self._entity_cache: dict[str, Any] = {}
         self._cache_timestamp: float | None = None
         self._cache_ttl = 30  # 30 seconds cache for one calculation run
 
         _LOGGER.debug("Calculator initialized with %s windows.", len(self.windows))
-
-    def get_safe_state(self, entity_id: str, default: str | float = 0) -> Any:
-        """
-        Safely get the state of an entity, returning a default if unavailable.
-
-        Returns a default value if the entity is unavailable, unknown, or not found.
-        Uses the modular UtilsMixin implementation.
-        """
-        return super().get_safe_state(self.hass, entity_id, default)
-
-    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
-        """
-        Safely get an attribute of an entity, returning a default if unavailable.
-
-        Uses the modular UtilsMixin implementation.
-        """
-        return super().get_safe_attr(self.hass, entity_id, attr, default)
 
     def apply_global_factors(
         self, config: dict[str, Any], group_type: str, states: dict[str, Any]
@@ -199,425 +144,24 @@ class SolarWindowCalculator(
         # Set up flow-based configuration
         instance.global_entry = entry
 
-        # Initialize caching
-        instance._entity_cache = {}
-        instance._cache_timestamp = None
-        instance._cache_ttl = 30  # 30 seconds cache for one calculation run
-
         _LOGGER.debug("Calculator initialized with flow-based configuration.")
         return instance
 
-    def _get_cached_entity_state(
-        self, entity_id: str, default_value: Any | None = None
-    ) -> Any:
+    def get_safe_state(self, entity_id: str, default: str | float = 0) -> Any:
         """
-        Get entity state with short-term caching for one calculation run.
+        Get entity state safely with fallback to default value.
 
-        With debug logging.
+        Wrapper for UtilsMixin.get_safe_state to maintain backward compatibility.
         """
-        current_time = time.time()
+        return super().get_safe_state(self.hass, entity_id, default)
 
-        # Check if cache is expired
-        if (
-            self._cache_timestamp is None
-            or current_time - self._cache_timestamp > self._cache_ttl
-        ):
-            self._entity_cache.clear()
-            self._cache_timestamp = current_time
-
-        # Check cache first
-        if entity_id in self._entity_cache:
-            value = self._entity_cache[entity_id]
-        else:
-            # Get from HomeAssistant using executor to avoid blocking
-            try:
-                loop = asyncio.get_running_loop()
-                state = loop.run_until_complete(
-                    self.hass.async_add_executor_job(self.hass.states.get, entity_id)
-                )
-            except RuntimeError:
-                # No running loop, use synchronous call
-                state = self.hass.states.get(entity_id)
-            value = state.state if state else default_value
-            # Cache the result
-            self._entity_cache[entity_id] = value
-        return value
-
-    def _resolve_entity_state_with_fallback(
-        self, entity_id: str, fallback: str, valid_states: set[str]
-    ) -> str:
-        """Resolve entity state with validation and fallback."""
-        state = self._get_cached_entity_state(entity_id, fallback)
-        if state in valid_states:
-            return state
-        _LOGGER.warning(
-            "Invalid state '%s' for entity %s, using fallback '%s'",
-            state,
-            entity_id,
-            fallback,
-        )
-        return fallback
-
-    def _get_subentries_by_type(self, entry_type: str) -> dict[str, dict[str, Any]]:
+    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
         """
-        Get all sub-entries of a specific type.
+        Get entity attribute safely with fallback to default value.
 
-        Handles legacy, new type names, and subentries in parent configs.
+        Wrapper for UtilsMixin.get_safe_attr to maintain backward compatibility.
         """
-        subentries = {}
-
-        # Map legacy and new type names for global config
-        entry_type_map = {
-            "global": ["global_config"],  # Standardized to global_config only
-            "group": ["group"],
-            "window": ["window"],
-            "group_configs": ["group_configs"],
-            "window_configs": ["window_configs"],
-        }
-        valid_types = entry_type_map.get(entry_type, [entry_type])
-
-        # Get all config entries for this domain
-        domain_entries = self.hass.config_entries.async_entries("solar_window_system")
-
-        for entry in domain_entries:
-            # Direct match (classic style)
-            if entry.data.get("entry_type") in valid_types:
-                subentries[entry.entry_id] = entry.data
-
-            # For window/group: also check subentries in parent configs
-            if entry_type in ("window", "group") and hasattr(entry, "subentries"):
-                for sub in entry.subentries.values():
-                    if hasattr(sub, "data") and hasattr(sub, "subentry_type"):
-                        sub_data = (
-                            dict(sub.data) if hasattr(sub.data, "items") else sub.data
-                        )
-                        sub_type = getattr(sub, "subentry_type", None) or sub_data.get(
-                            "entry_type"
-                        )
-                        sub_id = getattr(sub, "subentry_id", None) or getattr(
-                            sub, "title", None
-                        )
-                    elif isinstance(sub, dict):
-                        sub_data = sub.get("data", {})
-                        sub_type = sub_data.get("entry_type") or sub.get(
-                            "subentry_type"
-                        )
-                        sub_id = sub.get("subentry_id") or sub.get("title")
-                    else:
-                        continue  # skip unknown subentry type
-                    if (
-                        sub_type == entry_type
-                        or sub_data.get("entry_type") == entry_type
-                    ) and sub_id:
-                        subentries[sub_id] = sub_data
-
-        return subentries
-
-    def get_effective_config_from_flows(
-        self, window_subentry_id: str
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Get effective configuration using flow-based inheritance."""
-        # Get all relevant subentries
-        windows = self._get_subentries_by_type("window")
-        groups = self._get_subentries_by_type("group")
-
-        if window_subentry_id not in windows:
-            msg = f"Window configuration not found: {window_subentry_id}"
-            raise ValueError(msg)
-
-        window_data = windows[window_subentry_id]
-
-        # Start with global configuration (merged from data and options)
-        global_config = self._get_global_data_merged()
-        global_sources = {}
-        if global_config:
-            # Mark all values as coming from global
-            global_sources = self._mark_config_sources(global_config, "global")
-
-        # Apply group configuration if linked
-        group_config = {}
-        group_sources = {}
-        linked_group_id = window_data.get("linked_group_id")
-        if linked_group_id and linked_group_id in groups:
-            group_config = groups[linked_group_id]
-            group_sources = self._mark_config_sources(group_config, "group")
-
-        # Build effective configuration
-        effective_config = self._build_effective_config(
-            global_config, group_config, window_data
-        )
-
-        # Build source tracking
-        effective_sources = self._build_effective_sources(
-            global_sources, group_sources, window_data
-        )
-
-        return effective_config, effective_sources
-
-    def _mark_config_sources(
-        self, config: dict[str, Any], source: str
-    ) -> dict[str, Any]:
-        """Mark all configuration values with their source."""
-        sources = {}
-        for key, value in config.items():
-            if isinstance(value, dict):
-                sources[key] = self._mark_config_sources(value, source)
-            else:
-                sources[key] = source
-        return sources
-
-    def _build_effective_config(
-        self,
-        global_config: dict[str, Any],
-        group_config: dict[str, Any],
-        window_data: dict[str, Any],
-    ) -> dict[str, Any]:
-        """
-        Build effective configuration with inheritance.
-
-        Respecting explicit inheritance markers.
-        """
-        # Start with global as base
-        effective = self._copy_config(global_config)
-
-        # Override with group config, but skip inherit markers
-        self._merge_config_layer(effective, group_config)
-
-        # Override with window-specific data, but skip inherit markers
-        self._merge_config_layer(effective, window_data)
-
-        # Structure flat config into expected nested format for apply_global_factors
-        return self._structure_flat_config(effective)
-
-    def _copy_config(self, config: dict[str, Any]) -> dict[str, Any]:
-        """Create a deep copy of configuration."""
-        result = {}
-        for key, value in config.items():
-            if isinstance(value, dict):
-                result[key] = value.copy()
-            else:
-                result[key] = value
-        return result
-
-    def _merge_config_layer(
-        self, effective: dict[str, Any], layer_config: dict[str, Any]
-    ) -> None:
-        """Merge a configuration layer into the effective config."""
-
-        def is_inherit_marker(val: Any) -> bool:
-            return val in ("-1", -1, "", None, "inherit")
-
-        for key, value in layer_config.items():
-            if is_inherit_marker(value):
-                continue
-
-            if self._should_merge_nested(effective, key, value):
-                self._merge_nested_dict(effective, key, value)
-            else:
-                effective[key] = value
-
-    def _should_merge_nested(
-        self, effective: dict[str, Any], key: str, value: Any
-    ) -> bool:
-        """Check if we should merge nested dictionaries."""
-        return (
-            key in effective
-            and isinstance(effective[key], dict)
-            and isinstance(value, dict)
-        )
-
-    def _merge_nested_dict(
-        self, effective: dict[str, Any], key: str, value: dict[str, Any]
-    ) -> None:
-        """Merge nested dictionary values."""
-
-        def is_inherit_marker(val: Any) -> bool:
-            return val in ("-1", -1, "", None, "inherit")
-
-        for subkey, subval in value.items():
-            if not is_inherit_marker(subval):
-                effective[key][subkey] = subval
-
-    def _structure_flat_config(self, flat_config: dict[str, Any]) -> dict[str, Any]:
-        """Structure flat config into nested format expected by apply_global_factors."""
-        structured = {
-            "thresholds": {
-                "direct": flat_config.get("threshold_direct", 200),
-                "diffuse": flat_config.get("threshold_diffuse", 150),
-            },
-            "temperatures": {
-                "indoor_base": flat_config.get("temperature_indoor_base", 23.0),
-                "outdoor_base": flat_config.get("temperature_outdoor_base", 19.5),
-            },
-            "physical": {
-                "g_value": flat_config.get("g_value", 0.5),
-                "frame_width": flat_config.get("frame_width", 0.125),
-                "diffuse_factor": flat_config.get("diffuse_factor", 0.15),
-                "tilt": flat_config.get("tilt", 90.0),
-            },
-        }
-
-        # Add remaining flat config items not in structured categories
-        excluded_keys = {
-            "threshold_direct",
-            "threshold_diffuse",
-            "temperature_indoor_base",
-            "temperature_outdoor_base",
-            "g_value",
-            "frame_width",
-            "diffuse_factor",
-            "tilt",
-        }
-        structured.update(
-            {
-                key: value
-                for key, value in flat_config.items()
-                if key not in excluded_keys
-            }
-        )
-
-        return structured
-
-    def _build_effective_sources(
-        self,
-        global_sources: dict[str, Any],
-        group_sources: dict[str, Any],
-        window_data: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Build source tracking for effective configuration."""
-        sources = global_sources.copy()
-
-        # Update with group sources
-        for key, value in group_sources.items():
-            if (
-                key in sources
-                and isinstance(sources[key], dict)
-                and isinstance(value, dict)
-            ):
-                sources[key].update(value)
-            else:
-                sources[key] = value
-
-        # Mark window data as window source
-        window_sources = self._mark_config_sources(window_data, "window")
-        for key, value in window_sources.items():
-            if (
-                key in sources
-                and isinstance(sources[key], dict)
-                and isinstance(value, dict)
-            ):
-                sources[key].update(value)
-            else:
-                sources[key] = value
-
-        return sources
-
-    def _get_global_data_merged(self) -> dict[str, Any]:
-        """Get merged global data from global config entry and entities."""
-        # Get global config data (merge data and options with options priority)
-        global_data = {}
-        global_configs = self._get_subentries_by_type("global")
-
-        if global_configs:
-            global_entry_id = next(iter(global_configs))
-            global_data = global_configs[global_entry_id].copy()
-
-            # Find config entry and merge options over data (options have priority)
-            for entry in self.hass.config_entries.async_entries("solar_window_system"):
-                entry_type = entry.data.get("entry_type")
-
-                # Check for global_config only (standardized)
-                if entry_type in ["global_config"]:
-                    # Start with data as base
-                    merged_config = dict(entry.data)
-
-                    # Options override data (priority system)
-                    if entry.options:
-                        merged_config.update(entry.options)
-
-                    # Now replace the global_data with merged config
-                    global_data = merged_config
-                    break
-
-        return global_data
-
-    def _extract_calculation_parameters(
-        self,
-        effective_config: dict[str, Any],
-        window_data: dict[str, Any],
-        states: dict[str, Any],
-    ) -> tuple[float, float, float, float, float, float, float, float, float]:
-        """Extract and validate calculation parameters."""
-        solar_radiation = self._safe_float_conversion(
-            states.get("solar_radiation", 0.0), 0.0
-        )
-        sun_azimuth = self._safe_float_conversion(states.get("sun_azimuth", 0.0), 0.0)
-        sun_elevation = self._safe_float_conversion(
-            states.get("sun_elevation", 0.0), 0.0
-        )
-
-        # Physical parameters
-        g_value = self._safe_float_conversion(
-            effective_config["physical"].get("g_value", 0.5), 0.5
-        )
-        frame_width = self._safe_float_conversion(
-            effective_config["physical"].get("frame_width", 0.125), 0.125
-        )
-        diffuse_factor = self._safe_float_conversion(
-            effective_config["physical"].get("diffuse_factor", 0.15), 0.15
-        )
-        tilt = self._safe_float_conversion(
-            effective_config["physical"].get("tilt", 90.0), 90.0
-        )
-
-        # Window dimensions
-        window_width = self._safe_float_conversion(
-            window_data.get("window_width", 1.0), 1.0
-        )
-        window_height = self._safe_float_conversion(
-            window_data.get("window_height", 1.0), 1.0
-        )
-        glass_width = max(0, window_width - 2 * frame_width)
-        glass_height = max(0, window_height - 2 * frame_width)
-        area = glass_width * glass_height
-
-        # Shadow parameters - check effective_config first, then window_data
-        shadow_depth = self._safe_float_conversion(
-            effective_config.get("shadow_depth", window_data.get("shadow_depth", 0)),
-            0.0,
-        )
-        shadow_offset = self._safe_float_conversion(
-            effective_config.get("shadow_offset", window_data.get("shadow_offset", 0)),
-            0.0,
-        )
-
-        return (
-            solar_radiation,
-            sun_azimuth,
-            sun_elevation,
-            g_value,
-            diffuse_factor,
-            tilt,
-            area,
-            shadow_depth,
-            shadow_offset,
-        )
-
-    def _check_window_visibility(
-        self,
-        sun_elevation: float,
-        sun_azimuth: float,
-        window_data: dict[str, Any],
-        effective_config: dict[str, Any] | None = None,
-    ) -> tuple[bool, float]:
-        """
-        Check if sun is visible to window and return window azimuth.
-
-        Uses the modular CalculationsMixin implementation.
-        """
-        return super()._check_window_visibility(
-            sun_elevation, sun_azimuth, window_data, effective_config
-        )
+        return super().get_safe_attr(self.hass, entity_id, attr, default)
 
     def _calculate_direct_power(
         self,
@@ -692,7 +236,7 @@ class SolarWindowCalculator(
         shadow_factor = 1.0
 
         # Check window visibility
-        is_visible, window_azimuth = self._check_window_visibility(
+        is_visible, window_azimuth = super()._check_window_visibility(
             sun_elevation, sun_azimuth, window_data, effective_config
         )
 
@@ -895,23 +439,27 @@ class SolarWindowCalculator(
             "debug_mode": global_data.get("debug_mode", False),
             "maintenance_mode": global_data.get("maintenance_mode", False),
             "solar_radiation": float(
-                self._get_cached_entity_state(
+                super()._get_cached_entity_state(
                     global_data.get("solar_radiation_sensor", ""), 0
                 )
             ),
-            "sun_azimuth": float(self.get_safe_attr("sun.sun", "azimuth", 0)),
-            "sun_elevation": float(self.get_safe_attr("sun.sun", "elevation", 0)),
+            "sun_azimuth": float(
+                super().get_safe_attr(self.hass, "sun.sun", "azimuth", 0)
+            ),
+            "sun_elevation": float(
+                super().get_safe_attr(self.hass, "sun.sun", "elevation", 0)
+            ),
             "outdoor_temp": float(
-                self._get_cached_entity_state(
+                super()._get_cached_entity_state(
                     global_data.get("outdoor_temperature_sensor", ""), 0
                 )
             ),
             "forecast_temp": float(
-                self._get_cached_entity_state(
+                super()._get_cached_entity_state(
                     global_data.get("weather_forecast_temperature_sensor", ""), 0
                 )
             ),
-            "weather_warning": self._get_cached_entity_state(
+            "weather_warning": super()._get_cached_entity_state(
                 global_data.get("weather_warning_sensor", ""), "off"
             )
             == "on",
@@ -939,23 +487,27 @@ class SolarWindowCalculator(
             "debug_mode": global_data.get("debug_mode", False),
             "maintenance_mode": global_data.get("maintenance_mode", False),
             "solar_radiation": float(
-                self._get_cached_entity_state(
+                super()._get_cached_entity_state(
                     global_data.get("solar_radiation_sensor", ""), 0
                 )
             ),
-            "sun_azimuth": float(self.get_safe_attr("sun.sun", "azimuth", 0)),
-            "sun_elevation": float(self.get_safe_attr("sun.sun", "elevation", 0)),
+            "sun_azimuth": float(
+                super().get_safe_attr(self.hass, "sun.sun", "azimuth", 0)
+            ),
+            "sun_elevation": float(
+                super().get_safe_attr(self.hass, "sun.sun", "elevation", 0)
+            ),
             "outdoor_temp": float(
-                self._get_cached_entity_state(
+                super()._get_cached_entity_state(
                     global_data.get("outdoor_temperature_sensor", ""), 0
                 )
             ),
             "forecast_temp": float(
-                self._get_cached_entity_state(
+                super()._get_cached_entity_state(
                     global_data.get("weather_forecast_temperature_sensor", ""), 0
                 )
             ),
-            "weather_warning": self._get_cached_entity_state(
+            "weather_warning": super()._get_cached_entity_state(
                 global_data.get("weather_warning_sensor", ""), "off"
             )
             == "on",
@@ -1173,68 +725,74 @@ class SolarWindowCalculator(
         external_states: dict[str, Any],
     ) -> dict[str, Any]:
         """Calculate result for a single window."""
-        # Get effective configuration and sources
-        effective_config, effective_sources = self.get_effective_config_from_flows(
-            window_subentry_id
-        )
+        try:
+            # Get effective configuration and sources
+            effective_config, effective_sources = self.get_effective_config_from_flows(
+                window_subentry_id
+            )
 
-        # Apply global factors
-        group_type = window_data.get("group_type", "default")
-        effective_config = self.apply_global_factors(
-            effective_config, group_type, external_states
-        )
+            # Apply global factors
+            group_type = window_data.get("group_type", "default")
+            effective_config = self.apply_global_factors(
+                effective_config, group_type, external_states
+            )
 
-        # Calculate solar power with shadows
-        solar_result = self.calculate_window_solar_power_with_shadow(
-            effective_config, window_data, external_states
-        )
+            # Calculate solar power with shadows
+            solar_result = self.calculate_window_solar_power_with_shadow(
+                effective_config, window_data, external_states
+            )
 
-        # Get scenario enables for this window with inheritance logic
-        (
-            scenario_b_enabled,
-            scenario_c_enabled,
-        ) = self._get_scenario_enables_from_flows(window_subentry_id, external_states)
+            # Get scenario enables for this window with inheritance logic
+            (
+                scenario_b_enabled,
+                scenario_c_enabled,
+            ) = self._get_scenario_enables_from_flows(
+                window_subentry_id, external_states
+            )
 
-        # Check shading requirement with full scenario logic
-        shade_request = ShadeRequestFlow(
-            window_data=window_data,
-            effective_config=effective_config,
-            external_states=external_states,
-            scenario_b_enabled=scenario_b_enabled,
-            scenario_c_enabled=scenario_c_enabled,
-            solar_result=solar_result,
-        )
-        shade_required, shade_reason = self._should_shade_window_from_flows(
-            shade_request
-        )
+            # Check shading requirement with full scenario logic
+            shade_request = ShadeRequestFlow(
+                window_data=window_data,
+                effective_config=effective_config,
+                external_states=external_states,
+                scenario_b_enabled=scenario_b_enabled,
+                scenario_c_enabled=scenario_c_enabled,
+                solar_result=solar_result,
+            )
+            shade_required, shade_reason = self._should_shade_window_from_flows(
+                shade_request
+            )
 
-        # Update result
-        solar_result.shade_required = shade_required
-        solar_result.shade_reason = shade_reason
+            # Update result
+            solar_result.shade_required = shade_required
+            solar_result.shade_reason = shade_reason
 
-        # Calculate additional metrics using the correct raw power values
-        power_raw = solar_result.power_total_raw
-        # Avoid division by zero
-        area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
+            # Calculate additional metrics using the correct raw power values
+            power_raw = solar_result.power_total_raw
+            # Avoid division by zero
+            area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
 
-        # Return results in the correct structure for coordinator
-        return {
-            "name": window_data.get("name", window_subentry_id),
-            "total_power": round(solar_result.power_total, 2),
-            "total_power_direct": round(solar_result.power_direct, 2),
-            "total_power_diffuse": round(solar_result.power_diffuse, 2),
-            "total_power_raw": round(power_raw, 2),
-            "power_m2_total": round(solar_result.power_total / area, 2),
-            "power_m2_direct": round(solar_result.power_direct / area, 2),
-            "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
-            "power_m2_raw": round(power_raw / area, 2),
-            "shadow_factor": solar_result.shadow_factor,
-            "area_m2": solar_result.area_m2,
-            "is_visible": solar_result.is_visible,
-            "shade_required": solar_result.shade_required,
-            "shade_reason": solar_result.shade_reason,
-            "effective_threshold": solar_result.effective_threshold,
-        }
+            # Return results in the correct structure for coordinator
+            return {
+                "name": window_data.get("name", window_subentry_id),
+                "total_power": round(solar_result.power_total, 2),
+                "total_power_direct": round(solar_result.power_direct, 2),
+                "total_power_diffuse": round(solar_result.power_diffuse, 2),
+                "total_power_raw": round(power_raw, 2),
+                "power_m2_total": round(solar_result.power_total / area, 2),
+                "power_m2_direct": round(solar_result.power_direct / area, 2),
+                "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
+                "power_m2_raw": round(power_raw / area, 2),
+                "shadow_factor": solar_result.shadow_factor,
+                "area_m2": solar_result.area_m2,
+                "is_visible": solar_result.is_visible,
+                "shade_required": solar_result.shade_required,
+                "shade_reason": solar_result.shade_reason,
+                "effective_threshold": solar_result.effective_threshold,
+            }
+        except Exception as err:
+            _LOGGER.exception("Error calculating window %s", window_subentry_id)
+            return self._get_error_window_result(window_data, window_subentry_id, err)
 
     def _get_error_window_result(
         self, window_data: dict[str, Any], window_subentry_id: str, err: Exception
@@ -1414,7 +972,7 @@ class SolarWindowCalculator(
                 )
                 return False, "No room temperature sensor"
 
-            indoor_temp_str = self._get_cached_entity_state(indoor_temp_entity, "0")
+            indoor_temp_str = super()._get_cached_entity_state(indoor_temp_entity, "0")
             indoor_temp = float(indoor_temp_str)
             outdoor_temp = shade_request.external_states["outdoor_temp"]
 
@@ -1694,7 +1252,7 @@ class SolarWindowCalculator(
             if entity_id:
                 sensor_data[name] = {
                     "entity_id": entity_id,
-                    "state": self.get_safe_state(entity_id),
+                    "state": super().get_safe_state(self.hass, entity_id),
                     "available": self.hass.states.get(entity_id) is not None,
                 }
             else:

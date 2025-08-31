@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from .calculations import CalculationsMixin
 from .debug import DebugMixin
 from .flow_integration import FlowIntegrationMixin
+from .utils import UtilsMixin
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -27,6 +28,7 @@ class SolarWindowCalculator(
     CalculationsMixin,
     DebugMixin,
     FlowIntegrationMixin,
+    UtilsMixin,
 ):
     """
     Main calculator class for Solar Window System calculations.
@@ -124,15 +126,20 @@ class SolarWindowCalculator(
         value = self._get_lru_cached_entity_state(entity_id)
         return value if value is not None else default
 
+    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
+        """Get entity attribute safely with fallback."""
+        return super().get_safe_attr(self.hass, entity_id, attr, default)
+
     async def get_safe_attr_async(
         self, entity_id: str, attr: str, default: str | float = 0
     ) -> Any:
         """Get entity attribute safely with fallback (async version)."""
         try:
-            # Use thread executor for attribute access
+            # Use thread executor for attribute access to avoid blocking
             loop = asyncio.get_event_loop()
-            state = await loop.run_in_executor(None, self.hass.states.get, entity_id)
-            return getattr(state, attr, default) if state else default
+            return await loop.run_in_executor(
+                None, super().get_safe_attr, self.hass, entity_id, attr, default
+            )
         except (AttributeError, KeyError, TypeError):
             return default
 
@@ -151,17 +158,20 @@ class SolarWindowCalculator(
         ]
         for key in expired_lru_keys:
             del self._lru_cache[key]
-
-        # Remove expired entries from entity cache
-        expired_entity_keys = [
-            key
-            for key, timestamp in getattr(self, "_entity_cache_timestamps", {}).items()
-            if current_time - timestamp > self._cache_ttl
-        ]
-        for key in expired_entity_keys:
+            # Also remove from entity cache if present
             if key in self._entity_cache:
                 del self._entity_cache[key]
-            if key in getattr(self, "_entity_cache_timestamps", {}):
+
+        # Remove expired entries from entity cache based on timestamps
+        if hasattr(self, "_entity_cache_timestamps"):
+            expired_entity_keys = [
+                key
+                for key, timestamp in self._entity_cache_timestamps.items()
+                if current_time - timestamp > self._cache_ttl
+            ]
+            for key in expired_entity_keys:
+                if key in self._entity_cache:
+                    del self._entity_cache[key]
                 del self._entity_cache_timestamps[key]
 
         # Update cache timestamp
@@ -171,8 +181,12 @@ class SolarWindowCalculator(
         if entity_id in self._entity_cache:
             return self._entity_cache[entity_id]
 
-        # Get fresh value and cache it
-        value = self.get_safe_state(entity_id, default_value)
+        # Get fresh value and cache it (bypass LRU cache)
+        try:
+            state = self.hass.states.get(entity_id)
+            value = state.state if state else default_value
+        except (AttributeError, KeyError, TypeError):
+            value = default_value
         self._entity_cache[entity_id] = value
 
         # Initialize timestamps dict if it doesn't exist

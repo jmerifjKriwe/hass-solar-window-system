@@ -129,7 +129,17 @@ class UtilsMixin:
             )
             return default
 
-        return state.attributes.get(attr, default)
+        # Handle attributes - check if it's a dict-like object
+        try:
+            if hasattr(state, "attributes"):
+                # Handle both real dicts and Mock objects
+                if hasattr(state.attributes, "get") and callable(state.attributes.get):
+                    return state.attributes.get(attr, default)
+                if hasattr(state.attributes, attr):
+                    return getattr(state.attributes, attr, default)
+        except (AttributeError, TypeError, KeyError):
+            pass
+        return default
 
     def _format_debug_value(self, value: Any, precision: int = 2) -> str:
         """Format value for debug output with proper precision."""

@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,20 +50,64 @@ class ShadeRequestFlow:
 class FlowIntegrationMixin:
     """Mixin class for flow-based integration functionality."""
 
-    def _get_subentries_by_type(self, entry_type: str) -> dict[str, Any]:
-        """Get all config entries for a specific type."""
-        # Implementation for getting config entries by type
-        # This would integrate with the actual Home Assistant config entry system
-        _LOGGER.debug("Getting subentries for type: %s", entry_type)
+    # Type hint for hass attribute (provided by inheriting class)
+    if TYPE_CHECKING:
+        hass: HomeAssistant
 
-        # For now, return a basic structure that can be extended
-        # In a full implementation, this would query the config entries registry
-        return {
-            "entries": [],
-            "count": 0,
-            "type": entry_type,
-            "status": "basic_implementation",
+    def _get_subentries_by_type(self, entry_type: str) -> dict[str, dict[str, Any]]:
+        """
+        Get all sub-entries of a specific type.
+
+        Handles legacy, new type names, and subentries in parent configs.
+        """
+        subentries = {}
+
+        # Map legacy and new type names for global config
+        entry_type_map = {
+            "global": ["global_config"],  # Standardized to global_config only
+            "group": ["group"],
+            "window": ["window"],
+            "group_configs": ["group_configs"],
+            "window_configs": ["window_configs"],
         }
+        valid_types = entry_type_map.get(entry_type, [entry_type])
+
+        # Get all config entries for this domain
+        domain_entries = self.hass.config_entries.async_entries("solar_window_system")
+
+        for entry in domain_entries:
+            # Direct match (classic style)
+            if entry.data.get("entry_type") in valid_types:
+                subentries[entry.entry_id] = entry.data
+
+            # For window/group: also check subentries in parent configs
+            if entry_type in ("window", "group") and hasattr(entry, "subentries"):
+                for sub in entry.subentries.values():
+                    if hasattr(sub, "data") and hasattr(sub, "subentry_type"):
+                        sub_data = (
+                            dict(sub.data) if hasattr(sub.data, "items") else sub.data
+                        )
+                        sub_type = getattr(sub, "subentry_type", None) or sub_data.get(
+                            "entry_type"
+                        )
+                        sub_id = getattr(sub, "subentry_id", None) or getattr(
+                            sub, "title", None
+                        )
+                    elif isinstance(sub, dict):
+                        sub_data = sub.get("data", {})
+                        sub_type = sub_data.get("entry_type") or sub.get(
+                            "subentry_type"
+                        )
+                        sub_id = sub.get("subentry_id") or sub.get("title")
+                    else:
+                        continue  # skip unknown subentry type
+                    if (
+                        sub_type == entry_type
+                        or sub_data.get("entry_type") == entry_type
+                    ) and sub_id:
+                        subentries[sub_id] = sub_data
+
+        return subentries
 
     def get_effective_config_from_flows(
         self, window_subentry_id: str
