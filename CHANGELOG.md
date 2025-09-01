@@ -2,6 +2,80 @@
 
 <!-- version list -->
 
+## v2.0.0 (2025-09-01)
+
+### Bug Fixes
+
+- Resolve blocking I/O and visibility calculation issues
+  ([`c8ff043`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/c8ff0434d70713f15cedcfafb2888ec0c32aca4f))
+
+- Resolve empty current_sensor_states in debug output
+  ([`9a05c3f`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/9a05c3f1ecad8fcce1f8297b025f514e7729b2d2))
+
+- Update documentation and improve sensor platform
+  ([`abdea44`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/abdea4425e8a4a2f46b19730c8a91b5cc95ed3e8))
+
+- **services**: Resolve device IDs to subentry IDs in debug calculation service
+  ([`dc1843e`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/dc1843e3bb1a092671be64e2d1fcece8cbb4ab53))
+
+- **tests**: Resolve failing tests and improve test isolation
+  ([`ca924ae`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ca924ae5f4f6e71a78175aaab729e07663a347f7))
+
+### Build System
+
+- **deps**: Bump ruff from 0.12.10 to 0.12.11
+  ([`0e62379`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/0e6237971072bc10530dde859ebf10f676fa674b))
+
+### Chores
+
+- Delete logo
+  ([`e382f1d`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/e382f1d253c68a87b76f259457658004e8adb141))
+
+- **ci**: Prevent release failure on concurrent pushes by checking ancestry
+  ([`5a9290b`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/5a9290b2ad894332f6007f10683e17f0cb809a64))
+
+- **ci**: Update workflow permissions and clarify commit guidelines
+  ([`22fff66`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/22fff66b61fe7b6538cc543f35e6a4e325277ec1))
+
+- **refactor**: Complete modular architecture refactoring
+  ([`623b0e6`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/623b0e691cba01b30b42d7f2cf6d1d954d066cc1))
+
+### Documentation
+
+- Update coverage badge
+  ([`40a2d61`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/40a2d61adcc3f3f0a719326a62c0e81b71e94df0))
+
+### Features
+
+- Enhance solar calculation system and add version display
+  ([`c35b747`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/c35b747432611b1ce0eb47ad136ad743320837b3))
+
+- **calculator**: Add async batch processing and type fixes
+  ([`e31f17d`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/e31f17d0f93276dbaaceacdbfa3a9633fb545eca))
+
+### Refactoring
+
+- Complete Ruff linting compliance and code quality improvements
+  ([`93471d5`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/93471d524103991cbebd09d6e9b23e87d851e1fc))
+
+- Consolidate shared utilities and remove obsolete helpers.py
+  ([`7955a5c`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/7955a5c073058bfb803eaa136809d76b060051ac))
+
+- **architecture**: Implement modular mixin architecture
+  ([`4d2a3af`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/4d2a3af260c29b9161e05732f5ed262a4046a737))
+
+- **calculator**: Modularize solar calculation system
+  ([`3fed8d3`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/3fed8d3d0034459aec193d1eeba3e65dcf644a85))
+
+- **platforms**: Extract common base class for global config entities
+  ([`3b99653`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/3b9965376c3346e85ea6e1b3d93bb068bf9a583b))
+
+### Testing
+
+- Fix ERROR logs in pytest output by adding caplog to exception tests
+  ([`257ee1b`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/257ee1b5134e863c30ba5d55e9aa8f849e71c863))
+
+
 ## v1.2.0 (2025-08-29)
 
 ### Documentation
