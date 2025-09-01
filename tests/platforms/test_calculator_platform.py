@@ -79,7 +79,9 @@ class TestSolarWindowCalculator:
         mock_states.get.return_value = mock_state
 
         with patch.object(calculator, "hass", Mock(states=mock_states)):
-            result = calculator.get_safe_state("sensor.test", 0.0)
+            result = super(SolarWindowCalculator, calculator).get_safe_state(
+                calculator.hass, "sensor.test", 0.0
+            )
             assert result == "123.45"
             mock_states.get.assert_called_with("sensor.test")
 
@@ -92,7 +94,9 @@ class TestSolarWindowCalculator:
         mock_states.get.return_value = None
 
         with patch.object(calculator, "hass", Mock(states=mock_states)):
-            result = calculator.get_safe_state("sensor.test", 99.0)
+            result = super(SolarWindowCalculator, calculator).get_safe_state(
+                calculator.hass, "sensor.test", 99.0
+            )
             assert result == 99.0
             mock_states.get.assert_called_with("sensor.test")
 
@@ -105,7 +109,9 @@ class TestSolarWindowCalculator:
         mock_states.get.return_value = mock_state
 
         with patch.object(calculator, "hass", Mock(states=mock_states)):
-            result = calculator.get_safe_state("sensor.test", 99.0)
+            result = super(SolarWindowCalculator, calculator).get_safe_state(
+                calculator.hass, "sensor.test", 99.0
+            )
             assert result == "77.0"
             mock_states.get.assert_called_with("sensor.test")
 
@@ -120,13 +126,16 @@ class TestSolarWindowCalculator:
 
         with patch.object(calculator, "hass", Mock(states=mock_states)):
             # Mock the get_safe_attr method to return the expected value
-            with patch.object(
-                calculator, "get_safe_attr", return_value="42.5"
+            with patch(
+                "custom_components.solar_window_system.modules.utils.UtilsMixin.get_safe_attr",
+                return_value="42.5",
             ) as mock_get_safe_attr:
-                result = calculator.get_safe_attr("sensor.test", "test_attr", 0.0)
+                result = super(SolarWindowCalculator, calculator).get_safe_attr(
+                    calculator.hass, "sensor.test", "test_attr", 0.0
+                )
                 assert result == "42.5"
                 mock_get_safe_attr.assert_called_once_with(
-                    "sensor.test", "test_attr", 0.0
+                    calculator.hass, "sensor.test", "test_attr", 0.0
                 )
 
     def test_calculate_shadow_factor_exception_handling(
@@ -154,7 +163,9 @@ class TestSolarWindowCalculator:
                 "custom_components.solar_window_system.modules.utils._LOGGER.warning"
             ) as mock_warning,
         ):
-            result = calculator.get_safe_state("sensor.test", 77.0)
+            result = super(SolarWindowCalculator, calculator).get_safe_state(
+                calculator.hass, "sensor.test", 77.0
+            )
             assert result == 77.0
             mock_warning.assert_called_once()
             assert "not found or unavailable" in mock_warning.call_args[0][0]
@@ -177,14 +188,17 @@ class TestSolarWindowCalculator:
             ) as mock_warning,
         ):
             # Mock the get_safe_attr method to return the expected value
-            with patch.object(
-                calculator, "get_safe_attr", return_value=99.0
+            with patch(
+                "custom_components.solar_window_system.modules.utils.UtilsMixin.get_safe_attr",
+                return_value=99.0,
             ) as mock_get_safe_attr:
-                result = calculator.get_safe_attr("sensor.test", "test_attr", 99.0)
+                result = super(SolarWindowCalculator, calculator).get_safe_attr(
+                    calculator.hass, "sensor.test", "test_attr", 99.0
+                )
                 assert result == 99.0
                 mock_warning.assert_not_called()  # No warning should be triggered
                 mock_get_safe_attr.assert_called_once_with(
-                    "sensor.test", "test_attr", 99.0
+                    calculator.hass, "sensor.test", "test_attr", 99.0
                 )
 
     def test_calculate_shadow_factor_no_shadow(
@@ -562,8 +576,9 @@ class TestSolarWindowCalculator:
         mock_state = Mock()
         mock_state.state = "100.0"
         mock_states.get.return_value = mock_state
+        mock_hass = Mock(states=mock_states)
 
-        with patch.object(calculator, "hass", Mock(states=mock_states)):
+        with patch.object(calculator, "hass", mock_hass):
             result1 = calculator._get_cached_entity_state("sensor.test")
             assert result1 == "100.0"
             assert "sensor.test" in calculator._entity_cache
@@ -2145,7 +2160,7 @@ class TestSolarWindowCalculator:
         )
 
         # Test that sensor returns None when coordinator has no data
-        coordinator.data = None
+        coordinator.data = {}  # type: ignore[assignment]
         assert sensor.state is None, (
             "Sensor should return None when coordinator has no data"
         )

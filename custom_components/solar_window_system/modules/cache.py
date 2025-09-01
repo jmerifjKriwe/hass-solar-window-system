@@ -1,7 +1,21 @@
 """
 Caching functionality for entity states.
 
-This module contains caching logic for entity states to improve performance.
+This module contai            try:
+                loop = asyncio.get_running_loop()
+                value = loop.run_until_complete(
+                    self.hass.async_add_executor_job(
+                        super().get_safe_state,  # type: ignore[attr-defined]
+                        self.hass,
+                        entity_id,
+                        default_value,
+                    )
+                )
+            except RuntimeError:
+                # No running loop, use synchronous call
+                value = super().get_safe_state(  # type: ignore[attr-defined]
+                    self.hass, entity_id, default_value
+                )
 """
 
 from __future__ import annotations
@@ -66,14 +80,16 @@ class CacheMixin:
                 loop = asyncio.get_running_loop()
                 value = loop.run_until_complete(
                     self.hass.async_add_executor_job(
-                        self.get_safe_state,  # type: ignore[attr-defined]
+                        super().get_safe_state,  # type: ignore[attr-defined, misc]
                         entity_id,
                         default_value,
                     )
                 )
             except RuntimeError:
                 # No running loop, use synchronous call
-                value = self.get_safe_state(entity_id, default_value)  # type: ignore[attr-defined]
+                value = super().get_safe_state(  # type: ignore[attr-defined]
+                    self.hass, entity_id, default_value
+                )
             # Cache the result
             self._entity_cache[entity_id] = value
         return value

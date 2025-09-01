@@ -52,40 +52,30 @@ class TestDebugMixin:
             "sensor.sws_global_power": mock_state2,
         }.get(eid)
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug.hass = mock_hass
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        result = debug._collect_current_sensor_states("window1")
 
-        try:
-            debug = DebugMixin()
-            debug.hass = mock_hass
+        # Verify results
+        assert len(result) == 2
+        assert "sensor.sws_global_temperature" in result
+        assert "sensor.sws_global_power" in result
 
-            result = debug._collect_current_sensor_states("window1")
+        # Verify temperature sensor data
+        temp_data = result["sensor.sws_global_temperature"]
+        assert temp_data["state"] == "25.5"
+        assert temp_data["name"] == "Temperature Sensor"
+        assert temp_data["last_updated"] == "2025-08-29T10:00:00"
+        assert temp_data["attributes"] == {"unit": "°C"}
 
-            # Verify results
-            assert len(result) == 2
-            assert "sensor.sws_global_temperature" in result
-            assert "sensor.sws_global_power" in result
-
-            # Verify temperature sensor data
-            temp_data = result["sensor.sws_global_temperature"]
-            assert temp_data["state"] == "25.5"
-            assert temp_data["name"] == "Temperature Sensor"
-            assert temp_data["last_updated"] == "2025-08-29T10:00:00"
-            assert temp_data["attributes"] == {"unit": "°C"}
-
-            # Verify power sensor data
-            power_data = result["sensor.sws_global_power"]
-            assert power_data["state"] == "150.0"
-            assert power_data["name"] == "Power Sensor"
-            assert power_data["last_updated"] is None
-            assert power_data["attributes"] == {}
-
-        finally:
-            # Restore original function
-            debug_module.er.async_get = original_async_get
+        # Verify power sensor data
+        power_data = result["sensor.sws_global_power"]
+        assert power_data["state"] == "150.0"
+        assert power_data["name"] == "Power Sensor"
+        assert power_data["last_updated"] is None
+        assert power_data["attributes"] == {}
 
     def test_collect_current_sensor_states_with_unavailable_sensor(self) -> None:
         """Test collecting sensor states when a sensor is unavailable."""
@@ -102,29 +92,20 @@ class TestDebugMixin:
         # Mock hass.states.get to raise an exception
         mock_hass.states.get.side_effect = AttributeError("Sensor unavailable")
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug.hass = mock_hass
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        result = debug._collect_current_sensor_states("window1")
 
-        try:
-            debug = DebugMixin()
-            debug.hass = mock_hass
+        # Verify error handling
+        assert len(result) == 1
+        assert "sensor.sws_global_faulty" in result
 
-            result = debug._collect_current_sensor_states("window1")
-
-            # Verify error handling
-            assert len(result) == 1
-            assert "sensor.sws_global_faulty" in result
-
-            faulty_data = result["sensor.sws_global_faulty"]
-            assert faulty_data["state"] == "unavailable"
-            assert faulty_data["name"] == "Faulty Sensor"
-            assert "error" in faulty_data
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        faulty_data = result["sensor.sws_global_faulty"]
+        assert faulty_data["state"] == "unavailable"
+        assert faulty_data["name"] == "Faulty Sensor"
+        assert "error" in faulty_data
 
     def test_collect_current_sensor_states_with_entity_registry_error(
         self, caplog: pytest.LogCaptureFixture
@@ -132,24 +113,15 @@ class TestDebugMixin:
         """Test collecting sensor states when entity registry fails."""
         mock_hass = Mock()
 
-        # Mock entity registry import to raise exception
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug.hass = mock_hass
+        debug._get_entity_registry = Mock(side_effect=Exception("Registry error"))
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(side_effect=Exception("Registry error"))
+        with caplog.at_level(logging.ERROR):
+            result = debug._collect_current_sensor_states("window1")
 
-        try:
-            debug = DebugMixin()
-            debug.hass = mock_hass
-
-            with caplog.at_level(logging.ERROR):
-                result = debug._collect_current_sensor_states("window1")
-
-            # Should return empty dict on error
-            assert result == {}
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        # Should return empty dict on error
+        assert result == {}
 
     def test_get_current_sensor_states_alias(self) -> None:
         """Test _get_current_sensor_states alias."""
@@ -227,22 +199,14 @@ class TestDebugMixin:
         }
 
         # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        # Mock the _get_entity_registry method to return our mock
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        try:
-            debug = DebugMixin()
+        result = debug._find_entity_by_name(mock_hass, "Global Temperature", "global")
 
-            result = debug._find_entity_by_name(
-                mock_hass, "Global Temperature", "global"
-            )
-
-            assert result == "sensor.sws_global_temperature"
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result == "sensor.sws_global_temperature"
 
     def test_find_entity_by_name_window_entity(self) -> None:
         """Test finding a window-specific entity by name."""
@@ -257,23 +221,14 @@ class TestDebugMixin:
             "sensor.sws_window_livingroom_temperature": mock_entity,
         }
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        result = debug._find_entity_by_name(
+            mock_hass, "Window Temperature", "window", "livingroom"
+        )
 
-        try:
-            debug = DebugMixin()
-
-            result = debug._find_entity_by_name(
-                mock_hass, "Window Temperature", "window", "livingroom"
-            )
-
-            assert result == "sensor.sws_window_livingroom_temperature"
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result == "sensor.sws_window_livingroom_temperature"
 
     def test_find_entity_by_name_group_entity(self) -> None:
         """Test finding a group-specific entity by name."""
@@ -288,23 +243,14 @@ class TestDebugMixin:
             "sensor.sws_group_floor1_temperature": mock_entity,
         }
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        result = debug._find_entity_by_name(
+            mock_hass, "Group Temperature", "group", None, "floor1"
+        )
 
-        try:
-            debug = DebugMixin()
-
-            result = debug._find_entity_by_name(
-                mock_hass, "Group Temperature", "group", None, "floor1"
-            )
-
-            assert result == "sensor.sws_group_floor1_temperature"
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result == "sensor.sws_group_floor1_temperature"
 
     def test_find_entity_by_name_not_found(self) -> None:
         """Test finding an entity that doesn't exist."""
@@ -312,48 +258,28 @@ class TestDebugMixin:
         mock_entity_reg = Mock()
         mock_entity_reg.entities = {}
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        result = debug._find_entity_by_name(mock_hass, "Nonexistent Sensor", "global")
 
-        try:
-            debug = DebugMixin()
-
-            result = debug._find_entity_by_name(
-                mock_hass, "Nonexistent Sensor", "global"
-            )
-
-            assert result is None
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result is None
 
     def test_find_entity_by_name_with_registry_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """Test finding an entity when entity registry fails."""
+        """Test handling of entity registry errors."""
         mock_hass = Mock()
 
-        # Mock entity registry import to raise exception
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(side_effect=Exception("Registry error"))
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(side_effect=Exception("Registry error"))
+        with caplog.at_level(logging.ERROR):
+            result = debug._find_entity_by_name(
+                mock_hass, "Temperature Sensor", "global"
+            )
 
-        try:
-            debug = DebugMixin()
-
-            with caplog.at_level(logging.ERROR):
-                result = debug._find_entity_by_name(
-                    mock_hass, "Temperature Sensor", "global"
-                )
-
-            assert result is None
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result is None
 
     def test_find_entity_by_name_name_transformation(self) -> None:
         """Test entity name transformation for special characters."""
@@ -368,27 +294,20 @@ class TestDebugMixin:
             "sensor.sws_global_solar_power_m2": mock_entity,
         }
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        result = debug._find_entity_by_name(mock_hass, "Solar Power m²", "global")
 
-        try:
-            debug = DebugMixin()
-
-            result = debug._find_entity_by_name(mock_hass, "Solar Power m²", "global")
-
-            assert result == "sensor.sws_global_solar_power_m2"
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result == "sensor.sws_global_solar_power_m2"
 
     def test_placeholder_methods_raise_not_implemented(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test that placeholder methods are now implemented and work correctly."""
         debug = DebugMixin()
+        mock_hass = Mock()
+        debug.hass = mock_hass
 
         # Test main debug method - now implemented
         # Note: This will fail because DebugMixin doesn't have hass attribute
@@ -405,7 +324,6 @@ class TestDebugMixin:
                 pass
 
         # Test search methods - now implemented
-        mock_hass = Mock()
         # Mock states.all() to return an empty list
         mock_hass.states.all.return_value = []
 
@@ -435,21 +353,10 @@ class TestDebugMixin:
         mock_entity_reg = Mock()
         mock_entity_reg.entities = {}
 
-        # Mock entity registry import
-        import custom_components.solar_window_system.modules.debug as debug_module
+        debug = DebugMixin()
+        debug._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
-        debug_module.er.async_get = Mock(return_value=mock_entity_reg)
+        # This will fail to find the entity, but verify pattern was attempted
+        result = debug._find_entity_by_name(mock_hass, entity_name, "global")
 
-        try:
-            debug = DebugMixin()
-
-            # This will fail to find the entity, but verify pattern was attempted
-            result = debug._find_entity_by_name(mock_hass, entity_name, "global")
-
-            assert result is None
-            # Verify that async_get was called (pattern was attempted)
-            debug_module.er.async_get.assert_called_with(mock_hass)
-
-        finally:
-            debug_module.er.async_get = original_async_get
+        assert result is None

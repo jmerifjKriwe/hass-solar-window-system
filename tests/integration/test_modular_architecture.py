@@ -673,7 +673,25 @@ class TestModularArchitecture:
                 pytest.fail(f"Method {description} should work but raised: {e}")
 
         # Test that _should_shade_window_from_flows now works correctly
-        result = calculator._should_shade_window_from_flows(Mock())
+        mock_shade_request = Mock()
+        mock_shade_request.external_states = {
+            "maintenance_mode": False,
+            "weather_warning": False,
+            "outdoor_temp": 25.0,
+        }
+        mock_shade_request.window_data = {"name": "Test Window"}
+        mock_shade_request.effective_config = {
+            "thresholds": {"direct": 100.0},
+            "temperatures": {"indoor_base": 20.0, "outdoor_base": 15.0},
+            "scenario_b": {"enabled": True},
+            "scenario_c_enable": "enable",
+            "scenario_c_temp_forecast": 28.5,
+            "scenario_c_start_hour": 9,
+        }
+        mock_shade_request.scenario_b_enabled = False
+        mock_shade_request.scenario_c_enabled = False
+
+        result = calculator._should_shade_window_from_flows(mock_shade_request)
         assert isinstance(result, tuple)
         assert len(result) == 2
         assert isinstance(result[0], bool)

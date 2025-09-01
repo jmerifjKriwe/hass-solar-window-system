@@ -13,7 +13,7 @@ import logging
 import math
 from typing import Any
 
-from .flow_integration import WindowCalculationResult
+from .flow_integration import ShadeRequestFlow, WindowCalculationResult
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -761,3 +761,148 @@ class CalculationsMixin:
         if area <= 0:
             return 0.0
         return total_power / area
+
+    def apply_global_factors(
+        self, config: dict[str, Any], group_type: str, states: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Apply global sensitivity and offset factors to configuration.
+
+        Robust gegen ungültige Werte.
+        """
+        # Schwellenwerte robust casten
+        config["thresholds"]["direct"] = self._safe_float_conversion(  # type: ignore[attr-defined]
+            config["thresholds"].get("direct", 200), 200
+        )
+        config["thresholds"]["diffuse"] = self._safe_float_conversion(  # type: ignore[attr-defined]
+            config["thresholds"].get("diffuse", 150), 150
+        )
+
+        sensitivity = self._safe_float_conversion(  # type: ignore[attr-defined]
+            states.get("sensitivity", 1.0), 1.0
+        )
+        config["thresholds"]["direct"] /= sensitivity
+        config["thresholds"]["diffuse"] /= sensitivity
+
+        if group_type == "children":
+            factor = self._safe_float_conversion(  # type: ignore[attr-defined]
+                states.get("children_factor", 1.0), 1.0
+            )
+            config["thresholds"]["direct"] *= factor
+            config["thresholds"]["diffuse"] *= factor
+
+        # Temperaturen robust casten
+        config["temperatures"]["indoor_base"] = self._safe_float_conversion(  # type: ignore[attr-defined]
+            config["temperatures"].get("indoor_base", 23.0), 23.0
+        )
+        config["temperatures"]["outdoor_base"] = self._safe_float_conversion(  # type: ignore[attr-defined]
+            config["temperatures"].get("outdoor_base", 19.5), 19.5
+        )
+
+        temp_offset = self._safe_float_conversion(  # type: ignore[attr-defined]
+            states.get("temperature_offset", 0.0), 0.0
+        )
+        config["temperatures"]["indoor_base"] += temp_offset
+        config["temperatures"]["outdoor_base"] += temp_offset
+
+        return config
+
+    def _calculate_single_window(
+        self,
+        window_subentry_id: str,
+        window_data: dict[str, Any],
+        external_states: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Calculate result for a single window."""
+        try:
+            # Get effective configuration and sources
+            effective_config, effective_sources = self.get_effective_config_from_flows(  # type: ignore[attr-defined]
+                window_subentry_id
+            )
+
+            # Apply global factors
+            group_type = window_data.get("group_type", "default")
+            effective_config = self.apply_global_factors(  # type: ignore[attr-defined]
+                effective_config, group_type, external_states
+            )
+
+            # Calculate solar power with shadows
+            solar_result = self.calculate_window_solar_power_with_shadow(
+                effective_config, window_data, external_states
+            )
+
+            # Get scenario enables for this window with inheritance logic
+            (
+                scenario_b_enabled,
+                scenario_c_enabled,
+            ) = self._get_scenario_enables_from_flows(  # type: ignore[attr-defined]
+                window_subentry_id, external_states
+            )
+
+            # Check shading requirement with full scenario logic
+            shade_request = ShadeRequestFlow(
+                window_data=window_data,
+                effective_config=effective_config,
+                external_states=external_states,
+                scenario_b_enabled=scenario_b_enabled,
+                scenario_c_enabled=scenario_c_enabled,
+                solar_result=solar_result,
+            )
+            shade_required, shade_reason = self._should_shade_window_from_flows(  # type: ignore[attr-defined]
+                shade_request
+            )
+
+            # Update result
+            solar_result.shade_required = shade_required
+            solar_result.shade_reason = shade_reason
+
+            # Calculate additional metrics using the correct raw power values
+            power_raw = solar_result.power_total_raw
+            # Avoid division by zero
+            area = solar_result.area_m2 if solar_result.area_m2 > 0 else 1
+
+            # Return results in the correct structure for coordinator
+            return {
+                "name": window_data.get("name", window_subentry_id),
+                "total_power": round(solar_result.power_total, 2),
+                "total_power_direct": round(solar_result.power_direct, 2),
+                "total_power_diffuse": round(solar_result.power_diffuse, 2),
+                "total_power_raw": round(power_raw, 2),
+                "power_m2_total": round(solar_result.power_total / area, 2),
+                "power_m2_direct": round(solar_result.power_direct / area, 2),
+                "power_m2_diffuse": round(solar_result.power_diffuse / area, 2),
+                "power_m2_raw": round(power_raw / area, 2),
+                "shadow_factor": solar_result.shadow_factor,
+                "area_m2": solar_result.area_m2,
+                "is_visible": solar_result.is_visible,
+                "shade_required": solar_result.shade_required,
+                "shade_reason": solar_result.shade_reason,
+                "effective_threshold": solar_result.effective_threshold,
+            }
+        except Exception as err:
+            _LOGGER.exception("Error calculating window %s", window_subentry_id)
+            return self._get_error_window_result(  # type: ignore[attr-defined]
+                window_data, window_subentry_id, err
+            )
+
+    def _get_error_window_result(
+        self, window_data: dict[str, Any], window_subentry_id: str, err: Exception
+    ) -> dict[str, Any]:
+        """Get error result for a window calculation."""
+        return {
+            "name": window_data.get("name", window_subentry_id),
+            "total_power": 0,
+            "total_power_direct": 0,
+            "total_power_diffuse": 0,
+            "total_power_raw": 0,
+            "power_m2_total": 0,
+            "power_m2_direct": 0,
+            "power_m2_diffuse": 0,
+            "power_m2_raw": 0,
+            "shadow_factor": 0,
+            "area_m2": 0,
+            "is_visible": False,
+            "shade_required": False,
+            "shade_reason": f"Calculation error: {err}",
+            "effective_threshold": 0,
+        }

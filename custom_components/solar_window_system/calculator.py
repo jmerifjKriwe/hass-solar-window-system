@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
-import time
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.exceptions import HomeAssistantError
@@ -73,6 +72,9 @@ class SolarWindowCalculator(
             windows_config: Window-specific configuration settings
 
         """
+        # Initialize mixins first
+        super().__init__()
+
         self.hass = hass
         self.defaults = defaults_config or {}
         self.groups = groups_config or {}
@@ -81,55 +83,13 @@ class SolarWindowCalculator(
         # Flow-based attributes - will be set by __init_flow_based__
         self.global_entry = None
 
-        # Cache attributes for backward compatibility with tests
-        self._entity_cache: dict[str, Any] = {}
-        self._cache_timestamp: float | None = None
-        self._cache_ttl = 30  # 30 seconds cache for one calculation run
-
         _LOGGER.debug("Calculator initialized with %s windows.", len(self.windows))
 
     def apply_global_factors(
         self, config: dict[str, Any], group_type: str, states: dict[str, Any]
     ) -> dict[str, Any]:
-        """
-        Apply global sensitivity and offset factors to configuration.
-
-        Robust gegen ungültige Werte.
-        """
-        # Schwellenwerte robust casten
-        config["thresholds"]["direct"] = self._safe_float_conversion(
-            config["thresholds"].get("direct", 200), 200
-        )
-        config["thresholds"]["diffuse"] = self._safe_float_conversion(
-            config["thresholds"].get("diffuse", 150), 150
-        )
-
-        sensitivity = self._safe_float_conversion(states.get("sensitivity", 1.0), 1.0)
-        config["thresholds"]["direct"] /= sensitivity
-        config["thresholds"]["diffuse"] /= sensitivity
-
-        if group_type == "children":
-            factor = self._safe_float_conversion(
-                states.get("children_factor", 1.0), 1.0
-            )
-            config["thresholds"]["direct"] *= factor
-            config["thresholds"]["diffuse"] *= factor
-
-        # Temperaturen robust casten
-        config["temperatures"]["indoor_base"] = self._safe_float_conversion(
-            config["temperatures"].get("indoor_base", 23.0), 23.0
-        )
-        config["temperatures"]["outdoor_base"] = self._safe_float_conversion(
-            config["temperatures"].get("outdoor_base", 19.5), 19.5
-        )
-
-        temp_offset = self._safe_float_conversion(
-            states.get("temperature_offset", 0.0), 0.0
-        )
-        config["temperatures"]["indoor_base"] += temp_offset
-        config["temperatures"]["outdoor_base"] += temp_offset
-
-        return config
+        """Apply global sensitivity and offset factors to configuration."""
+        return super().apply_global_factors(config, group_type, states)
 
     # ==== NEW FLOW-BASED METHODS ====
 
@@ -146,22 +106,6 @@ class SolarWindowCalculator(
 
         _LOGGER.debug("Calculator initialized with flow-based configuration.")
         return instance
-
-    def get_safe_state(self, entity_id: str, default: str | float = 0) -> Any:
-        """
-        Get entity state safely with fallback to default value.
-
-        Wrapper for UtilsMixin.get_safe_state to maintain backward compatibility.
-        """
-        return super().get_safe_state(self.hass, entity_id, default)
-
-    def get_safe_attr(self, entity_id: str, attr: str, default: str | float = 0) -> Any:
-        """
-        Get entity attribute safely with fallback to default value.
-
-        Wrapper for UtilsMixin.get_safe_attr to maintain backward compatibility.
-        """
-        return super().get_safe_attr(self.hass, entity_id, attr, default)
 
     def _calculate_direct_power(
         self,
@@ -306,104 +250,12 @@ class SolarWindowCalculator(
         )
 
     def calculate_all_windows_from_flows(self) -> dict[str, Any]:
-        """
-        Calculate all window shading requirements using flow-based configuration.
-
-        Returns:
-            Dictionary with calculation results for all windows
-
-        """
-        # Clear cache at start of calculation run
-        self._entity_cache.clear()
-        self._cache_timestamp = time.time()
-
-        global_data = self._get_global_data_merged()
-
-        # Check if this coordinator should calculate windows
-        if not self._should_calculate_windows():
-            return self._get_empty_window_results()
-
-        # Get windows and check if any exist
-        windows = self._get_subentries_by_type("window")
-        if not windows:
-            _LOGGER.debug("No window subentries found; skipping calculations.")
-            return {"windows": {}}
-
-        # Get external states and perform calculations
-        external_states = self._prepare_external_states(global_data)
-
-        # Check minimum calculation conditions
-        if not self._meets_calculation_conditions(external_states, global_data):
-            return self._get_zero_window_results_for_windows(windows)
-
-        # Perform main window calculations
-        window_results = self._calculate_window_results(windows, external_states)
-
-        # Calculate group aggregations and summary
-        group_results = self._calculate_group_results(windows, window_results)
-        summary = self._calculate_summary(window_results)
-
-        # Return results in the structure expected by coordinator
-        results = {
-            "windows": window_results,
-            "groups": group_results,
-            "summary": summary,
-        }
-
-        _LOGGER.debug("calculation cycle finished")
-        return results
+        """Calculate all window shading requirements using flow-based configuration."""
+        return super().calculate_all_windows_from_flows()
 
     async def calculate_all_windows_from_flows_async(self) -> dict[str, Any]:
-        """
-        Calculate all window shading requirements using flow-based configuration.
-
-        Async version with parallel batch processing.
-
-        Returns:
-            Dictionary with calculation results for all windows
-
-        """
-        # Clear cache at start of calculation run
-        self._entity_cache.clear()
-        self._cache_timestamp = time.time()
-
-        global_data = self._get_global_data_merged()
-
-        # Check if this coordinator should calculate windows
-        if not self._should_calculate_windows():
-            return self._get_empty_window_results()
-
-        # Get windows and check if any exist
-        windows = self._get_subentries_by_type("window")
-        if not windows:
-            _LOGGER.debug("No window subentries found; skipping calculations.")
-            return {"windows": {}}
-
-        # Get external states and perform calculations
-        external_states = await self._prepare_external_states_async(global_data)
-
-        # Check minimum calculation conditions
-        if not self._meets_calculation_conditions(external_states, global_data):
-            return self._get_zero_window_results_for_windows(windows)
-
-        # Perform main window calculations with async batch processing
-        window_results = await self._calculate_window_results_async(
-            windows, external_states
-        )
-
-        # Calculate group aggregations and summary
-        group_results = self._calculate_group_results(windows, window_results)
-        summary = self._calculate_summary(window_results)
-
-        # Return results in the structure expected by coordinator
-        results = {
-            "windows": window_results,
-            "groups": group_results,
-            "summary": summary,
-        }
-
-        _LOGGER.debug("async calculation cycle finished")
-        return results
+        """Calculate all window shading requirements using flow-based configuration."""
+        return await super().calculate_all_windows_from_flows_async()
 
     def _should_calculate_windows(self) -> bool:
         """Check if this coordinator should calculate windows."""
@@ -879,50 +731,11 @@ class SolarWindowCalculator(
         """
         Get scenario B and C enables with flow-based inheritance logic.
 
-        Inheritance order: Window → Group → Global
-        Values: "inherit" | "enable" | "disable"
-
-        Returns:
-            Tuple of (scenario_b_enabled, scenario_c_enabled)
-
+        Delegates to FlowIntegrationMixin implementation.
         """
-        # Get window data
-        windows = self._get_subentries_by_type("window")
-        window_data = windows.get(window_subentry_id, {})
-
-        # Get parent group data if available
-        parent_group_id = window_data.get("parent_group_id")
-        group_data = {}
-        if parent_group_id:
-            groups = self._get_subentries_by_type("group")
-            group_data = groups.get(parent_group_id, {})
-
-        def resolve_scenario_enable(scenario_key: str, *, global_enabled: bool) -> bool:
-            """Resolve inheritance for a single scenario."""
-            # Check window level
-            window_value = window_data.get(scenario_key, "inherit")
-            if window_value in ["enable", "disable"]:
-                return window_value == "enable"
-
-            # Check group level
-            if group_data:
-                group_value = group_data.get(scenario_key, "inherit")
-                if group_value in ["enable", "disable"]:
-                    return group_value == "enable"
-
-            # Fall back to global
-            return global_enabled
-
-        scenario_b_enabled = resolve_scenario_enable(
-            "scenario_b_enable",
-            global_enabled=global_states.get("scenario_b_enabled", False),
+        return super()._get_scenario_enables_from_flows(
+            window_subentry_id, global_states
         )
-        scenario_c_enabled = resolve_scenario_enable(
-            "scenario_c_enable",
-            global_enabled=global_states.get("scenario_c_enabled", False),
-        )
-
-        return scenario_b_enabled, scenario_c_enabled
 
     def _should_shade_window_from_flows(
         self,
@@ -931,64 +744,9 @@ class SolarWindowCalculator(
         """
         Flow-based shading decision with full scenario logic.
 
-        Implements the same logic as should_shade_window() but for flow-based
-        calculation.
+        Delegates to FlowIntegrationMixin implementation.
         """
-        window_name = shade_request.window_data.get("name", "Unknown")
-
-        _LOGGER.debug("[SHADE-FLOW] ---- Shading Logic for %s ----", window_name)
-
-        # Check maintenance mode
-        if shade_request.external_states["maintenance_mode"]:
-            _LOGGER.debug("[SHADE-FLOW] Result: OFF (Maintenance mode active)")
-            return False, "Maintenance mode active"
-
-        # Check weather warning override
-        if shade_request.external_states["weather_warning"]:
-            _LOGGER.debug("[SHADE-FLOW] Result: ON (Weather warning active)")
-            return True, "Weather warning active"
-
-        # Get indoor temperature from window, group, or global config
-        try:
-
-            def is_inherit_marker(val: Any) -> bool:
-                return val in ("-1", -1, "", None, "inherit")
-
-            # 1. Window-specific - prefer new key, but accept legacy key
-            indoor_temp_entity = shade_request.window_data.get(
-                "indoor_temperature_sensor", ""
-            ) or shade_request.window_data.get("room_temp_entity", "")
-            # 2. If not found or is inheritance marker, use effective config
-            if not indoor_temp_entity or is_inherit_marker(indoor_temp_entity):
-                indoor_temp_entity = shade_request.effective_config.get(
-                    "indoor_temperature_sensor", ""
-                ) or shade_request.effective_config.get("room_temp_entity", "")
-
-            if not indoor_temp_entity:
-                _LOGGER.warning(
-                    "No room temperature sensor for window %s "
-                    "(neither window, group, nor global config)",
-                    window_name,
-                )
-                return False, "No room temperature sensor"
-
-            indoor_temp_str = super()._get_cached_entity_state(indoor_temp_entity, "0")
-            indoor_temp = float(indoor_temp_str)
-            outdoor_temp = shade_request.external_states["outdoor_temp"]
-
-            _LOGGER.debug(
-                "[SHADE-FLOW] Temps - Indoor: %.1f°C, Outdoor: %.1f°C",
-                indoor_temp,
-                outdoor_temp,
-            )
-        except (ValueError, TypeError):
-            _LOGGER.warning("Could not parse temperature for window %s", window_name)
-            return False, "Invalid temperature data"
-
-        # Main shading decision logic
-        return self._evaluate_shading_scenarios(
-            shade_request, indoor_temp, outdoor_temp
-        )
+        return super()._should_shade_window_from_flows(shade_request)
 
     def _evaluate_shading_scenarios(
         self,
@@ -1139,98 +897,8 @@ class SolarWindowCalculator(
         return False, "No shading required"
 
     def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
-        """
-        Create comprehensive debug data for a specific window.
-
-        Args:
-            window_id: The ID of the window to create debug data for
-
-        Returns:
-            Dictionary containing debug information or None if window not found
-
-        """
-        # Get window configuration
-        windows = self._get_subentries_by_type("window")
-        if window_id not in windows:
-            _LOGGER.warning("Window %s not found in configuration", window_id)
-            return None
-
-        _LOGGER.debug("Creating debug data for window: %s", window_id)
-
-        # Collect basic debug information
-        debug_data = {
-            "timestamp": datetime.now(UTC).isoformat(),
-            "window_id": window_id,
-            "configuration": self._collect_window_configuration(window_id),
-            "sensor_data": self._collect_sensor_data(),
-            "calculation_steps": {},
-            "decision_logic": {},
-            "final_result": {},
-        }
-
-        try:
-            # Get final result from full calculation
-            results = self.calculate_all_windows_from_flows()
-            window_result = results.get("windows", {}).get(window_id, {})
-
-            debug_data["final_result"] = {
-                "shade_required": window_result.get("shade_required", False),
-                "shade_reason": window_result.get("shade_reason", ""),
-                "calculation_timestamp": datetime.now(UTC).isoformat(),
-            }
-
-            # Add calculated sensor values for all levels
-            debug_data["calculated_sensors"] = {
-                "window_level": window_result,
-                "group_level": results.get("groups", {}),
-                "global_level": results.get("summary", {}),
-            }
-
-            debug_data["current_sensor_states"] = self._collect_current_sensor_states(
-                window_id
-            )
-
-            debug_data["calculation_steps"] = {
-                "full_calculation_completed": True,
-                "window_found_in_results": window_id in results.get("windows", {}),
-                "groups_calculated": len(results.get("groups", {})),
-                "summary_available": bool(results.get("summary")),
-            }
-
-            _LOGGER.debug("Debug data created successfully for window: %s", window_id)
-
-        except (ValueError, TypeError, KeyError) as err:
-            _LOGGER.exception("Error creating debug data for window %s", window_id)
-            debug_data["error"] = str(err)
-        else:
-            return debug_data
-
-        return debug_data
-
-    def _collect_window_configuration(self, window_id: str) -> dict[str, Any]:
-        """Collect all configuration data for a window."""
-        windows = self._get_subentries_by_type("window")
-        window_config = windows.get(window_id, {})
-
-        # Also collect linked group configuration if available
-        group_config = {}
-        if window_config.get("linked_group_id"):
-            groups = self._get_subentries_by_type("group")
-            group_config = groups.get(window_config["linked_group_id"], {})
-
-        # Get effective configuration (with inheritance resolved)
-        effective_config = {}
-        try:
-            effective_config, _ = self.get_effective_config_from_flows(window_id)
-        except (ValueError, KeyError) as e:
-            _LOGGER.warning("Could not get effective config for %s: %s", window_id, e)
-
-        return {
-            "window_config": window_config,
-            "group_config": group_config,
-            "global_config": self._get_global_data_merged(),
-            "effective_config": effective_config,
-        }
+        """Create comprehensive debug data for a specific window."""
+        return super().create_debug_data(window_id)
 
     def _collect_sensor_data(self) -> dict[str, Any]:
         """Collect current states of all relevant sensors."""
@@ -1357,115 +1025,22 @@ class SolarWindowCalculator(
         """
         return super()._validate_temperature_range(temp, min_temp, max_temp)
 
-    def _search_window_sensors(
-        self, sensor_states: dict[str, Any], window_name: str
-    ) -> None:
+    def _search_window_sensors(self, hass: Any, window_name: str) -> list[str]:
         """Search for window-level sensors."""
-        window_sensor_labels = [
-            "Total Power",
-            "Total Power Direct",
-            "Total Power Diffuse",
-            "Power/m² Total",
-            "Power/m² Diffuse",
-            "Power/m² Direct",
-            "Power/m² Raw",
-            "Total Power Raw",
-        ]
-
-        for label in window_sensor_labels:
-            # Use the actual entity name format from the registry
-            entity_name = label
-            sensor_states["debug_info"]["search_attempts"].append(
-                {"searched_name": entity_name, "level": "window"}
-            )
-
-            entity_id = self._find_entity_by_name(
-                entity_name, "window", window_name, None
-            )
-            if entity_id:
-                state = self.hass.states.get(entity_id)
-                key = label.lower().replace("/", "_").replace(" ", "_")
-                sensor_states["window_level"][key] = {
-                    "entity_id": entity_id,
-                    "state": state.state if state else None,
-                    "available": state is not None,
-                    "last_updated": (state.last_updated.isoformat() if state else None),
-                }
-                sensor_states["debug_info"]["entities_found"] += 1
+        # Delegate to DebugMixin implementation
+        return super()._search_window_sensors(hass, window_name)
 
     def _search_group_sensors(
-        self, sensor_states: dict[str, Any], window_id: str, groups: dict[str, Any]
-    ) -> None:
+        self, hass: Any, window_id: str, groups: dict[str, Any]
+    ) -> list[str]:
         """Search for group-level sensors."""
-        # Find group that contains this window
-        window_group_id = None
-        for group_id, group_config in groups.items():
-            if window_id in group_config.get("windows", []):
-                window_group_id = group_id
-                break
+        # Delegate to DebugMixin implementation
+        return super()._search_group_sensors(hass, window_id, groups)
 
-        if not window_group_id:
-            return
-
-        group_config = groups.get(window_group_id, {})
-        group_name = group_config.get("name", window_group_id)
-
-        group_sensor_labels = [
-            "Total Power",
-            "Total Power Direct",
-            "Total Power Diffuse",
-        ]
-
-        for label in group_sensor_labels:
-            # Use the actual entity name format from the registry
-            entity_name = label
-            sensor_states["debug_info"]["search_attempts"].append(
-                {"searched_name": entity_name, "level": "group"}
-            )
-
-            entity_id = self._find_entity_by_name(
-                entity_name, "group", None, group_name
-            )
-            if entity_id:
-                state = self.hass.states.get(entity_id)
-                key = label.lower().replace("/", "_").replace(" ", "_")
-                sensor_states["group_level"][key] = {
-                    "entity_id": entity_id,
-                    "state": state.state if state else None,
-                    "available": state is not None,
-                    "last_updated": (state.last_updated.isoformat() if state else None),
-                }
-                sensor_states["debug_info"]["entities_found"] += 1
-
-    def _search_global_sensors(self, sensor_states: dict[str, Any]) -> None:
+    def _search_global_sensors(self, hass: Any) -> list[str]:
         """Search for global-level sensors."""
-        global_sensor_labels = [
-            "Total Power",
-            "Total Power Direct",
-            "Total Power Diffuse",
-            "Windows with Shading",
-            "Window Count",
-            "Shading Count",
-        ]
-
-        for label in global_sensor_labels:
-            # Use the actual entity name format from the registry
-            entity_name = label
-            sensor_states["debug_info"]["search_attempts"].append(
-                {"searched_name": entity_name, "level": "global"}
-            )
-
-            entity_id = self._find_entity_by_name(entity_name, "global", None, None)
-            if entity_id:
-                state = self.hass.states.get(entity_id)
-                key = label.lower().replace("/", "_").replace(" ", "_")
-                sensor_states["global_level"][key] = {
-                    "entity_id": entity_id,
-                    "state": state.state if state else None,
-                    "available": state is not None,
-                    "last_updated": (state.last_updated.isoformat() if state else None),
-                }
-                sensor_states["debug_info"]["entities_found"] += 1
+        # Delegate to DebugMixin implementation
+        return super()._search_global_sensors(hass)
 
     def _find_entity_by_name(
         self,

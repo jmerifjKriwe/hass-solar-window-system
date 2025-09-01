@@ -38,6 +38,10 @@ and improve maintainability:
 
 - **CalculationsMixin**: Core solar power calculations, shadow factors, and
     geometric computations
+- **CacheMixin**: Entity state caching and short-term memory for performance
+    optimization during calculation runs
+- **ConfigMixin**: Configuration processing, parameter extraction, and numeric
+    conversions
 - **DebugMixin**: Debug data collection, entity state analysis, and logging
     utilities
 - **FlowIntegrationMixin**: Flow-based configuration management, inheritance
@@ -53,10 +57,12 @@ This modular design allows for:
 - Improved code reusability
 - Cleaner dependency management
 - Enhanced maintainability and extensibility
+- Optimized initialization through proper mixin inheritance
 
 The main `SolarWindowCalculator` class inherits from all mixins and delegates
 method calls appropriately. Each mixin is designed to be self-contained with
-minimal interdependencies.
+minimal interdependencies. The `__init__` method properly initializes all mixins
+through `super().__init__()` to ensure correct attribute setup.
 
 ## Contracts
 
@@ -88,9 +94,11 @@ minimal interdependencies.
 Utility helpers
 - `get_safe_state(entity_id, default)` and `get_safe_attr(entity_id, attr, default)`
     provide resilient state access and log missing/unavailable entities.
-- `_get_cached_entity_state(entity_id, default, label)` caches entity state
+- `_get_cached_entity_state(entity_id, default, label)` from CacheMixin caches entity state
     values for the duration of one calculation run to avoid repeated hass
-    lookups.
+    lookups and improve performance.
+- `_resolve_entity_state_with_fallback(entity_id, fallback, valid_states)` provides
+    state validation with automatic fallback to safe values.
 
 ## Data shapes
 

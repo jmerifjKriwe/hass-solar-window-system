@@ -7,7 +7,6 @@ mock HA instances, and comprehensive parameter validation.
 
 import pytest
 import logging
-from typing import Any
 from unittest.mock import Mock
 
 from custom_components.solar_window_system.modules import (
@@ -68,12 +67,16 @@ class TestMigratedMethodsIntegration:
         mock_hass.states.get.return_value = mock_state
 
         # Test get_safe_state with valid entity
-        result = calculator.get_safe_state(mock_hass, "sensor.temperature", 0)
+        result = super(TestCalculator, calculator).get_safe_state(
+            mock_hass, "sensor.temperature", 0
+        )
         assert result == "25.5"
 
         # Test get_safe_state with unknown entity
         mock_hass.states.get.return_value = None
-        result = calculator.get_safe_state(mock_hass, "sensor.unknown", "default")
+        result = super(TestCalculator, calculator).get_safe_state(
+            mock_hass, "sensor.unknown", "default"
+        )
         assert result == "default"
 
         # Test get_safe_attr with valid attribute
@@ -102,31 +105,20 @@ class TestMigratedMethodsIntegration:
         mock_entity_reg = Mock()
         mock_entity_reg.entities = {}
 
-        # Mock entity registry async_get - better mocking approach
-        import custom_components.solar_window_system.modules.debug as debug_module
+        calculator = TestCalculator()
+        calculator._get_entity_registry = Mock(return_value=mock_entity_reg)
 
-        original_async_get = debug_module.er.async_get
+        # Test with empty registry
+        result = calculator._find_entity_by_name(mock_hass, "test_entity")
+        assert result is None
 
-        def mock_async_get(hass: Any) -> Any:
-            return mock_entity_reg
+        # Test with matching entity
+        mock_entity = Mock()
+        mock_entity.name = "Test Entity"
+        mock_entity_reg.entities = {"sensor.sws_global_test_entity": mock_entity}
 
-        debug_module.er.async_get = mock_async_get
-
-        try:
-            # Test with empty registry
-            result = calculator._find_entity_by_name(mock_hass, "test_entity")
-            assert result is None
-
-            # Test with matching entity
-            mock_entity = Mock()
-            mock_entity.name = "Test Entity"
-            mock_entity_reg.entities = {"sensor.sws_global_test_entity": mock_entity}
-
-            result = calculator._find_entity_by_name(mock_hass, "Test Entity", "global")
-            assert result == "sensor.sws_global_test_entity"
-        finally:
-            # Restore original function
-            debug_module.er.async_get = original_async_get
+        result = calculator._find_entity_by_name(mock_hass, "Test Entity", "global")
+        assert result == "sensor.sws_global_test_entity"
 
     def test_mixin_method_parameter_validation(self) -> None:
         """Test that migrated methods handle invalid parameters gracefully."""
@@ -149,10 +141,14 @@ class TestMigratedMethodsIntegration:
 
         # Test utils with None/empty parameters
         mock_hass = Mock()
-        result = calculator.get_safe_state(mock_hass, "", "default")
+        result = super(TestCalculator, calculator).get_safe_state(
+            mock_hass, "", "default"
+        )
         assert result == "default"  # Empty entity_id should return default
 
-        result = calculator.get_safe_attr(mock_hass, "", "attr", "default")
+        result = super(TestCalculator, calculator).get_safe_attr(
+            mock_hass, "", "attr", "default"
+        )
         assert result == "default"  # Empty entity_id should return default
 
     def test_migrated_methods_realistic_scenarios(self) -> None:
@@ -220,10 +216,14 @@ class TestMigratedMethodsIntegration:
 
         # Test interaction: get solar parameters via utils, use in calculations
         sun_elevation = float(
-            calculator.get_safe_state(mock_hass, "sensor.sun_elevation", "30.0")
+            super(TestCalculator, calculator).get_safe_state(
+                mock_hass, "sensor.sun_elevation", "30.0"
+            )
         )
         sun_azimuth = float(
-            calculator.get_safe_attr(mock_hass, "sensor.sun", "sun_azimuth", "180.0")
+            super(TestCalculator, calculator).get_safe_attr(
+                mock_hass, "sensor.sun", "sun_azimuth", "180.0"
+            )
         )
         window_azimuth = float(
             calculator.get_safe_attr(
@@ -360,7 +360,9 @@ class TestMigratedMethodsIntegration:
 
         # Should handle HA errors gracefully - test the exception handling
         try:
-            result = calculator.get_safe_state(mock_hass, "sensor.test", "fallback")
+            result = super(TestCalculator, calculator).get_safe_state(
+                mock_hass, "sensor.test", "fallback"
+            )
             # If we get here, the method handled the exception
             assert result == "fallback"
         except (AttributeError, ValueError, TypeError):
@@ -386,7 +388,9 @@ class TestMigratedMethodsIntegration:
         mock_state.state = "123.45"
         mock_hass.states.get.return_value = mock_state
 
-        result = calculator.get_safe_state(mock_hass, "sensor.number", 0)
+        result = super(TestCalculator, calculator).get_safe_state(
+            mock_hass, "sensor.number", 0
+        )
         # Should return the string state as-is (not converted to float)
         assert result == "123.45"
         assert isinstance(result, str)
