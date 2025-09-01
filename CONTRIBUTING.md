@@ -74,4 +74,4 @@ Common prefixes used in this repository:
 Example: `chore(tests): reorganize tests (poC)`
 
 If you're unsure which prefix to use, prefer `chore` for test or tooling changes.
-Fixing linting or test errors is NEVER a fix or feat!
+Fixing linting or test errors or changing CI/CD is NEVER a fix or feat!
