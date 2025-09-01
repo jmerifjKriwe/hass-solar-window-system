@@ -90,6 +90,115 @@ VALID_THRESHOLDS = {"direct": 400, "diffuse": 200}
 VALID_TEMPERATURES = {"indoor_base": 24, "outdoor_base": 25}
 """Central test data for Solar Window System tests."""
 
+# Solar calculation test data
+VALID_SOLAR_DATA = {
+    "elevation": 45.0,
+    "azimuth": 180.0,
+    "radiation": 800.0,
+    "diffuse_radiation": 200.0,
+    "direct_radiation": 600.0,
+}
+
+VALID_SOLAR_DATA_LOW_ANGLE = {
+    "elevation": 15.0,
+    "azimuth": 180.0,
+    "radiation": 300.0,
+    "diffuse_radiation": 150.0,
+    "direct_radiation": 150.0,
+}
+
+VALID_SOLAR_DATA_HIGH_ANGLE = {
+    "elevation": 75.0,
+    "azimuth": 180.0,
+    "radiation": 950.0,
+    "diffuse_radiation": 100.0,
+    "direct_radiation": 850.0,
+}
+
+VALID_SOLAR_DATA_NIGHT = {
+    "elevation": -5.0,
+    "azimuth": 180.0,
+    "radiation": 0.0,
+    "diffuse_radiation": 0.0,
+    "direct_radiation": 0.0,
+}
+
+# Window configuration test data for calculations
+VALID_WINDOW_CALC_CONFIG = {
+    "id": "test_window",
+    "name": "Test Window",
+    "area": 2.0,  # 2m²
+    "azimuth": 180.0,  # South-facing
+    "g_value": 0.8,
+    "diffuse_factor": 0.3,
+    "tilt": 90.0,  # Vertical window
+    "shadow_depth": 0.5,
+    "shadow_offset": 0.0,
+    "thresholds": {
+        "direct": 200.0,
+        "diffuse": 100.0,
+    },
+}
+
+VALID_WINDOW_CALC_CONFIG_WITH_SHADOW = {
+    "id": "shadow_window",
+    "name": "Shadow Window",
+    "area": 3.0,
+    "azimuth": 180.0,
+    "g_value": 0.7,
+    "diffuse_factor": 0.25,
+    "tilt": 90.0,
+    "shadow_depth": 1.0,
+    "shadow_offset": 0.3,
+    "thresholds": {
+        "direct": 250.0,
+        "diffuse": 120.0,
+    },
+}
+
+# Entity states for solar sensors
+VALID_SOLAR_ENTITY_STATES = {
+    "sensor.solar_elevation": "45.0",
+    "sensor.solar_azimuth": "180.0",
+    "sensor.solar_radiation": "800.0",
+    "sensor.diffuse_radiation": "200.0",
+    "sensor.direct_radiation": "600.0",
+    "sensor.outdoor_temperature": "25.0",
+    "sensor.indoor_temperature": "22.0",
+}
+
+VALID_SOLAR_ENTITY_STATES_MISSING = {
+    "sensor.solar_elevation": "unavailable",
+    "sensor.solar_azimuth": None,
+    "sensor.solar_radiation": "0.0",
+    "sensor.outdoor_temperature": "20.0",
+    "sensor.indoor_temperature": "21.0",
+}
+
+# Expected calculation results
+EXPECTED_CALCULATION_RESULT_BASIC = {
+    "power_total": 1280.0,  # 800 * 2.0 * 0.8 = 1280W
+    "power_direct": 960.0,  # 600 * 2.0 * 0.8 = 960W
+    "power_diffuse": 320.0,  # 200 * 2.0 * 0.8 * 0.3 = 320W (diffuse_factor applied)
+    "power_direct_raw": 960.0,
+    "power_diffuse_raw": 96.0,  # 200 * 2.0 * 0.8 * 0.3 = 96W (without diffuse_factor)
+    "power_total_raw": 1056.0,  # 960 + 96
+    "shadow_factor": 1.0,  # No shadow
+    "is_visible": True,
+    "area_m2": 2.0,
+    "shade_required": True,  # Above threshold
+    "shade_reason": "Direct radiation above threshold",
+}
+
+EXPECTED_CALCULATION_RESULT_WITH_SHADOW = {
+    "power_total": 672.0,  # With shadow factor applied
+    "power_direct": 336.0,  # 600 * 3.0 * 0.7 * 0.8 = 1008W * 0.8 shadow = 806.4W
+    "power_diffuse": 157.5,  # 200 * 3.0 * 0.7 * 0.25 = 105W
+    "shadow_factor": 0.8,  # Shadow applied
+    "is_visible": True,
+    "shade_required": True,
+}
+
 VALID_GLOBAL_BASIC = {
     "window_width": "1.5",
     "window_height": "2.0",

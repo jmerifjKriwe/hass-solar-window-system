@@ -36,7 +36,59 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.entry = entry
         self.calculator: SolarWindowCalculator | None = None
+        self._last_entity_states: dict[str, Any] = {}
         self._setup_calculator()
+
+    def _get_relevant_entity_states(self) -> dict[str, Any]:
+        """Get current states of relevant entities for change detection."""
+        if not self.calculator:
+            return {}
+
+        states = {}
+        # Get states of commonly used entities
+        try:
+            # Sun position entities
+            states["sun.sun"] = self.hass.states.get("sun.sun")
+
+            # Weather entities (if configured)
+            global_data = getattr(self.calculator, "_get_global_data_merged", dict)()
+            if "solar_radiation_sensor" in global_data:
+                entity_id = global_data["solar_radiation_sensor"]
+                states[entity_id] = self.hass.states.get(entity_id)
+            if "outdoor_temperature_sensor" in global_data:
+                entity_id = global_data["outdoor_temperature_sensor"]
+                states[entity_id] = self.hass.states.get(entity_id)
+
+        except (AttributeError, KeyError, TypeError):
+            # If anything fails, return empty dict to force update
+            return {}
+
+        return states
+
+    def _has_entity_states_changed(self) -> bool:
+        """Check if relevant entity states have changed since last update."""
+        current_states = self._get_relevant_entity_states()
+
+        # If we don't have previous states, assume changed
+        if not self._last_entity_states:
+            self._last_entity_states = current_states
+            return True
+
+        # Compare current with last states
+        for entity_id, current_state in current_states.items():
+            last_state = self._last_entity_states.get(entity_id)
+
+            # If entity didn't exist before or state changed
+            if last_state != current_state:
+                self._last_entity_states = current_states
+                return True
+
+        # If new entities were added
+        if set(current_states.keys()) != set(self._last_entity_states.keys()):
+            self._last_entity_states = current_states
+            return True
+
+        return False
 
     def _setup_calculator(self) -> None:
         """Set up the calculator with flow-based configuration."""
@@ -52,6 +104,15 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not self.calculator:
             _LOGGER.warning("Calculator not initialized, skipping update")
             return {}
+
+        # Check if entity states have changed
+        if not self._has_entity_states_changed():
+            _LOGGER.debug("No entity state changes detected, skipping calculation")
+            # Return last successful data if available
+            if self.data:
+                return self.data
+            # Force update if no previous data
+            _LOGGER.debug("No previous data available, forcing update")
 
         try:
             # Use the new flow-based calculation method
@@ -113,8 +174,12 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if self.update_interval
                         else 0
                     ),
-                    "last_update": None,
-                    "next_update": None,
+                    "last_update": datetime.now(UTC).isoformat(),
+                    "next_update": (
+                        (datetime.now(UTC) + self.update_interval).isoformat()
+                        if self.update_interval
+                        else None
+                    ),
                 }
 
                 return debug_data

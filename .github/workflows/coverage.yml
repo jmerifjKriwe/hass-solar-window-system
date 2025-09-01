@@ -1,9 +1,10 @@
-name: Test Coverage
+name: Coverage
 
 on:
   push:
-    branches:
-      - "main"
+    branches: ['main']
+  pull_request:
+    branches: ['main']
 
 permissions:
   contents: write # Needed to commit the badge
@@ -12,6 +13,7 @@ jobs:
   coverage:
     name: "Calculate and update coverage badge"
     runs-on: "ubuntu-latest"
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v5

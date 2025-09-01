@@ -1,10 +1,9 @@
 ![GitHub Release](https://img.shields.io/github/v/release/jmerifjKriwe/hass-solar-window-system)
 ![Static Badge](https://img.shields.io/badge/HomeAssistant-2025.07-blue)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
-![HACS Downloads](https://img.shields.io/github/downloads/jmerifjKriwe/hass-solar-window-system/total.svg?style=for-the-badge)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/jmerifjKriwe/hass-solar-window-system/total)
 
-[![HACS+Hassfest validation](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/validate.yml)
-[![Run Tests](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/test.yml)
+[![CI Status](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/ci-release.yml/badge.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/ci-release.yml)
 [![Coverage Badge](coverage.svg)](https://github.com/jmerifjKriwe/hass-solar-window-system/actions/workflows/coverage.yml)
 
 
@@ -18,6 +17,9 @@ windows. Decisions are based on measured solar radiation, sun position,
 indoor/outdoor temperature, weather warnings and configurable scenario
 thresholds. SWS provides a flow-based UI configuration (global → groups →
 windows) and supports inheritance (window → group → global).
+
+**Latest improvements**: Enhanced modular architecture for better maintainability
+and performance, with comprehensive test coverage ensuring reliability.
 
 This README explains installation (HACS and manual), the recommended UI
 configuration order, which sensors/entities SWS creates, the three shading

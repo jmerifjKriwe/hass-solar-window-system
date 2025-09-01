@@ -1,5 +1,6 @@
 """Solar Window System integration package."""
 
+import asyncio
 from datetime import UTC, datetime
 import json
 import logging
@@ -8,11 +9,123 @@ from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import SolarWindowSystemCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Minimum length for device identifier tuples (domain, identifier)
+MIN_IDENT_TUPLE_LEN = 2
+
+
+def _write_debug_file(file_path: Path, debug_data: dict) -> None:
+    """Write debug data to file (blocking operation for thread executor)."""
+    with file_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            debug_data,
+            f,
+            indent=2,
+            ensure_ascii=False,
+            default=str,
+        )
+
+
+async def _resolve_to_subentry_id(hass: HomeAssistant, value: str) -> str:
+    """
+    Resolve a provided value to a subentry window id.
+
+    Accepts raw subentry ids (returned unchanged), entity ids, or device ids.
+    Resolves entity -> device -> device.identifiers and returns the
+    subentry_id (without 'window_' prefix) for this domain.
+    """
+    if not value:
+        return value
+
+    # Handle direct subentry id cases first
+    if isinstance(value, str):
+        if not value.startswith("window_"):
+            return value
+        return value[7:]  # Remove 'window_' prefix
+
+    # Try to resolve as device id or entity id
+    dev_reg = dr.async_get(hass)
+    subentry_id = await _extract_subentry_from_device(dev_reg, value)
+    if subentry_id:
+        return subentry_id
+
+    # Try to resolve as entity id
+    if isinstance(value, str) and "." in value:
+        ent_reg = er.async_get(hass)
+        ent = ent_reg.async_get(value)
+        if ent and ent.device_id:
+            subentry_id = await _extract_subentry_from_device(dev_reg, ent.device_id)
+            if subentry_id:
+                return subentry_id
+
+    return value
+
+
+async def _extract_subentry_from_device(
+    dev_reg: dr.DeviceRegistry, device_id: str
+) -> str | None:
+    """Extract subentry id from device identifiers."""
+    dev = dev_reg.devices.get(device_id)
+    if not dev or not dev.identifiers:
+        return None
+
+    for ident in dev.identifiers:
+        if (
+            isinstance(ident, tuple)
+            and len(ident) >= MIN_IDENT_TUPLE_LEN
+            and ident[0] == DOMAIN
+        ):
+            candidate = ident[1]
+            if isinstance(candidate, str) and candidate.startswith("window_"):
+                return candidate[7:]  # Remove 'window_' prefix
+
+    return None
+
+
+def _get_integration_version() -> str:
+    """Get the integration version from manifest.json."""
+    try:
+        manifest_path = Path(__file__).parent / "manifest.json"
+        with manifest_path.open("r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        return manifest.get("version", "unknown")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        _LOGGER.warning("Could not read version from manifest.json")
+        return "unknown"
+
+
+async def _async_get_integration_version(hass: HomeAssistant) -> str:
+    """Get the integration version from manifest.json (async version)."""
+    # Check if version is already cached
+    if DOMAIN in hass.data and "integration_version" in hass.data[DOMAIN]:
+        return hass.data[DOMAIN]["integration_version"]
+
+    # Read version from manifest.json using thread pool to avoid blocking
+    def _read_version() -> str:
+        try:
+            manifest_path = Path(__file__).parent / "manifest.json"
+            with manifest_path.open("r", encoding="utf-8") as f:
+                manifest = json.load(f)
+            return manifest.get("version", "unknown")
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            _LOGGER.warning("Could not read version from manifest.json")
+            return "unknown"
+
+    # Run the blocking I/O in a thread pool
+    loop = asyncio.get_event_loop()
+    version = await loop.run_in_executor(None, _read_version)
+
+    # Cache the version
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["integration_version"] = version
+
+    return version
 
 
 def _register_services(hass: HomeAssistant) -> None:
@@ -54,6 +167,9 @@ def _register_services(hass: HomeAssistant) -> None:
                 _LOGGER.error("Window ID is required for debug calculation")
                 return
 
+            # Resolve the window_id to a proper subentry id
+            resolved_window_id = await _resolve_to_subentry_id(hass, window_id)
+
             # Find the coordinator for this window
             for config_entry in hass.config_entries.async_entries(DOMAIN):
                 if config_entry.data.get("entry_type") == "window_configs":
@@ -62,27 +178,25 @@ def _register_services(hass: HomeAssistant) -> None:
                     ]
 
                     # Create debug data
-                    debug_data = await coordinator.create_debug_data(window_id)
+                    debug_data = await coordinator.create_debug_data(resolved_window_id)
 
                     if debug_data:
                         # Generate filename if not provided
                         if not filename:
                             timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                            filename = f"debug_{window_id}_{timestamp}.json"
+                            filename = f"debug_{resolved_window_id}_{timestamp}.json"
 
                         # Save to config directory
                         config_dir = Path(hass.config.config_dir)
                         file_path = config_dir / filename
 
                         try:
-                            with file_path.open("w", encoding="utf-8") as f:
-                                json.dump(
-                                    debug_data,
-                                    f,
-                                    indent=2,
-                                    ensure_ascii=False,
-                                    default=str,
-                                )
+                            # Write debug data to file using thread executor
+                            # to avoid blocking the event loop
+                            loop = asyncio.get_event_loop()
+                            await loop.run_in_executor(
+                                None, _write_debug_file, file_path, debug_data
+                            )
 
                             _LOGGER.info("Debug file created: %s", file_path)
 
@@ -102,7 +216,8 @@ def _register_services(hass: HomeAssistant) -> None:
 
                     else:
                         _LOGGER.error(
-                            "Could not create debug data for window: %s", window_id
+                            "Could not create debug data for window: %s",
+                            resolved_window_id,
                         )
 
         hass.services.async_register(
@@ -134,12 +249,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create device for global config
     if entry.title == "Solar Window System":
         _LOGGER.debug("Creating device for global config")
+        version = await _async_get_integration_version(hass)
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, "global_config")},
             name="Solar Window System",
             manufacturer="SolarWindowSystem",
             model="GlobalConfig",
+            sw_version=version,
         )
 
         # Set up all platforms for this entry
@@ -226,29 +343,34 @@ async def _handle_debug_calculation_service(
         _LOGGER.error("Window ID is required for debug calculation")
         return
 
+    # Resolve the window_id to a proper subentry id
+    resolved_window_id = await _resolve_to_subentry_id(hass, window_id)
+
     # Find the coordinator for this window
     for config_entry in hass.config_entries.async_entries(DOMAIN):
         if config_entry.data.get("entry_type") == "window_configs":
             coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
             # Create debug data
-            debug_data = await coordinator.create_debug_data(window_id)
+            debug_data = await coordinator.create_debug_data(resolved_window_id)
 
             if debug_data:
                 # Generate filename if not provided
                 if not filename:
                     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                    filename = f"debug_{window_id}_{timestamp}.json"
+                    filename = f"debug_{resolved_window_id}_{timestamp}.json"
 
                 # Save to config directory
                 config_dir = Path(hass.config.config_dir)
                 file_path = config_dir / filename
 
                 try:
-                    with file_path.open("w", encoding="utf-8") as f:
-                        json.dump(
-                            debug_data, f, indent=2, ensure_ascii=False, default=str
-                        )
+                    # Write debug data to file using thread executor
+                    # to avoid blocking the event loop
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(
+                        None, _write_debug_file, file_path, debug_data
+                    )
 
                     _LOGGER.info("Debug file created: %s", file_path)
 
@@ -265,7 +387,9 @@ async def _handle_debug_calculation_service(
                 except OSError:
                     _LOGGER.exception("Failed to create debug file")
             else:
-                _LOGGER.error("Could not create debug data for window: %s", window_id)
+                _LOGGER.error(
+                    "Could not create debug data for window: %s", resolved_window_id
+                )
 
 
 @callback

@@ -6,11 +6,13 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, ENTITY_PREFIX_GLOBAL, GLOBAL_CONFIG_ENTITIES
+from .global_config_entity import GlobalConfigEntityBase
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -236,7 +238,7 @@ async def _get_temperature_sensor_entities(hass: HomeAssistant) -> list[str]:
     return temperature_entities
 
 
-class GlobalConfigSensor(RestoreEntity, SensorEntity):
+class GlobalConfigSensor(GlobalConfigEntityBase, RestoreEntity, SensorEntity):
     """Sensor entity for global configuration values."""
 
     def __init__(
@@ -246,28 +248,21 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         device: dr.DeviceEntry,
     ) -> None:
         """Initialize the sensor."""
-        self._entity_key = entity_key
-        self._config = config
-        self._device = device
-        # Stable IDs to yield sensor.sws_global_* entity_ids
-        self._attr_unique_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        self._attr_suggested_object_id = f"{ENTITY_PREFIX_GLOBAL}_{entity_key}"
-        self._attr_name = f"SWS_GLOBAL {config['name']}"
-        self._attr_has_entity_name = False
+        # Initialize base class first
+        super().__init__(entity_key, config, device)
 
-        self._attr_device_info = {
-            "identifiers": device.identifiers,
-            "name": device.name,
-            "manufacturer": device.manufacturer,
-            "model": device.model,
-        }
+        # Set sensor-specific attributes
         self._attr_unit_of_measurement = config.get("unit")
-        self._attr_icon = config.get("icon")
         self._state = config["default"]
+
+        # Set entity category for diagnostic sensors
+        if config.get("category") == "diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_added_to_hass(self) -> None:
         """Call when entity is added to hass and restore previous state if available."""
         await super().async_added_to_hass()
+
         # Restore previous state if available
         restored_state = await self.async_get_last_state()
         if restored_state is not None:
@@ -276,15 +271,7 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
                 self._state = value
             except (ValueError, TypeError):
                 pass
-        # Set friendly name to config['name']
-        entity_registry = er.async_get(self.hass)
-        if self.entity_id in entity_registry.entities:
-            ent_reg_entry = entity_registry.entities[self.entity_id]
-            new_friendly_name = self._config.get("name")
-            if ent_reg_entry.original_name != new_friendly_name:
-                entity_registry.async_update_entity(
-                    self.entity_id, name=new_friendly_name
-                )
+
         # For aggregated sensors, listen to coordinator updates
         sensor_keys = [
             "total_power",
@@ -307,9 +294,10 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         # Register listeners for all coordinators
         domain_data = self.hass.data.get(DOMAIN, {})
         for entry_data in domain_data.values():
-            coordinator = entry_data.get("coordinator")
-            if coordinator:
-                coordinator.async_add_listener(_coordinator_updated)
+            if isinstance(entry_data, dict):
+                coordinator = entry_data.get("coordinator")
+                if coordinator:
+                    coordinator.async_add_listener(_coordinator_updated)
 
     @property
     def state(self) -> Any:  # type: ignore[override]
@@ -323,6 +311,13 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         ]
         if self._entity_key in sensor_keys:
             return self._get_aggregated_value()
+
+        # Special handling for version sensor
+        if self._entity_key == "integration_version":
+            # Get cached version from hass.data to avoid blocking I/O
+            domain_data = self.hass.data.get(DOMAIN, {})
+            return domain_data.get("integration_version", "unknown")
+
         return self._state
 
     def _get_aggregated_value(self) -> float | int:
@@ -336,6 +331,10 @@ class GlobalConfigSensor(RestoreEntity, SensorEntity):
         domain_data = self.hass.data.get(DOMAIN, {})
 
         for entry_data in domain_data.values():
+            # Skip non-entry data like "integration_version"
+            if not isinstance(entry_data, dict) or "coordinator" not in entry_data:
+                continue
+
             coordinator = entry_data.get("coordinator")
             if coordinator and coordinator.data:
                 # Aggregate from summary data

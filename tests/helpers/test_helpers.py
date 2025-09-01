@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from custom_components.solar_window_system.helpers import (
+from custom_components.solar_window_system.global_config_entity import (
     get_temperature_sensor_entities,
 )
 from homeassistant.core import HomeAssistant
@@ -61,7 +61,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -100,7 +100,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -145,7 +145,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -188,7 +188,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -234,7 +234,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -289,7 +289,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -332,7 +332,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(
@@ -370,7 +370,7 @@ class TestGetTemperatureSensorEntities:
 
         with (
             patch(
-                "custom_components.solar_window_system.helpers.er.async_get",
+                "custom_components.solar_window_system.global_config_entity.er.async_get",
                 return_value=mock_entity_registry,
             ),
             patch.object(mock_hass.states, "get", return_value=None),

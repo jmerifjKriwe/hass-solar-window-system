@@ -17,12 +17,15 @@ solar_window_system_debug_calculation:
   description: Create a comprehensive JSON debug file with all input data, configuration hierarchy, and calculation steps for a specific window in the Solar Window System integration.
   fields:
     window_id:
-      name: Window ID
-      description: The window ID to debug (required).
+      name: Window
+      description: Select the window device to debug (required). Choose the
+        device that represents the window (recommended) so the integration can
+        resolve the subentry ID automatically.
       required: true
       example: "window_1"
       selector:
-        text:
+        device:
+          integration: solar_window_system
     filename:
       name: Filename
       description: Optional custom filename. If not provided, uses timestamp-based name.

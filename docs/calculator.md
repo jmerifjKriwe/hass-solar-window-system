@@ -12,6 +12,7 @@ Checklist (what this page provides)
     factor
 - Detailed scenario logic (A/B/C) and inheritance rules
 - Performance & caching notes and recommended unit tests
+- **Modular architecture overview with mixin responsibilities**
 
 Audience: this is written for developers who want to understand or extend
 the calculation logic, add tests, or debug shading decisions.
@@ -29,6 +30,39 @@ the calculation logic, add tests, or debug shading decisions.
         when using the UI-based flow entries.
     - Main calculation API: `calculate_all_windows_from_flows()` returns a
         dict with `windows`, `groups` and `summary` ready for the coordinator.
+
+### Modular Architecture (Mixins)
+
+The calculator uses a modular architecture based on mixins to separate concerns
+and improve maintainability:
+
+- **CalculationsMixin**: Core solar power calculations, shadow factors, and
+    geometric computations
+- **CacheMixin**: Entity state caching and short-term memory for performance
+    optimization during calculation runs
+- **ConfigMixin**: Configuration processing, parameter extraction, and numeric
+    conversions
+- **DebugMixin**: Debug data collection, entity state analysis, and logging
+    utilities
+- **FlowIntegrationMixin**: Flow-based configuration management, inheritance
+    resolution, and subentry handling
+- **ShadingMixin**: Shading decision logic, scenario evaluation (A/B/C), and
+    threshold comparisons
+- **UtilsMixin**: Utility functions for safe state access, temperature
+    validation, and numeric conversions
+
+This modular design allows for:
+- Better separation of concerns
+- Easier testing of individual components
+- Improved code reusability
+- Cleaner dependency management
+- Enhanced maintainability and extensibility
+- Optimized initialization through proper mixin inheritance
+
+The main `SolarWindowCalculator` class inherits from all mixins and delegates
+method calls appropriately. Each mixin is designed to be self-contained with
+minimal interdependencies. The `__init__` method properly initializes all mixins
+through `super().__init__()` to ensure correct attribute setup.
 
 ## Contracts
 
@@ -60,9 +94,11 @@ the calculation logic, add tests, or debug shading decisions.
 Utility helpers
 - `get_safe_state(entity_id, default)` and `get_safe_attr(entity_id, attr, default)`
     provide resilient state access and log missing/unavailable entities.
-- `_get_cached_entity_state(entity_id, default, label)` caches entity state
+- `_get_cached_entity_state(entity_id, default, label)` from CacheMixin caches entity state
     values for the duration of one calculation run to avoid repeated hass
-    lookups.
+    lookups and improve performance.
+- `_resolve_entity_state_with_fallback(entity_id, fallback, valid_states)` provides
+    state validation with automatic fallback to safe values.
 
 ## Data shapes
 
@@ -248,8 +284,3 @@ Insert debug logs or run unit tests that assert intermediate values (effective_c
 - Default physical values: g_value=0.5, frame_width=0.125 m, diffuse_factor=0.15, tilt=90°
 - Cache TTL per calculation run: 30 seconds
 
-If you want I can now:
-- produce a small test module exercising the shadow factor and scenario
-    decisions, or
-- add a small tracing helper that writes the `effective_config`, `solar_result`
-    and `shade_reason` to the log with a single call for easier debugging.

@@ -3,13 +3,18 @@
 
 from __future__ import annotations
 
+import logging
 import types
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, Mock, patch
 
 from custom_components.solar_window_system.calculator import SolarWindowCalculator
 from custom_components.solar_window_system.coordinator import (
     SolarWindowSystemCoordinator,
 )
+
+if TYPE_CHECKING:
+    import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from tests.helpers.test_framework import IntegrationTestCase
 
@@ -23,20 +28,28 @@ class TestCoordinator(IntegrationTestCase):
         window_entry = Mock()
         window_entry.data = {"entry_type": "window_configs"}
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+        # Mock SolarWindowCalculator.from_flows to prevent exceptions
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-        if coordinator.hass != fake_hass_magicmock:
-            msg = "Coordinator hass should match fake_hass_magicmock"
-            raise AssertionError(msg)
-        if coordinator.entry != window_entry:
-            msg = "Coordinator entry should match window_entry"
-            raise AssertionError(msg)
-        if coordinator.calculator is None:
-            msg = "Coordinator calculator should not be None"
-            raise AssertionError(msg)
-        if not isinstance(coordinator.calculator, SolarWindowCalculator):
-            msg = "Coordinator calculator should be SolarWindowCalculator instance"
-            raise AssertionError(msg)
+            if coordinator.hass != fake_hass_magicmock:
+                msg = "Coordinator hass should match fake_hass_magicmock"
+                raise AssertionError(msg)
+            if coordinator.entry != window_entry:
+                msg = "Coordinator entry should match window_entry"
+                raise AssertionError(msg)
+            if coordinator.calculator is None:
+                msg = "Coordinator calculator should not be None"
+                raise AssertionError(msg)
+            if not isinstance(coordinator.calculator, SolarWindowCalculator):
+                msg = "Coordinator calculator should be SolarWindowCalculator instance"
+                raise AssertionError(msg)
 
     async def test_coordinator_update_data(self) -> None:
         """Test coordinator update data."""
@@ -87,30 +100,35 @@ class TestCoordinator(IntegrationTestCase):
         # Mock the calculator methods that are called during update
         with patch.object(
             SolarWindowCalculator,
-            "calculate_all_windows_from_flows",
-            return_value={
-                "summary": {
-                    "total_power": 1000,
-                    "window_count": 2,
-                    "shading_count": 1,
-                    "calculation_time": 0.1,
-                },
-                "windows": {
-                    "Living Room Window": {"requires_shading": True},
-                    "Bedroom Window": {"requires_shading": False},
-                },
-            },
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
         ):
-            coordinator = SolarWindowSystemCoordinator(
-                fake_hass_magicmock, window_entry, 1
-            )
+            with patch.object(
+                SolarWindowCalculator,
+                "calculate_all_windows_from_flows",
+                return_value={
+                    "summary": {
+                        "total_power": 1000,
+                        "window_count": 2,
+                        "shading_count": 1,
+                        "calculation_time": 0.1,
+                    },
+                    "windows": {
+                        "Living Room Window": {"requires_shading": True},
+                        "Bedroom Window": {"requires_shading": False},
+                    },
+                },
+            ):
+                coordinator = SolarWindowSystemCoordinator(
+                    fake_hass_magicmock, window_entry, 1
+                )
 
-            # Perform first update
-            await coordinator.async_refresh()
+                # Perform first update
+                await coordinator.async_refresh()
 
-            if coordinator.data is None:
-                msg = "Coordinator data should not be None after refresh"
-                raise AssertionError(msg)
+                if coordinator.data is None:
+                    msg = "Coordinator data should not be None after refresh"
+                    raise AssertionError(msg)
         # Accept either legacy or new structure
         if "summary" in coordinator.data:
             summary = coordinator.data["summary"]
@@ -150,26 +168,33 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-
-        # Perform first update
         with patch.object(
             SolarWindowCalculator,
-            "calculate_all_windows_from_flows",
-            return_value={
-                "summary": {
-                    "total_power": 1000,
-                    "window_count": 2,
-                    "shading_count": 1,
-                    "calculation_time": 0.1,
-                },
-                "windows": {
-                    "Living Room Window": {"requires_shading": True},
-                    "Bedroom Window": {"requires_shading": False},
-                },
-            },
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
         ):
-            await coordinator.async_refresh()
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
+
+            # Perform first update
+            with patch.object(
+                SolarWindowCalculator,
+                "calculate_all_windows_from_flows",
+                return_value={
+                    "summary": {
+                        "total_power": 1000,
+                        "window_count": 2,
+                        "shading_count": 1,
+                        "calculation_time": 0.1,
+                    },
+                    "windows": {
+                        "Living Room Window": {"requires_shading": True},
+                        "Bedroom Window": {"requires_shading": False},
+                    },
+                },
+            ):
+                await coordinator.async_refresh()
 
         # Test window data access methods
         living_room_shading = coordinator.get_window_shading_status(
@@ -205,48 +230,55 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-
-        # Perform first update
         with patch.object(
             SolarWindowCalculator,
-            "calculate_all_windows_from_flows",
-            return_value={
-                "summary": {
-                    "total_power": 1000,
-                    "window_count": 2,
-                    "shading_count": 1,
-                    "calculation_time": 0.1,
-                },
-                "windows": {
-                    "Living Room Window": {"requires_shading": True},
-                    "Bedroom Window": {"requires_shading": False},
-                },
-            },
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
         ):
-            await coordinator.async_refresh()
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-        # Reconfigure
-        await coordinator.async_reconfigure()
+            # Perform first update
+            with patch.object(
+                SolarWindowCalculator,
+                "calculate_all_windows_from_flows",
+                return_value={
+                    "summary": {
+                        "total_power": 1000,
+                        "window_count": 2,
+                        "shading_count": 1,
+                        "calculation_time": 0.1,
+                    },
+                    "windows": {
+                        "Living Room Window": {"requires_shading": True},
+                        "Bedroom Window": {"requires_shading": False},
+                    },
+                },
+            ):
+                await coordinator.async_refresh()
 
-        # Data should be refreshed
-        with patch.object(
-            SolarWindowCalculator,
-            "calculate_all_windows_from_flows",
-            return_value={
-                "summary": {
-                    "total_power": 1000,
-                    "window_count": 2,
-                    "shading_count": 1,
-                    "calculation_time": 0.1,
+            # Reconfigure
+            await coordinator.async_reconfigure()
+
+            # Data should be refreshed
+            with patch.object(
+                SolarWindowCalculator,
+                "calculate_all_windows_from_flows",
+                return_value={
+                    "summary": {
+                        "total_power": 1000,
+                        "window_count": 2,
+                        "shading_count": 1,
+                        "calculation_time": 0.1,
+                    },
+                    "windows": {
+                        "Living Room Window": {"requires_shading": True},
+                        "Bedroom Window": {"requires_shading": False},
+                    },
                 },
-                "windows": {
-                    "Living Room Window": {"requires_shading": True},
-                    "Bedroom Window": {"requires_shading": False},
-                },
-            },
-        ):
-            await coordinator.async_refresh()
+            ):
+                await coordinator.async_refresh()
         if coordinator.data is None:
             msg = "Coordinator data should not be None after reconfigure"
             raise AssertionError(msg)
@@ -256,7 +288,9 @@ class TestCoordinator(IntegrationTestCase):
             msg = "Coordinator calculator should not be None after reconfigure"
             raise AssertionError(msg)
 
-    def test_coordinator_with_missing_calculator(self) -> None:
+    def test_coordinator_with_missing_calculator(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test coordinator with missing calculator."""
         fake_hass_magicmock = Mock()
         window_entry = Mock()
@@ -267,16 +301,26 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, entry, 1)
+        # Mock SolarWindowCalculator.from_flows to raise exception (expected behavior)
+        with caplog.at_level(logging.ERROR):
+            with patch.object(
+                SolarWindowCalculator,
+                "from_flows",
+                side_effect=ValueError("Test exception"),
+            ):
+                # The coordinator should handle the exception gracefully
+                coordinator = SolarWindowSystemCoordinator(
+                    fake_hass_magicmock, entry, 1
+                )
 
-        # Calculator should be None if initialization fails
-        # But coordinator should still be created
-        if coordinator.hass != fake_hass_magicmock:
-            msg = "Coordinator hass should match fake_hass_magicmock"
-            raise AssertionError(msg)
-        if coordinator.entry != entry:
-            msg = "Coordinator entry should match window_entry"
-            raise AssertionError(msg)
+                # Calculator should be None if initialization fails
+                # But coordinator should still be created
+                assert coordinator.hass == fake_hass_magicmock
+                assert coordinator.entry == entry
+                assert coordinator.calculator is None
+
+                # Verify that the exception was logged
+                assert "Failed to initialize calculator" in caplog.text
 
     async def test_flow_based_calculation_called(self) -> None:
         """Test flow based calculation called."""
@@ -287,42 +331,55 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-
-        # Mock the calculate_all_windows_from_flows method to verify it's called
-        if coordinator.calculator is not None:
-            coordinator.calculator.calculate_all_windows_from_flows = MagicMock(
-                return_value={
-                    "summary": {
-                        "total_power": 1000,
-                        "window_count": 2,
-                        "shading_count": 1,
-                    },
-                    "windows": {
-                        "Living Room Window": {"requires_shading": True},
-                        "Bedroom Window": {"requires_shading": False},
-                    },
-                }
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
             )
 
-            # Perform update
-            await coordinator.async_refresh()
+            # Mock the calculate_all_windows_from_flows method to verify it's called
+            if coordinator.calculator is not None:
+                coordinator.calculator.calculate_all_windows_from_flows = MagicMock(
+                    return_value={
+                        "summary": {
+                            "total_power": 1000,
+                            "window_count": 2,
+                            "shading_count": 1,
+                        },
+                        "windows": {
+                            "Living Room Window": {"requires_shading": True},
+                            "Bedroom Window": {"requires_shading": False},
+                        },
+                    }
+                )
 
-            # Verify the flow-based method was called
-            coordinator.calculator.calculate_all_windows_from_flows.assert_called_once()
+                # Perform update
+                await coordinator.async_refresh()
 
-            # Verify data is correct
-            if coordinator.data["summary"]["window_count"] != 2:
-                msg = "Window count should be 2"
-                raise AssertionError(msg)
-            if coordinator.get_window_shading_status("Living Room Window") is not True:
-                msg = "Living room should require shading"
-                raise AssertionError(msg)
-            if coordinator.get_window_shading_status("Bedroom Window") is not False:
-                msg = "Bedroom should not require shading"
-                raise AssertionError(msg)
+                # Verify the flow-based method was called
+                coordinator.calculator.calculate_all_windows_from_flows.assert_called_once()
 
-    async def test_coordinator_setup_calculator_exception(self) -> None:
+                # Verify data is correct
+                if coordinator.data["summary"]["window_count"] != 2:
+                    msg = "Window count should be 2"
+                    raise AssertionError(msg)
+                living_room_status = coordinator.get_window_shading_status(
+                    "Living Room Window"
+                )
+                if living_room_status is not True:
+                    msg = "Living room should require shading"
+                    raise AssertionError(msg)
+                bedroom_status = coordinator.get_window_shading_status("Bedroom Window")
+                if bedroom_status is not False:
+                    msg = "Bedroom should not require shading"
+                    raise AssertionError(msg)
+
+    async def test_coordinator_setup_calculator_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test coordinator setup calculator exception handling."""
         fake_hass_magicmock = Mock()
         window_entry = Mock()
@@ -332,19 +389,20 @@ class TestCoordinator(IntegrationTestCase):
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
         # Mock SolarWindowCalculator.from_flows to raise an exception
-        with patch.object(
-            SolarWindowCalculator,
-            "from_flows",
-            side_effect=ValueError("Test exception"),
-        ):
-            coordinator = SolarWindowSystemCoordinator(
-                fake_hass_magicmock, window_entry, 1
-            )
+        with caplog.at_level(logging.ERROR):
+            with patch.object(
+                SolarWindowCalculator,
+                "from_flows",
+                side_effect=ValueError("Test exception"),
+            ):
+                coordinator = SolarWindowSystemCoordinator(
+                    fake_hass_magicmock, window_entry, 1
+                )
 
-            # Calculator should be None after exception
-            if coordinator.calculator is not None:
-                msg = "Coordinator calculator should be None after exception"
-                raise AssertionError(msg)
+                # Calculator should be None after exception
+                if coordinator.calculator is not None:
+                    msg = "Coordinator calculator should be None after exception"
+                    raise AssertionError(msg)
 
     async def test_async_update_data_no_calculator(self) -> None:
         """Test _async_update_data when calculator is None."""
@@ -355,19 +413,28 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-        # Force calculator to be None
-        coordinator.calculator = None
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
+            # Force calculator to be None
+            coordinator.calculator = None
 
-        # Call _async_update_data
-        result = await coordinator._async_update_data()
+            # Call _async_update_data
+            result = await coordinator._async_update_data()
 
-        # Should return empty dict
-        if result != {}:
-            msg = "Should return empty dict when calculator is None"
-            raise AssertionError(msg)
+            # Should return empty dict
+            if result != {}:
+                msg = "Should return empty dict when calculator is None"
+                raise AssertionError(msg)
 
-    async def test_async_update_data_calculation_exception(self) -> None:
+    async def test_async_update_data_calculation_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test _async_update_data when calculation raises exception."""
         fake_hass_magicmock = Mock()
         window_entry = Mock()
@@ -379,18 +446,19 @@ class TestCoordinator(IntegrationTestCase):
         coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
         # Mock calculate_all_windows_from_flows to raise an exception
-        with patch.object(
-            SolarWindowCalculator,
-            "calculate_all_windows_from_flows",
-            side_effect=ValueError("Calculation error"),
-        ):
-            # Should raise UpdateFailed
-            try:
-                await coordinator._async_update_data()
-                msg = "Should have raised UpdateFailed"
-                raise AssertionError(msg)
-            except UpdateFailed:
-                pass  # Expected
+        with caplog.at_level(logging.ERROR):
+            with patch.object(
+                SolarWindowCalculator,
+                "calculate_all_windows_from_flows",
+                side_effect=ValueError("Calculation error"),
+            ):
+                # Should raise UpdateFailed
+                try:
+                    await coordinator._async_update_data()
+                    msg = "Should have raised UpdateFailed"
+                    raise AssertionError(msg)
+                except UpdateFailed:
+                    pass  # Expected
 
     async def test_async_update_data_missing_keys(self) -> None:
         """Test _async_update_data when result is missing windows/groups keys."""
@@ -401,29 +469,36 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-
-        # Mock calculate_all_windows_from_flows to return incomplete result
         with patch.object(
             SolarWindowCalculator,
-            "calculate_all_windows_from_flows",
-            return_value={"summary": {"total_power": 1000}},
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
         ):
-            result = await coordinator._async_update_data()
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-            # Should have windows and groups keys added
-            if "windows" not in result:
-                msg = "Should have windows key added"
-                raise AssertionError(msg)
-            if "groups" not in result:
-                msg = "Should have groups key added"
-                raise AssertionError(msg)
-            if result["windows"] != {}:
-                msg = "Windows should be empty dict"
-                raise AssertionError(msg)
-            if result["groups"] != {}:
-                msg = "Groups should be empty dict"
-                raise AssertionError(msg)
+            # Mock calculate_all_windows_from_flows to return incomplete result
+            with patch.object(
+                SolarWindowCalculator,
+                "calculate_all_windows_from_flows",
+                return_value={"summary": {"total_power": 1000}},
+            ):
+                result = await coordinator._async_update_data()
+
+                # Should have windows and groups keys added
+                if "windows" not in result:
+                    msg = "Should have windows key added"
+                    raise AssertionError(msg)
+                if "groups" not in result:
+                    msg = "Should have groups key added"
+                    raise AssertionError(msg)
+                if result["windows"] != {}:
+                    msg = "Windows should be empty dict"
+                    raise AssertionError(msg)
+                if result["groups"] != {}:
+                    msg = "Groups should be empty dict"
+                    raise AssertionError(msg)
 
     async def test_get_window_shading_status_no_data(self) -> None:
         """Test get_window_shading_status when coordinator has no data."""
@@ -434,15 +509,22 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-        # Data is None initially
-        result = coordinator.get_window_shading_status("test_window")
+            # Data is None initially
+            result = coordinator.get_window_shading_status("test_window")
 
-        # Should return False
-        if result is not False:
-            msg = "Should return False when no data"
-            raise AssertionError(msg)
+            # Should return False
+            if result is not False:
+                msg = "Should return False when no data"
+                raise AssertionError(msg)
 
     async def test_get_window_data_no_data(self) -> None:
         """Test get_window_data when coordinator has no data."""
@@ -453,15 +535,22 @@ class TestCoordinator(IntegrationTestCase):
         # Mock config_entries.async_entries to return empty list
         fake_hass_magicmock.config_entries.async_entries.return_value = []
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-        # Data is None initially
-        result = coordinator.get_window_data("test_window")
+            # Data is None initially
+            result = coordinator.get_window_data("test_window")
 
-        # Should return empty dict
-        if result != {}:
-            msg = "Should return empty dict when no data"
-            raise AssertionError(msg)
+            # Should return empty dict
+            if result != {}:
+                msg = "Should return empty dict when no data"
+                raise AssertionError(msg)
 
     async def test_create_debug_data_no_calculator(self) -> None:
         """Test create_debug_data when calculator is not initialized."""
@@ -469,22 +558,31 @@ class TestCoordinator(IntegrationTestCase):
         window_entry = Mock()
         window_entry.data = {"entry_type": "window_configs"}
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-        # Set calculator to None to simulate initialization failure
-        coordinator.calculator = None
+        with patch.object(
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
+            # Set calculator to None to simulate initialization failure
+            coordinator.calculator = None
 
-        with patch(
-            "custom_components.solar_window_system.coordinator._LOGGER"
-        ) as mock_logger:
-            result = await coordinator.create_debug_data("test_window")
+            with patch(
+                "custom_components.solar_window_system.coordinator._LOGGER"
+            ) as mock_logger:
+                result = await coordinator.create_debug_data("test_window")
 
-            # Should return None
-            if result is not None:
-                msg = "Should return None when calculator is not initialized"
-                raise AssertionError(msg)
+                # Should return None
+                if result is not None:
+                    msg = "Should return None when calculator is not initialized"
+                    raise AssertionError(msg)
 
-            # Should log warning
-            mock_logger.warning.assert_called_once_with("Calculator not initialized")
+                # Should log warning
+                mock_logger.warning.assert_called_once_with(
+                    "Calculator not initialized"
+                )
 
     async def test_create_debug_data_success(self) -> None:
         """Test create_debug_data with successful execution."""
@@ -493,39 +591,48 @@ class TestCoordinator(IntegrationTestCase):
         window_entry.data = {"entry_type": "window_configs"}
         window_entry.entry_id = "test_entry_id"
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-
-        # Mock calculator debug data
-        mock_debug_data = {
-            "window_id": "test_window",
-            "solar_radiation": 500.0,
-            "temperature": 22.0,
-            "calculation": {"power": 150.0},
-        }
-
         with patch.object(
-            coordinator.calculator, "create_debug_data", return_value=mock_debug_data
-        ) as mock_create_debug:
-            # Mock update interval
-            coordinator.update_interval = None
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
+        ):
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-            result = await coordinator.create_debug_data("test_window")
+            # Mock calculator debug data
+            mock_debug_data = {
+                "window_id": "test_window",
+                "solar_radiation": 500.0,
+                "temperature": 22.0,
+                "calculation": {"power": 150.0},
+            }
 
-            # Should return debug data with metadata
-            if result is None:
-                msg = "Should return debug data"
-                raise AssertionError(msg)
+            with patch.object(
+                coordinator.calculator,
+                "create_debug_data",
+                return_value=mock_debug_data,
+            ) as mock_create_debug:
+                # Mock update interval
+                coordinator.update_interval = None
 
-            if "metadata" not in result:
-                msg = "Should include metadata"
-                raise AssertionError(msg)
+                result = await coordinator.create_debug_data("test_window")
 
-            if result["metadata"]["coordinator_entry_id"] != "test_entry_id":
-                msg = "Should include correct entry_id in metadata"
-                raise AssertionError(msg)
+                # Should return debug data with metadata
+                if result is None:
+                    msg = "Should return debug data"
+                    raise AssertionError(msg)
 
-            # Verify calculator was called
-            mock_create_debug.assert_called_once_with("test_window")
+                if "metadata" not in result:
+                    msg = "Should include metadata"
+                    raise AssertionError(msg)
+
+                if result["metadata"]["coordinator_entry_id"] != "test_entry_id":
+                    msg = "Should include correct entry_id in metadata"
+                    raise AssertionError(msg)
+
+                # Verify calculator was called
+                mock_create_debug.assert_called_once_with("test_window")
 
     async def test_create_debug_data_no_data(self) -> None:
         """Test create_debug_data when no debug data is available."""
@@ -533,28 +640,37 @@ class TestCoordinator(IntegrationTestCase):
         window_entry = Mock()
         window_entry.data = {"entry_type": "window_configs"}
 
-        coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
-
-        # Mock calculator to return None
         with patch.object(
-            coordinator.calculator, "create_debug_data", return_value=None
+            SolarWindowCalculator,
+            "from_flows",
+            return_value=SolarWindowCalculator(fake_hass_magicmock),
         ):
-            with patch(
-                "custom_components.solar_window_system.coordinator._LOGGER"
-            ) as mock_logger:
-                result = await coordinator.create_debug_data("test_window")
+            coordinator = SolarWindowSystemCoordinator(
+                fake_hass_magicmock, window_entry, 1
+            )
 
-                # Should return None
-                if result is not None:
-                    msg = "Should return None when no debug data available"
-                    raise AssertionError(msg)
+            # Mock calculator to return None
+            with patch.object(
+                coordinator.calculator, "create_debug_data", return_value=None
+            ):
+                with patch(
+                    "custom_components.solar_window_system.coordinator._LOGGER"
+                ) as mock_logger:
+                    result = await coordinator.create_debug_data("test_window")
 
-                # Should log warning
-                mock_logger.warning.assert_called_once_with(
-                    "No debug data found for window: %s", "test_window"
-                )
+                    # Should return None
+                    if result is not None:
+                        msg = "Should return None when no debug data available"
+                        raise AssertionError(msg)
 
-    async def test_create_debug_data_exception(self) -> None:
+                    # Should log warning
+                    mock_logger.warning.assert_called_once_with(
+                        "No debug data found for window: %s", "test_window"
+                    )
+
+    async def test_create_debug_data_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test create_debug_data with exception handling."""
         fake_hass_magicmock = Mock()
         window_entry = Mock()
@@ -563,34 +679,35 @@ class TestCoordinator(IntegrationTestCase):
         coordinator = SolarWindowSystemCoordinator(fake_hass_magicmock, window_entry, 1)
 
         # Mock calculator to raise exception
-        with patch.object(
-            coordinator.calculator,
-            "create_debug_data",
-            side_effect=Exception("Test error"),
-        ):
-            with patch(
-                "custom_components.solar_window_system.coordinator._LOGGER"
-            ) as mock_logger:
-                result = await coordinator.create_debug_data("test_window")
+        with caplog.at_level(logging.ERROR):
+            with patch.object(
+                coordinator.calculator,
+                "create_debug_data",
+                side_effect=Exception("Test error"),
+            ):
+                with patch(
+                    "custom_components.solar_window_system.coordinator._LOGGER"
+                ) as mock_logger:
+                    result = await coordinator.create_debug_data("test_window")
 
-                # Should return error data
-                if result is None:
-                    msg = "Should return error data on exception"
-                    raise AssertionError(msg)
+                    # Should return error data
+                    if result is None:
+                        msg = "Should return error data on exception"
+                        raise AssertionError(msg)
 
-                if "error" not in result:
-                    msg = "Should include error in result"
-                    raise AssertionError(msg)
+                    if "error" not in result:
+                        msg = "Should include error in result"
+                        raise AssertionError(msg)
 
-                if result["error"] != "Test error":
-                    msg = "Should include correct error message"
-                    raise AssertionError(msg)
+                    if result["error"] != "Test error":
+                        msg = "Should include correct error message"
+                        raise AssertionError(msg)
 
-                if result["window_id"] != "test_window":
-                    msg = "Should include window_id in error result"
-                    raise AssertionError(msg)
+                    if result["window_id"] != "test_window":
+                        msg = "Should include window_id in error result"
+                        raise AssertionError(msg)
 
-                # Should log exception
-                mock_logger.exception.assert_called_once_with(
-                    "Error creating debug data for window %s", "test_window"
-                )
+                    # Should log exception
+                    mock_logger.exception.assert_called_once_with(
+                        "Error creating debug data for window %s", "test_window"
+                    )
