@@ -3,16 +3,7 @@
 import asyncio
 from datetime import UTC, datetime
 import json
-import logging
-from pathlib import Path
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
-
-from .const import DOMAIN
-from .coordinator import SolarWindowSystemCoordinator
+import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -244,71 +235,114 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Entry data: %s", entry.data)
     _LOGGER.debug("Entry ID: %s", entry.entry_id)
 
-    device_registry = dr.async_get(hass)
+    async def _finish_setup_entry() -> None:
+        """
+        Finish setup once Home Assistant is running.
 
-    # Create device for global config
-    if entry.title == "Solar Window System":
-        _LOGGER.debug("Creating device for global config")
-        version = await _async_get_integration_version(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, "global_config")},
-            name="Solar Window System",
-            manufacturer="SolarWindowSystem",
-            model="GlobalConfig",
-            sw_version=version,
+        This performs the device creation, coordinator setup and platform
+        forwarding that can be noisy or fail if other integrations/entities
+        are not yet available during core startup.
+        """
+        device_registry = dr.async_get(hass)
+
+        # Create device for global config
+        if entry.title == "Solar Window System":
+            _LOGGER.debug("Creating device for global config")
+            version = await _async_get_integration_version(hass)
+            device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={(DOMAIN, "global_config")},
+                name="Solar Window System",
+                manufacturer="SolarWindowSystem",
+                model="GlobalConfig",
+                sw_version=version,
+            )
+
+            # Set up all platforms for this entry
+            await hass.config_entries.async_forward_entry_setups(
+                entry, ["sensor", "number", "text", "select", "switch"]
+            )
+
+        # Handle group configurations entry (subentry parent)
+        elif entry.data.get("entry_type") == "group_configs":
+            # Create devices for existing subentries
+            await _create_subentry_devices(hass, entry)
+
+            # Initialize coordinator for group configurations as well
+            coordinator = SolarWindowSystemCoordinator(
+                hass, entry, update_interval_minutes
+            )
+
+            # Store coordinator per entry to support multiple entries
+            hass.data.setdefault(DOMAIN, {})
+            hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+            # Start coordinator updates
+            await coordinator.async_config_entry_first_refresh()
+
+            # Set up platforms for group configurations
+            await hass.config_entries.async_forward_entry_setups(
+                entry, ["select", "sensor"]
+            )
+
+            # Add update listener to handle new subentries
+            entry.add_update_listener(_handle_config_entry_update)
+
+        # Handle window configurations entry (subentry parent)
+        elif entry.data.get("entry_type") == "window_configs":
+            # Create devices for existing subentries
+            await _create_subentry_devices(hass, entry)
+
+            # Initialize coordinator for calculation updates
+            coordinator = SolarWindowSystemCoordinator(
+                hass, entry, update_interval_minutes
+            )
+
+            # Store coordinator in hass.data for access by binary sensors
+            hass.data.setdefault(DOMAIN, {})
+            hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+
+            # Start coordinator updates
+            await coordinator.async_config_entry_first_refresh()
+
+            # Set up platforms for window configurations
+            await hass.config_entries.async_forward_entry_setups(
+                entry, ["select", "sensor", "binary_sensor", "number", "text", "switch"]
+            )
+
+            # Add update listener to handle new subentries
+            entry.add_update_listener(_handle_config_entry_update)
+
+        _LOGGER.debug("Deferred setup completed for: %s", entry.title)
+
+    # If core is already running, finish setup immediately. Otherwise, wait
+    # until Home Assistant has emitted the started event to avoid noisy logs
+    # and race conditions with other integrations (MQTT, sensors, etc.).
+    if hass.state == CoreState.running:
+        await _finish_setup_entry()
+    else:
+        _LOGGER.debug(
+            "Home Assistant not yet running, deferring heavy setup for: %s",
+            entry.title,
         )
 
-        # Set up all platforms for this entry
-        await hass.config_entries.async_forward_entry_setups(
-            entry, ["sensor", "number", "text", "select", "switch"]
-        )
+        def _on_started(event: object) -> None:
+            """
+            Start deferred setup when Home Assistant has started.
 
-    # Handle group configurations entry (subentry parent)
-    elif entry.data.get("entry_type") == "group_configs":
-        # Create devices for existing subentries
-        await _create_subentry_devices(hass, entry)
+            The event argument is required by the bus listener API. It is
+            intentionally unused here.
+            """
+            # Mark event as intentionally unused for linters
+            _ = event
 
-        # Initialize coordinator for group configurations as well
-        coordinator = SolarWindowSystemCoordinator(hass, entry, update_interval_minutes)
+            # Schedule coroutine (do not await here). Provide a name for typing
+            # compatibility with typed Home Assistant helpers.
+            hass.async_create_background_task(
+                _finish_setup_entry(), name=f"{DOMAIN}_deferred_setup"
+            )
 
-        # Store coordinator per entry to support multiple entries
-        hass.data.setdefault(DOMAIN, {})
-        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
-
-        # Start coordinator updates
-        await coordinator.async_config_entry_first_refresh()
-
-        # Set up platforms for group configurations
-        await hass.config_entries.async_forward_entry_setups(
-            entry, ["select", "sensor"]
-        )
-
-        # Add update listener to handle new subentries
-        entry.add_update_listener(_handle_config_entry_update)
-
-    # Handle window configurations entry (subentry parent)
-    elif entry.data.get("entry_type") == "window_configs":
-        # Create devices for existing subentries
-        await _create_subentry_devices(hass, entry)
-
-        # Initialize coordinator for calculation updates
-        coordinator = SolarWindowSystemCoordinator(hass, entry, update_interval_minutes)
-
-        # Store coordinator in hass.data for access by binary sensors
-        hass.data.setdefault(DOMAIN, {})
-        hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
-
-        # Start coordinator updates
-        await coordinator.async_config_entry_first_refresh()
-
-        # Set up platforms for window configurations
-        await hass.config_entries.async_forward_entry_setups(
-            entry, ["select", "sensor", "binary_sensor", "number", "text", "switch"]
-        )
-
-        # Add update listener to handle new subentries
-        entry.add_update_listener(_handle_config_entry_update)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
 
     # Register service for manual device creation (only once)
     if not hass.services.has_service(DOMAIN, "create_subentry_devices"):
