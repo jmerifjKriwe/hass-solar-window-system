@@ -383,6 +383,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             await _finish_setup_entry()
         else:
+
             def _on_started(event: object) -> None:
                 """
                 Start deferred setup when Home Assistant has started.
