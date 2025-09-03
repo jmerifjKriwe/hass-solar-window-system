@@ -56,6 +56,20 @@ class FlowIntegrationMixin:
     if TYPE_CHECKING:
         hass: HomeAssistant
 
+    # The FlowIntegrationMixin expects the consuming class to provide a
+    # number of helper methods (for example, provided by the coordinator
+    # or other mixins). Stubs are provided here so static type checkers
+    # can understand attribute access; runtime implementations must
+    # override these methods.
+
+    def _get_global_data_merged(self) -> dict[str, Any]:
+        """
+        Return merged global configuration data (stub for typing).
+
+        Implementations should return a mapping of global config values.
+        """
+        raise NotImplementedError
+
     def _get_subentries_by_type(self, entry_type: str) -> dict[str, dict[str, Any]]:
         """
         Get all sub-entries of a specific type.
