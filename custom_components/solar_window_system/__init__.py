@@ -1,9 +1,28 @@
 """Solar Window System integration package."""
 
+from __future__ import annotations
+
+# Standard library
 import asyncio
 from datetime import UTC, datetime
 import json
-import asyncio
+import logging
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+# Third-party / Home Assistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import CoreState, HomeAssistant, ServiceCall, callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+
+# Local
+from .const import DOMAIN
+from .coordinator import SolarWindowSystemCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -117,6 +136,31 @@ async def _async_get_integration_version(hass: HomeAssistant) -> str:
     hass.data[DOMAIN]["integration_version"] = version
 
     return version
+
+
+def _register_create_subentry_devices_service(hass: HomeAssistant) -> None:
+    """
+    Register the create_subentry_devices service if not already present.
+
+    Extracted to reduce complexity inside async_setup_entry and make the
+    logic easier to test.
+    """
+    if not hass.services.has_service(DOMAIN, "create_subentry_devices"):
+
+        async def create_subentry_devices_service(
+            _call: ServiceCall,
+        ) -> None:
+            """Service to manually create subentry devices."""
+            for config_entry in hass.config_entries.async_entries(DOMAIN):
+                if config_entry.data.get("entry_type") in [
+                    "group_configs",
+                    "window_configs",
+                ]:
+                    await _create_subentry_devices(hass, config_entry)
+
+        hass.services.async_register(
+            DOMAIN, "create_subentry_devices", create_subentry_devices_service
+        )
 
 
 def _register_services(hass: HomeAssistant) -> None:
@@ -318,7 +362,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # If core is already running, finish setup immediately. Otherwise, wait
     # until Home Assistant has emitted the started event to avoid noisy logs
     # and race conditions with other integrations (MQTT, sensors, etc.).
-    if hass.state == CoreState.running:
+    # Some test harnesses provide a mock HomeAssistant without a `state`
+    # attribute. Use getattr to avoid AttributeError during tests.
+    if getattr(hass, "state", None) == CoreState.running:
         await _finish_setup_entry()
     else:
         _LOGGER.debug(
@@ -326,41 +372,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry.title,
         )
 
-        def _on_started(event: object) -> None:
-            """
-            Start deferred setup when Home Assistant has started.
-
-            The event argument is required by the bus listener API. It is
-            intentionally unused here.
-            """
-            # Mark event as intentionally unused for linters
-            _ = event
-
-            # Schedule coroutine (do not await here). Provide a name for typing
-            # compatibility with typed Home Assistant helpers.
-            hass.async_create_background_task(
-                _finish_setup_entry(), name=f"{DOMAIN}_deferred_setup"
+        # Some test environments provide a Mock HomeAssistant without a
+        # `bus` or `async_create_background_task`. In those cases run the
+        # deferred setup immediately to allow tests to exercise the result.
+        bus = getattr(hass, "bus", None)
+        if bus is None or not hasattr(bus, "async_listen_once"):
+            _LOGGER.debug(
+                "Event bus not available, running deferred setup immediately for: %s",
+                entry.title,
             )
+            await _finish_setup_entry()
+        else:
 
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
+            def _on_started(event: object) -> None:
+                """
+                Start deferred setup when Home Assistant has started.
+
+                The event argument is required by the bus listener API. It is
+                intentionally unused here.
+                """
+                # Mark event as intentionally unused for linters
+                _ = event
+
+                # Schedule coroutine (do not await here). Provide a name for typing
+                # compatibility with typed Home Assistant helpers.
+                hass.async_create_background_task(
+                    _finish_setup_entry(), name=f"{DOMAIN}_deferred_setup"
+                )
+
+            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
 
     # Register service for manual device creation (only once)
-    if not hass.services.has_service(DOMAIN, "create_subentry_devices"):
-
-        async def create_subentry_devices_service(
-            _call: ServiceCall,
-        ) -> None:
-            """Service to manually create subentry devices."""
-            for config_entry in hass.config_entries.async_entries(DOMAIN):
-                if config_entry.data.get("entry_type") in [
-                    "group_configs",
-                    "window_configs",
-                ]:
-                    await _create_subentry_devices(hass, config_entry)
-
-        hass.services.async_register(
-            DOMAIN, "create_subentry_devices", create_subentry_devices_service
-        )
+    _register_create_subentry_devices_service(hass)
 
     _LOGGER.debug("Setup completed for: %s", entry.title)
     return True
