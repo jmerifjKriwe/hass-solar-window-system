@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v2.0.1 (2025-09-03)
+
+### Bug Fixes
+
+- **startup**: Defer integration setup until Home Assistant has started to avoid missing entities
+  ([`054132f`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/054132f3783740724247f8403f6d61e2f39cfbfc))
+
+- **tests**: Make integration startup test-friendly and resolve lints/types
+  ([`1adec99`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/1adec99f67949b209b328e67f0c73a81a92a2fbd))
+
+### Chores
+
+- **formatting**: Add newline for readability
+  ([`febad35`](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/febad355e74709fc6b9d45d1c70d221622c7b404))
+
+
 ## v2.0.0 (2025-09-01)
 
 ### Bug Fixes
