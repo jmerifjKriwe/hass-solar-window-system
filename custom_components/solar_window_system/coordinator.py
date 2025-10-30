@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 import logging
 from typing import TYPE_CHECKING, Any
@@ -163,7 +164,14 @@ class SolarWindowSystemCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         try:
             # Get debug data from calculator
-            debug_data = self.calculator.create_debug_data(window_id)
+            maybe = self.calculator.create_debug_data(window_id)
+            # The calculator may return a coroutine when running inside an event
+            # loop (its create_debug_data delegates to an async helper). If so,
+            # await it. If it returns a plain dict (sync path), use it directly.
+            if asyncio.iscoroutine(maybe) or asyncio.isfuture(maybe):
+                debug_data = await maybe
+            else:
+                debug_data = maybe
             if debug_data:
                 # Add coordinator metadata
                 debug_data["metadata"] = {

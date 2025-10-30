@@ -799,3 +799,28 @@ class TestInitSetup:
         from custom_components.solar_window_system import async_setup_entry
 
         return await async_setup_entry(hass, entry)
+
+    @pytest.mark.asyncio
+    async def test_async_get_integration_version_uses_executor(self) -> None:
+        """
+        Ensure _async_get_integration_version uses hass.async_add_executor_job.
+
+        This prevents calling asyncio.get_event_loop() from a worker thread
+        which raises "There is no current event loop in thread ...".
+        """
+        from custom_components.solar_window_system import (
+            _async_get_integration_version,
+            DOMAIN,
+        )
+
+        # Create a hass-like object with async_add_executor_job
+        hass = Mock(spec=HomeAssistant)
+        hass.data = {}
+        hass.async_add_executor_job = AsyncMock(return_value="9.9.9")
+
+        version = await _async_get_integration_version(hass)
+
+        assert version == "9.9.9"
+        # Ensure result is cached
+        assert hass.data[DOMAIN]["integration_version"] == "9.9.9"
+        hass.async_add_executor_job.assert_called_once()

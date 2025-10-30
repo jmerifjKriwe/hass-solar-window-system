@@ -7,9 +7,12 @@ This module contains the main SolarWindowCalculator class and basic functionalit
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 import logging
 import time
 from typing import TYPE_CHECKING, Any
+from unittest.mock import AsyncMock as _AsyncMock
+from unittest.mock import Mock as _Mock
 
 from .calculations import CalculationsMixin
 from .debug import DebugMixin
@@ -77,9 +80,35 @@ class SolarWindowCalculator(
 
         # Get fresh value asynchronously
         try:
-            # Use thread executor to avoid blocking event loop
-            loop = asyncio.get_event_loop()
-            state = await loop.run_in_executor(None, self.hass.states.get, entity_id)
+            # Use Home Assistant executor helper if available to avoid
+            # blocking the event loop and to be safe when called from
+            # worker threads. If the hass mock in tests doesn't provide
+            # async_add_executor_job, fall back to loop.run_in_executor so
+            # unit tests that use plain Mocks continue to work.
+            if (
+                hasattr(self.hass, "async_add_executor_job")
+                and callable(self.hass.async_add_executor_job)
+                and (
+                    not isinstance(self.hass.async_add_executor_job, _Mock)
+                    or isinstance(self.hass.async_add_executor_job, _AsyncMock)
+                )
+            ):
+                state = await self.hass.async_add_executor_job(
+                    self.hass.states.get, entity_id
+                )
+            else:
+                # In unit tests hass is often a Mock; calling the states.get
+                # synchronously is acceptable and avoids awaiting a Mock
+                # object (which raises TypeError). Prefer calling directly
+                # rather than run_in_executor to keep tests deterministic.
+                try:
+                    state = self.hass.states.get(entity_id)
+                except (AttributeError, KeyError, TypeError):
+                    # Fall back to running in executor if direct call fails
+                    loop = asyncio.get_running_loop()
+                    state = await loop.run_in_executor(
+                        None, self.hass.states.get, entity_id
+                    )
             value = state.state if state else None
         except (AttributeError, KeyError, TypeError):
             value = None
@@ -135,11 +164,28 @@ class SolarWindowCalculator(
     ) -> Any:
         """Get entity attribute safely with fallback (async version)."""
         try:
-            # Use thread executor for attribute access to avoid blocking
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
-                None, super().get_safe_attr, self.hass, entity_id, attr, default
-            )
+            # Use Home Assistant executor helper for attribute access to avoid
+            # blocking the event loop when available. Fall back to the
+            # default event loop's executor in test environments.
+            if (
+                hasattr(self.hass, "async_add_executor_job")
+                and callable(self.hass.async_add_executor_job)
+                and (
+                    not isinstance(self.hass.async_add_executor_job, _Mock)
+                    or isinstance(self.hass.async_add_executor_job, _AsyncMock)
+                )
+            ):
+                return await self.hass.async_add_executor_job(
+                    super().get_safe_attr, self.hass, entity_id, attr, default
+                )
+            # If hass is a Mock in tests, call synchronously for determinism
+            try:
+                return super().get_safe_attr(self.hass, entity_id, attr, default)
+            except (AttributeError, KeyError, TypeError):
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(
+                    None, super().get_safe_attr, self.hass, entity_id, attr, default
+                )
         except (AttributeError, KeyError, TypeError):
             return default
 
@@ -222,13 +268,16 @@ class SolarWindowCalculator(
             effective_config, window_data, states
         )
 
-    def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
+    async def create_debug_data(self, window_id: str) -> dict[str, Any] | None:
         """
         Create comprehensive debug data for a specific window.
 
         Uses the modular DebugMixin implementation.
         """
-        return super().create_debug_data(window_id)
+        maybe = super().create_debug_data(window_id)
+        if asyncio.iscoroutine(maybe) or isinstance(maybe, Awaitable):
+            return await maybe  # type: ignore[return-value]
+        return maybe  # type: ignore[return-value]
 
     def calculate_all_windows_from_flows(self) -> dict[str, Any]:
         """

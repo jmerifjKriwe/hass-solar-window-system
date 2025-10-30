@@ -1,5 +1,5 @@
 [tool.semantic_release]
-version_variable = "custom_components/solar_window_system/manifest.json:version"
+version_variable = ["custom_components/solar_window_system/const.py:INTEGRATION_VERSION", "custom_components/solar_window_system/manifest.json:version"]
 branch = "main"
 changelog_file = "CHANGELOG.md"
 commit_message = "chore(release): {version}"
@@ -17,9 +17,48 @@ line-length = 88
 # Do not exclude tests from ruff; we control noisy rules via per-file-ignores.
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108", "PLR2004", "ARG001", "F811"]
-"tests/**/*.py" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
-"tests/*" = ["S101", "ARG001", "F811", "PLR2004", "SLF001", "SIM117", "PLC0415", "D100", "D401", "S108"]
+"tests/**" = [
+	"S101",
+	"ARG001",
+	"F811",
+	"PLR2004",
+	"SLF001",
+	"SIM117",
+	"PLC0415",
+	"D100",
+	"D401",
+	"S108",
+	"ANN001",
+	"ANN201",
+]
+
+"tests/**/*.py" = [
+	"S101",
+	"ARG001",
+	"F811",
+	"PLR2004",
+	"SLF001",
+	"SIM117",
+	"PLC0415",
+	"D100",
+	"D401",
+	"S108",
+]
+
+"tests/*" = [
+	"S101",
+	"ARG001",
+	"F811",
+	"PLR2004",
+	"SLF001",
+	"SIM117",
+	"PLC0415",
+	"D100",
+	"D401",
+	"S108",
+]
+
+"custom_components/solar_window_system/modules/calculations.py" = ["PLR0913"]
 
 [tool.pyright]
 exclude = ["tests/"]

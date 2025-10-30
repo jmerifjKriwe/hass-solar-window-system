@@ -883,12 +883,15 @@ class TestDebugFunctionalityIntegration:
 
         return calc
 
-    def test_create_debug_data_success(
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_create_debug_data_success(
         self, calculator_with_debug_config: SolarWindowCalculator
     ) -> None:
         """Test successful debug data creation."""
         # Act
-        result = calculator_with_debug_config.create_debug_data("window1")
+        result = await calculator_with_debug_config.create_debug_data("window1")
 
         # Assert
         assert isinstance(result, dict)
@@ -904,17 +907,25 @@ class TestDebugFunctionalityIntegration:
         # Verify calculation was called
         calculator_with_debug_config.calculate_all_windows_from_flows.assert_called_once()
 
-    def test_create_debug_data_window_not_found(
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_create_debug_data_window_not_found(
         self, calculator_with_debug_config: SolarWindowCalculator
     ) -> None:
         """Test debug data creation when window is not found."""
         # Act
-        result = calculator_with_debug_config.create_debug_data("nonexistent_window")
+        result = await calculator_with_debug_config.create_debug_data(
+            "nonexistent_window"
+        )
 
         # Assert
         assert result is None
 
-    def test_create_debug_data_calculation_error(
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_create_debug_data_calculation_error(
         self,
         calculator_with_debug_config: SolarWindowCalculator,
         caplog: pytest.LogCaptureFixture,
@@ -927,7 +938,7 @@ class TestDebugFunctionalityIntegration:
 
         # Act
         with caplog.at_level(logging.ERROR):
-            result = calculator_with_debug_config.create_debug_data("window1")
+            result = await calculator_with_debug_config.create_debug_data("window1")
 
         # Assert
         assert isinstance(result, dict)

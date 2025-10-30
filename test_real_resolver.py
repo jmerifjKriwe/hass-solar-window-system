@@ -1,1 +1,0 @@
-"""Test real resolver functionality."""

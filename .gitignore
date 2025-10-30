@@ -14,6 +14,7 @@ __pycache__
 coverage.xml
 .ruff_cache
 .env
+htmlcov/*
 
 # Home Assistant configuration
 config/*
@@ -21,3 +22,4 @@ config/*
 
 # Todo file
 .todo
+

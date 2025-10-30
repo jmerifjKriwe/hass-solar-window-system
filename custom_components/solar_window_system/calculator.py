@@ -168,7 +168,9 @@ class SolarWindowCalculator(
                 area_m2=0.0,
                 shade_required=False,
                 shade_reason="",
-                effective_threshold=effective_config["thresholds"]["direct"],
+                effective_threshold=effective_config.get("thresholds", {}).get(
+                    "direct", 200.0
+                ),
             )
 
         # Calculate diffuse power (not affected by shadows)
@@ -221,6 +223,7 @@ class SolarWindowCalculator(
                     window_azimuth,
                     shadow_depth,
                     shadow_offset,
+                    window_data,
                 )
                 power_direct *= shadow_factor
                 _LOGGER.debug("Shadow factor applied: %.2f", shadow_factor)
@@ -246,7 +249,9 @@ class SolarWindowCalculator(
             area_m2=area,
             shade_required=False,  # Will be set by shading logic
             shade_reason="",  # Will be set by shading logic
-            effective_threshold=effective_config["thresholds"]["direct"],
+            effective_threshold=effective_config.get("thresholds", {}).get(
+                "direct", 200.0
+            ),
         )
 
     def calculate_all_windows_from_flows(self) -> dict[str, Any]:

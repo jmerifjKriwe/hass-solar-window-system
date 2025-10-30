@@ -14,6 +14,7 @@ import math
 from typing import Any
 
 from .flow_integration import ShadeRequestFlow, WindowCalculationResult
+from .shadow import calculate_shadow_factor, get_window_geometry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -131,18 +132,29 @@ def get_pool_stats() -> dict[str, int]:
     return _RESULT_POOL.get_stats()
 
 
+# Shadow geometry is provided by the dedicated shadow module. Keep this
+# module focused on calculation helpers and reuse the ShadowGeometry type
+# from `modules.shadow` to avoid duplicated definitions and mismatched
+# defaults.
+
+
 @dataclass
 class SolarCalculationParams:
     """Parameters for solar power calculations."""
 
+    # All fields are required and must be provided by callers. This
+    # dataclass intentionally has no defaults to avoid accidental
+    # reliance on hard-coded fallback values. Callers must construct a
+    # fully-populated instance from values supplied by
+    # effective_config/window_data/states.
     solar_radiation: float
     sun_elevation: float
     sun_azimuth: float
-    window_azimuth: float = 180.0
-    area: float = 1.0
-    g_value: float = 0.8
-    tilt: float = 90.0
-    diffuse_factor: float = 0.3
+    window_azimuth: float
+    area: float
+    g_value: float
+    tilt: float
+    diffuse_factor: float
 
 
 class CalculationsMixin:
@@ -263,10 +275,10 @@ class CalculationsMixin:
         self,
         effective_config: dict[str, Any],
         window_data: dict[str, Any],
-        states: dict[str, Any],  # noqa: ARG002 - kept for API compatibility
+        states: dict[str, Any],
     ) -> WindowCalculationResult:
         """
-        Calculate solar power for a window including shadow effects.
+        Async wrapper for solar power calculation including shadow effects.
 
         Args:
             effective_config: Effective configuration for the window
@@ -276,85 +288,20 @@ class CalculationsMixin:
         Returns:
             WindowCalculationResult with calculated values
 
+        Note:
+            This is an async wrapper around the main implementation that exists
+            for compatibility with async batch processing. It delegates all work
+            to the main calculate_window_solar_power_with_shadow method.
+
         """
-        try:
-            # Use default values for calculation
-            sun_elevation = 45.0
-            sun_azimuth = 180.0
-            window_azimuth = window_data.get("azimuth", 180.0)
-            shadow_depth = effective_config.get("shadow_depth", 1.0)
-            shadow_offset = effective_config.get("shadow_offset", 0.0)
-            solar_irradiance = 800.0  # W/m²
-            window_area = window_data.get("area", 2.0)  # m²
-
-            # Calculate shadow factor
-            shadow_factor = self._calculate_shadow_factor(
-                sun_elevation, sun_azimuth, window_azimuth, shadow_depth, shadow_offset
-            )
-
-            # Calculate direct power (simplified)
-            direct_power = solar_irradiance * max(
-                0, get_trig_values(sun_elevation)["cos"]
-            )
-
-            # Calculate diffuse power (simplified)
-            diffuse_power = solar_irradiance * 0.3  # Assume 30% diffuse
-
-            # Calculate total power per square meter
-            total_power_per_m2 = (direct_power + diffuse_power) * shadow_factor
-
-            # Calculate window area power
-            total_window_power = total_power_per_m2 * window_area
-
-            # Shade threshold constant
-            shade_threshold = 100.0  # W
-            should_shade = total_window_power > shade_threshold
-
-            # Create result
-            result = WindowCalculationResult(
-                power_total=total_window_power,
-                power_direct=direct_power * window_area,
-                power_diffuse=diffuse_power * window_area,
-                power_direct_raw=direct_power,
-                power_diffuse_raw=diffuse_power,
-                power_total_raw=total_power_per_m2,
-                shadow_factor=shadow_factor,
-                is_visible=True,  # Assume visible for now
-                area_m2=window_area,
-                shade_required=should_shade,
-                shade_reason="High solar power detected" if should_shade else "",
-                effective_threshold=shade_threshold,
-            )
-
-            _LOGGER.debug(
-                "Calculated solar power for window: %.2f W",
-                total_window_power,
-            )
-
-        except Exception as err:
-            _LOGGER.exception("Error calculating solar power for window")
-            window_area = window_data.get("area", 2.0)
-            # Return zero result on error
-            return WindowCalculationResult(
-                power_total=0.0,
-                power_direct=0.0,
-                power_diffuse=0.0,
-                power_direct_raw=0.0,
-                power_diffuse_raw=0.0,
-                power_total_raw=0.0,
-                shadow_factor=1.0,
-                is_visible=False,
-                area_m2=window_area,
-                shade_required=False,
-                shade_reason=f"Calculation error: {err!r}",
-                effective_threshold=0.0,
-            )
-        else:
-            return result
+        # Delegate to the main implementation
+        return self.calculate_window_solar_power_with_shadow(
+            effective_config, window_data, states
+        )
 
     def calculate_window_solar_power_with_shadow(
         self,
-        effective_config: dict[str, Any],  # noqa: ARG002 - kept for API compatibility
+        effective_config: dict[str, Any],  # Contains all configuration values
         window_data: dict[str, Any],
         states: dict[str, Any],  # kept for API compatibility
     ) -> WindowCalculationResult:
@@ -371,29 +318,97 @@ class CalculationsMixin:
 
         """
         try:
-            # Extract values from states and window_data
-            sun_elevation = states.get("sun_elevation", 45.0)
-            sun_azimuth = states.get("sun_azimuth", 180.0)
-            window_azimuth = window_data.get("azimuth", 180.0)
-            shadow_depth = window_data.get("shadow_depth", 0.0)
-            shadow_offset = window_data.get("shadow_offset", 0.0)
-            solar_irradiance = states.get("solar_radiation", 800.0)
-            window_area = window_data.get("window_width", 2.0) * window_data.get(
-                "window_height", 1.5
+            # Extract required values from states. Missing values are
+            # treated as errors to enforce the "no defaults in
+            # production" rule; tests must provide these values via
+            # the states fixture or effective configuration where
+            # appropriate.
+            try:
+                sun_elevation = float(states["sun_elevation"])
+                sun_azimuth = float(states["sun_azimuth"])
+                solar_irradiance = float(states["solar_radiation"])
+            except KeyError as exc:
+                raise ValueError(
+                    "Missing required state value: sun_elevation, sun_azimuth or solar_radiation"
+                ) from exc
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Invalid state value for solar inputs") from exc
+
+            # Prefer explicit 'area' if provided by window_data. Otherwise
+            # compute glass area from dimensions, subtracting frame width
+            # when available in effective_config (keeps behavior consistent
+            # with _extract_calculation_parameters).
+            # Compute area: require either explicit 'area' or both
+            # 'window_width' and 'window_height' in window_data. Do not
+            # fall back to safe defaults here.
+            if "area" in window_data:
+                try:
+                    window_area = float(window_data["area"])
+                except (TypeError, ValueError) as exc:
+                    raise ValueError("Invalid numeric value for window.area") from exc
+            else:
+                # Require explicit dimensions
+                try:
+                    window_width = float(window_data["window_width"])
+                    window_height = float(window_data["window_height"])
+                except KeyError as exc:
+                    raise ValueError(
+                        "Missing required window dimension: window_width or window_height"
+                    ) from exc
+                except (TypeError, ValueError) as exc:
+                    raise ValueError("Invalid numeric window dimension") from exc
+
+                # Frame width must be provided in effective_config.physical
+                phys = effective_config.get("physical")
+                if not isinstance(phys, dict) or "frame_width" not in phys:
+                    raise ValueError(
+                        "Missing required physical.frame_width in effective_config"
+                    )
+                try:
+                    frame_width = float(phys["frame_width"])
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        "Invalid numeric value for physical.frame_width"
+                    ) from exc
+
+                glass_width = max(0.0, window_width - 2 * frame_width)
+                glass_height = max(0.0, window_height - 2 * frame_width)
+                window_area = glass_width * glass_height
+
+            # Calculate shadow factor using shadow module
+            geometry = get_window_geometry(
+                sun_elevation, sun_azimuth, window_data, effective_config
+            )
+            shadow_factor = calculate_shadow_factor(geometry)
+
+            # Get physical parameters from effective configuration and
+            # require presence.
+            physical_config = effective_config.get("physical")
+            if not isinstance(physical_config, dict):
+                raise ValueError(
+                    "Missing required 'physical' section in effective_config"
+                )
+            try:
+                g_value = float(physical_config["g_value"])
+                diffuse_factor = float(physical_config["diffuse_factor"])
+            except KeyError as exc:
+                raise ValueError(
+                    "Missing required physical.g_value or physical.diffuse_factor"
+                ) from exc
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Invalid numeric value in physical configuration"
+                ) from exc
+
+            # Calculate direct power with configured g-value
+            direct_power = (
+                solar_irradiance
+                * max(0, get_trig_values(sun_elevation)["cos"])
+                * g_value
             )
 
-            # Calculate shadow factor
-            shadow_factor = self._calculate_shadow_factor(
-                sun_elevation, sun_azimuth, window_azimuth, shadow_depth, shadow_offset
-            )
-
-            # Calculate direct power (simplified)
-            direct_power = solar_irradiance * max(
-                0, get_trig_values(sun_elevation)["cos"]
-            )
-
-            # Calculate diffuse power (simplified)
-            diffuse_power = solar_irradiance * 0.3  # Assume 30% diffuse
+            # Calculate diffuse power with configured factor
+            diffuse_power = solar_irradiance * diffuse_factor * g_value
 
             # Calculate total power per square meter
             total_power_per_m2 = (direct_power + diffuse_power) * shadow_factor
@@ -401,8 +416,17 @@ class CalculationsMixin:
             # Calculate window area power
             total_window_power = total_power_per_m2 * window_area
 
-            # Shade threshold constant
-            shade_threshold = 100.0  # W
+            # Get threshold from effective configuration and require it
+            thresholds = effective_config.get("thresholds")
+            if not isinstance(thresholds, dict) or "direct" not in thresholds:
+                raise ValueError(
+                    "Missing required thresholds.direct in effective_config"
+                )
+            try:
+                shade_threshold = float(thresholds["direct"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Invalid numeric value for thresholds.direct") from exc
+
             should_shade = total_window_power > shade_threshold
 
             # Create result
@@ -426,10 +450,28 @@ class CalculationsMixin:
                 total_window_power,
             )
 
+        except ValueError as err:
+            # Known validation errors: log and return an error result so
+            # callers can see the reason and tests can assert on it.
+            _LOGGER.error("Validation error calculating solar power: %s", err)
+            window_area = window_data.get("area", 0.0)
+            return WindowCalculationResult(
+                power_total=0.0,
+                power_direct=0.0,
+                power_diffuse=0.0,
+                power_direct_raw=0.0,
+                power_diffuse_raw=0.0,
+                power_total_raw=0.0,
+                shadow_factor=1.0,
+                is_visible=False,
+                area_m2=window_area,
+                shade_required=False,
+                shade_reason=f"Validation error: {err}",
+                effective_threshold=0.0,
+            )
         except Exception as err:
-            _LOGGER.exception("Error calculating solar power for window")
-            window_area = window_data.get("area", 2.0)
-            # Return zero result on error
+            _LOGGER.exception("Unexpected error calculating solar power for window")
+            window_area = window_data.get("area", 0.0)
             return WindowCalculationResult(
                 power_total=0.0,
                 power_direct=0.0,
@@ -447,18 +489,29 @@ class CalculationsMixin:
         else:
             return result
 
-    def _calculate_shadow_factor(
+    def _calculate_shadow_factor(  # noqa: PLR0913
         self,
         sun_elevation: float,
         sun_azimuth: float,
         window_azimuth: float,
         shadow_depth: float,
         shadow_offset: float,
+        window_data: dict[str, Any] | None = None,
     ) -> float:
         """
         Calculate the geometric shadow factor for a window.
 
-        Returns a value between 0.1 (full shadow) and 1.0 (no shadow).
+        Args:
+            sun_elevation: Current sun elevation in degrees
+            sun_azimuth: Current sun azimuth in degrees
+            window_azimuth: Window azimuth in degrees
+            shadow_depth: Depth of shadow element in meters
+            shadow_offset: Vertical offset of shadow element in meters
+            window_data: Window configuration data
+
+        Returns:
+            Shadow factor between 0.1 (full shadow) and 1.0 (no shadow)
+
         """
         # If no shadow geometry, return 1.0 (no shadow)
         if shadow_depth <= 0 and shadow_offset <= 0:
@@ -487,8 +540,9 @@ class CalculationsMixin:
         effective_shadow = max(0.0, shadow_length - shadow_offset)
 
         # Heuristic: if effective_shadow is large, strong shadow; if small, weak shadow
-        # For simplicity, assume window height = 1.0m (normalized)
-        window_height = 1.0
+        # Get actual window height from window_data or fall back to default 1.0m
+        wd = window_data or {}
+        window_height = float(wd.get("window_height", 1.0))
         if effective_shadow <= 0:
             return 1.0  # no shadow
         if effective_shadow >= window_height:
@@ -661,45 +715,69 @@ class CalculationsMixin:
 
     def _calculate_solar_power_direct(
         self,
-        params: SolarCalculationParams,
+        params: SolarCalculationParams | dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> float:
         """
         Calculate direct solar power component.
 
         Args:
-            params: Solar calculation parameters
+            params: SolarCalculationParams or dict with parameter keys. If a
+                dict or kwargs are provided, missing fields will be filled with
+                sensible defaults.
+            **kwargs: Additional keyword parameters used when passing a dict
+                rather than a SolarCalculationParams instance.
 
         Returns:
             Direct solar power in watts
 
         """
-        # Use the existing _calculate_direct_power method with proper parameters
+        # Accept either a SolarCalculationParams instance or a dict/kwargs
+        if isinstance(params, SolarCalculationParams):
+            p = params
+        else:
+            data: dict[str, Any] = {}
+            if isinstance(params, dict):
+                data.update(params)
+            data.update(kwargs)
+            # Build a SolarCalculationParams with defaults for missing fields
+            p = SolarCalculationParams(
+                solar_radiation=data.get("solar_radiation", 0.0),
+                sun_elevation=data.get("sun_elevation", 0.0),
+                sun_azimuth=data.get("sun_azimuth", 180.0),
+                window_azimuth=data.get("window_azimuth", 180.0),
+                area=data.get("area", 1.0),
+                g_value=data.get("g_value", 0.8),
+                tilt=data.get("tilt", 90.0),
+                diffuse_factor=data.get("diffuse_factor", 0.3),
+            )
+
         params_dict = {
-            "solar_radiation": params.solar_radiation,
-            "sun_elevation": params.sun_elevation,
-            "sun_azimuth": params.sun_azimuth,
-            "diffuse_factor": params.diffuse_factor,
-            "tilt": params.tilt,
-            "area": params.area,
-            "g_value": params.g_value,
+            "solar_radiation": p.solar_radiation,
+            "sun_elevation": p.sun_elevation,
+            "sun_azimuth": p.sun_azimuth,
+            "diffuse_factor": p.diffuse_factor,
+            "tilt": p.tilt,
+            "area": p.area,
+            "g_value": p.g_value,
         }
-        return self._calculate_direct_power(params_dict, params.window_azimuth)
+        return self._calculate_direct_power(params_dict, p.window_azimuth)
 
     def _calculate_solar_power_diffuse(
         self,
         solar_radiation: float,
-        diffuse_factor: float = 0.3,
-        area: float = 1.0,
-        g_value: float = 0.8,
+        diffuse_factor: float,
+        area: float,
+        g_value: float,
     ) -> float:
         """
         Calculate diffuse solar power component.
 
         Args:
             solar_radiation: Solar radiation in W/m²
-            diffuse_factor: Fraction of diffuse radiation (default: 0.3)
-            area: Window area in m² (default: 1.0)
-            g_value: Solar heat gain coefficient (default: 0.8)
+            diffuse_factor: Fraction of diffuse radiation from configuration
+            area: Window area in m² (glass area minus frames)
+            g_value: Solar heat gain coefficient from configuration
 
         Returns:
             Diffuse solar power in watts
@@ -709,36 +787,45 @@ class CalculationsMixin:
 
     def _calculate_total_solar_power(
         self,
-        solar_radiation: float,
-        diffuse_factor: float = 0.3,
-        area: float = 1.0,
-        g_value: float = 0.8,
+        params: SolarCalculationParams | dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> float:
         """
         Calculate total solar power (direct + diffuse).
 
         Args:
-            solar_radiation: Solar radiation in W/m²
-            diffuse_factor: Fraction of diffuse radiation (default: 0.3)
-            area: Window area in m² (default: 1.0)
-            g_value: Solar heat gain coefficient (default: 0.8)
+            params: SolarCalculationParams or dict with parameter keys. If a
+                dict or kwargs are provided, missing fields will be filled with
+                sensible defaults.
+            **kwargs: Additional keyword parameters used when passing a dict
+                rather than a SolarCalculationParams instance.
 
         Returns:
             Total solar power in watts
 
         """
-        # Total power = direct + diffuse
-        params = SolarCalculationParams(
-            solar_radiation=solar_radiation,
-            sun_elevation=45.0,  # Default values for simple calculation
-            sun_azimuth=180.0,
-            area=area,
-            g_value=g_value,
-            diffuse_factor=diffuse_factor,
-        )
-        direct_power = self._calculate_solar_power_direct(params)
+        # Reuse the flexible direct power wrapper
+        if isinstance(params, SolarCalculationParams):
+            p = params
+        else:
+            data: dict[str, Any] = {}
+            if isinstance(params, dict):
+                data.update(params)
+            data.update(kwargs)
+            p = SolarCalculationParams(
+                solar_radiation=data.get("solar_radiation", 0.0),
+                sun_elevation=data.get("sun_elevation", 0.0),
+                sun_azimuth=data.get("sun_azimuth", 180.0),
+                window_azimuth=data.get("window_azimuth", 180.0),
+                area=data.get("area", 1.0),
+                g_value=data.get("g_value", 0.8),
+                tilt=data.get("tilt", 90.0),
+                diffuse_factor=data.get("diffuse_factor", 0.3),
+            )
+
+        direct_power = self._calculate_solar_power_direct(p)
         diffuse_power = self._calculate_solar_power_diffuse(
-            solar_radiation, diffuse_factor, area, g_value
+            p.solar_radiation, p.diffuse_factor, p.area, p.g_value
         )
         return direct_power + diffuse_power
 

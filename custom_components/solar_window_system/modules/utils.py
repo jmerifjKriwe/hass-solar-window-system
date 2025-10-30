@@ -76,12 +76,16 @@ class UtilsMixin:
     def get_safe_state(
         self, hass: Any, entity_id: str, default: str | float = 0
     ) -> Any:
-        """
-        Safely get the state of an entity, returning a default if it is.
-
-        unavailable, unknown, or not found.
-        """
+        """Safely get the state of an entity, returning a default if unavailable."""
         if not entity_id:
+            return default
+
+        if not hasattr(hass, "states") or not hasattr(hass.states, "get"):
+            _LOGGER.error(
+                "Invalid hass object passed to get_safe_state: %s (type: %s)",
+                hass,
+                type(hass),
+            )
             return default
 
         try:
@@ -92,7 +96,7 @@ class UtilsMixin:
             )
             return default
 
-        if state is None or state.state in ["unknown", "unavailable"]:
+        if state is None or getattr(state, "state", None) in ["unknown", "unavailable"]:
             _LOGGER.warning(
                 "Entity %s not found or unavailable, returning default value.",
                 entity_id,
@@ -108,38 +112,45 @@ class UtilsMixin:
         if not entity_id:
             return default
 
+        if not hasattr(hass, "states") or not hasattr(hass.states, "get"):
+            _LOGGER.error(
+                "Invalid hass object passed to get_safe_attr: %s (type: %s)",
+                hass,
+                type(hass),
+            )
+            return default
+
         try:
             state = hass.states.get(entity_id)
         except (AttributeError, TypeError, KeyError) as e:
             _LOGGER.warning(
-                "Error accessing entity %s: %s, returning default value "
-                "for attribute %s.",
+                "Error accessing entity %s: %s, returning default for attr %s.",
                 entity_id,
                 e,
                 attr,
             )
             return default
 
-        if state is None or state.state in ["unknown", "unavailable"]:
+        if state is None or getattr(state, "state", None) in ["unknown", "unavailable"]:
             _LOGGER.warning(
-                "Entity %s not found or unavailable, returning default value "
-                "for attribute %s.",
+                "Entity %s not found or unavailable, default for attr %s.",
                 entity_id,
                 attr,
             )
             return default
 
         # Handle attributes - check if it's a dict-like object
+        value = default
         try:
             if hasattr(state, "attributes"):
                 # Handle both real dicts and Mock objects
                 if hasattr(state.attributes, "get") and callable(state.attributes.get):
-                    return state.attributes.get(attr, default)
-                if hasattr(state.attributes, attr):
-                    return getattr(state.attributes, attr, default)
+                    value = state.attributes.get(attr, default)
+                elif hasattr(state.attributes, attr):
+                    value = getattr(state.attributes, attr, default)
         except (AttributeError, TypeError, KeyError):
             pass
-        return default
+        return value
 
     def _format_debug_value(self, value: Any, precision: int = 2) -> str:
         """Format value for debug output with proper precision."""

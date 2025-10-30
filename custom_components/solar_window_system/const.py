@@ -1,5 +1,6 @@
 """Constants for Solar Window System integration."""
 
+INTEGRATION_VERSION = "0.1.0"
 DOMAIN = "solar_window_system"
 
 # Entity ID prefix for better organization and future extensions
@@ -110,7 +111,7 @@ GLOBAL_CONFIG_ENTITIES = {
     "integration_version": {
         "platform": "sensor",
         "name": "Integration Version",
-        "default": "0.1.0",
+        "default": INTEGRATION_VERSION,
         "unit": "",
         "icon": "mdi:information-outline",
         "category": "diagnostic",

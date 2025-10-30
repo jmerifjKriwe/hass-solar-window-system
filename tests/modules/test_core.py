@@ -284,7 +284,8 @@ class TestModularSolarWindowCalculator:
         assert hasattr(result, "shade_required")
         assert hasattr(result, "shade_reason")
 
-    def test_delegation_create_debug_data(
+    @pytest.mark.asyncio
+    async def test_delegation_create_debug_data(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Test create_debug_data delegation."""
@@ -298,7 +299,7 @@ class TestModularSolarWindowCalculator:
         mock_entity_reg.entities = {}
 
         with patch(
-            "custom_components.solar_window_system.modules.debug.er.async_get",
+            "custom_components.solar_window_system.modules.debug.DebugMixin._get_entity_registry",
             return_value=mock_entity_reg,
         ):
             calculator = ModularSolarWindowCalculator(hass=mock_hass)
@@ -310,7 +311,7 @@ class TestModularSolarWindowCalculator:
             mock_hass.states.all.return_value = [("sensor.temp", mock_state)]
 
             with caplog.at_level(logging.ERROR):
-                result = calculator.create_debug_data("window1")
+                result = await calculator.create_debug_data("window1")
 
             # Should return a dict with debug information
             assert isinstance(result, dict)

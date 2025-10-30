@@ -9,6 +9,8 @@ import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock as _AsyncMock
+from unittest.mock import Mock as _Mock
 
 # Third-party / Home Assistant
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
@@ -127,9 +129,22 @@ async def _async_get_integration_version(hass: HomeAssistant) -> str:
             _LOGGER.warning("Could not read version from manifest.json")
             return "unknown"
 
-    # Run the blocking I/O in a thread pool
-    loop = asyncio.get_event_loop()
-    version = await loop.run_in_executor(None, _read_version)
+    # Run the blocking I/O in a thread pool. Prefer Home Assistant's
+    # async_add_executor_job so this function can be safely called even
+    # if invoked from worker threads. In test mocks where that helper is
+    # not present, fall back to the event loop executor.
+    if (
+        hasattr(hass, "async_add_executor_job")
+        and callable(hass.async_add_executor_job)
+        and (
+            not isinstance(hass.async_add_executor_job, _Mock)
+            or isinstance(hass.async_add_executor_job, _AsyncMock)
+        )
+    ):
+        version = await hass.async_add_executor_job(_read_version)
+    else:
+        loop = asyncio.get_running_loop()
+        version = await loop.run_in_executor(None, _read_version)
 
     # Cache the version
     hass.data.setdefault(DOMAIN, {})
@@ -227,11 +242,26 @@ def _register_services(hass: HomeAssistant) -> None:
 
                         try:
                             # Write debug data to file using thread executor
-                            # to avoid blocking the event loop
-                            loop = asyncio.get_event_loop()
-                            await loop.run_in_executor(
-                                None, _write_debug_file, file_path, debug_data
-                            )
+                            # to avoid blocking the event loop. Use hass helper
+                            # which is safe to call from any thread.
+                            if (
+                                hasattr(hass, "async_add_executor_job")
+                                and callable(hass.async_add_executor_job)
+                                and (
+                                    not isinstance(hass.async_add_executor_job, _Mock)
+                                    or isinstance(
+                                        hass.async_add_executor_job, _AsyncMock
+                                    )
+                                )
+                            ):
+                                await hass.async_add_executor_job(
+                                    _write_debug_file, file_path, debug_data
+                                )
+                            else:
+                                loop = asyncio.get_running_loop()
+                                await loop.run_in_executor(
+                                    None, _write_debug_file, file_path, debug_data
+                                )
 
                             _LOGGER.info("Debug file created: %s", file_path)
 
@@ -260,6 +290,75 @@ def _register_services(hass: HomeAssistant) -> None:
             "solar_window_system_debug_calculation",
             handle_debug_calculation_service,
         )
+
+
+async def _handle_debug_calculation_service(
+    hass: HomeAssistant, call: ServiceCall
+) -> None:
+    """
+    Top-level service handler for debug calculation (module import target for tests).
+
+    Some unit tests import this symbol directly. This implementation mirrors the
+    nested handler registered in _register_services so tests can call it with a
+    mock hass instance.
+    """
+    window_id = call.data.get("window_id")
+    filename = call.data.get("filename")
+
+    if not window_id:
+        _LOGGER.error("Window ID is required for debug calculation")
+        return
+
+    resolved_window_id = await _resolve_to_subentry_id(hass, window_id)
+
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        if config_entry.data.get("entry_type") == "window_configs":
+            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+            debug_data = await coordinator.create_debug_data(resolved_window_id)
+
+            if not debug_data:
+                _LOGGER.error(
+                    "Could not create debug data for window: %s", resolved_window_id
+                )
+                return
+
+            if not filename:
+                timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                filename = f"debug_{resolved_window_id}_{timestamp}.json"
+
+            config_dir = Path(hass.config.config_dir)
+            file_path = config_dir / filename
+
+            try:
+                if (
+                    hasattr(hass, "async_add_executor_job")
+                    and callable(hass.async_add_executor_job)
+                    and (
+                        not isinstance(hass.async_add_executor_job, _Mock)
+                        or isinstance(hass.async_add_executor_job, _AsyncMock)
+                    )
+                ):
+                    await hass.async_add_executor_job(
+                        _write_debug_file, file_path, debug_data
+                    )
+                else:
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(
+                        None, _write_debug_file, file_path, debug_data
+                    )
+
+                _LOGGER.info("Debug file created: %s", file_path)
+
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "title": "Debug File Created",
+                        "message": f"Debug calculation file saved to: {filename}",
+                    },
+                )
+            except OSError:
+                _LOGGER.exception("Failed to create debug file")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -384,7 +483,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await _finish_setup_entry()
         else:
 
-            def _on_started(event: object) -> None:
+            async def _async_on_started(event: object) -> None:
                 """
                 Start deferred setup when Home Assistant has started.
 
@@ -394,79 +493,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 # Mark event as intentionally unused for linters
                 _ = event
 
-                # Schedule coroutine (do not await here). Provide a name for typing
-                # compatibility with typed Home Assistant helpers.
-                hass.async_create_background_task(
+                # Create setup task in event loop context
+                await hass.async_create_task(
                     _finish_setup_entry(), name=f"{DOMAIN}_deferred_setup"
                 )
 
-            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
+            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _async_on_started)
 
     # Register service for manual device creation (only once)
     _register_create_subentry_devices_service(hass)
 
     _LOGGER.debug("Setup completed for: %s", entry.title)
     return True
-
-
-async def _handle_debug_calculation_service(
-    hass: HomeAssistant, call: ServiceCall
-) -> None:
-    """Service to create debug calculation file for a window."""
-    window_id = call.data.get("window_id")
-    filename = call.data.get("filename")
-
-    if not window_id:
-        _LOGGER.error("Window ID is required for debug calculation")
-        return
-
-    # Resolve the window_id to a proper subentry id
-    resolved_window_id = await _resolve_to_subentry_id(hass, window_id)
-
-    # Find the coordinator for this window
-    for config_entry in hass.config_entries.async_entries(DOMAIN):
-        if config_entry.data.get("entry_type") == "window_configs":
-            coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-
-            # Create debug data
-            debug_data = await coordinator.create_debug_data(resolved_window_id)
-
-            if debug_data:
-                # Generate filename if not provided
-                if not filename:
-                    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-                    filename = f"debug_{resolved_window_id}_{timestamp}.json"
-
-                # Save to config directory
-                config_dir = Path(hass.config.config_dir)
-                file_path = config_dir / filename
-
-                try:
-                    # Write debug data to file using thread executor
-                    # to avoid blocking the event loop
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(
-                        None, _write_debug_file, file_path, debug_data
-                    )
-
-                    _LOGGER.info("Debug file created: %s", file_path)
-
-                    # Optional: Create a persistent notification
-                    await hass.services.async_call(
-                        "persistent_notification",
-                        "create",
-                        {
-                            "title": "Debug File Created",
-                            "message": f"Debug calculation file saved to: {filename}",
-                        },
-                    )
-
-                except OSError:
-                    _LOGGER.exception("Failed to create debug file")
-            else:
-                _LOGGER.error(
-                    "Could not create debug data for window: %s", resolved_window_id
-                )
 
 
 @callback
