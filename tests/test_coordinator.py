@@ -10,15 +10,17 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 def mock_config():
     """Fixture for mock configuration."""
     return {
-        "sensors": {
-            "irradiance_sensor": "sensor.solar_irradiance",
-            "temp_outdoor": "sensor.outdoor_temperature",
-        },
-        "thresholds": {
-            "outside_temp": 25.0,
-            "inside_temp": 24.0,
-            "forecast_high": 28.0,
-            "solar_energy": 300,
+        "global": {
+            "sensors": {
+                "irradiance_sensor": "sensor.solar_irradiance",
+                "temp_outdoor": "sensor.outdoor_temperature",
+            },
+            "thresholds": {
+                "outside_temp": 25.0,
+                "inside_temp": 24.0,
+                "forecast_high": 28.0,
+                "solar_energy": 300,
+            },
         },
         "windows": {
             "test_window": {
@@ -53,9 +55,26 @@ def test_coordinator_initialization(coordinator, mock_config):
     # Test coordinator is created
     assert coordinator is not None
 
+    # Test DataUpdateCoordinator inheritance
+    assert isinstance(coordinator, DataUpdateCoordinator)
+
     # Test config is stored
     assert coordinator.config == mock_config
 
     # Test windows are extracted
     expected_windows = {"test_window": mock_config["windows"]["test_window"]}
     assert coordinator.windows == expected_windows
+
+    # Test groups are extracted
+    assert coordinator.groups == mock_config.get("groups", {})
+
+    # Test global_config is extracted
+    assert coordinator.global_config == mock_config["global"]
+
+    # Test sensors are extracted from global_config
+    expected_sensors = mock_config["global"]["sensors"]
+    assert coordinator.sensors == expected_sensors
+
+    # Test thresholds are extracted from global_config
+    expected_thresholds = mock_config["global"]["thresholds"]
+    assert coordinator.thresholds == expected_thresholds

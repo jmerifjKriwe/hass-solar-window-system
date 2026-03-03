@@ -45,9 +45,9 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         # Extract global config
         self.global_config = config.get(CONF_GLOBAL, {})
 
-        # Extract sensors and thresholds
-        self.sensors = config.get(CONF_SENSORS, {})
-        self.thresholds = config.get(CONF_THRESHOLDS, {})
+        # Extract sensors and thresholds from global_config
+        self.sensors = self.global_config.get(CONF_SENSORS, {})
+        self.thresholds = self.global_config.get(CONF_THRESHOLDS, {})
 
     async def _async_update(self) -> dict:
         """Update solar energy calculations.
