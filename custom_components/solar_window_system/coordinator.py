@@ -115,6 +115,47 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
             # KeyError: state.attributes is missing (if we ever access them)
             return default
 
+    def _estimate_diffuse(
+        self, irradiance_total: float, elevation: float, weather_condition: str = None
+    ) -> float:
+        """Estimate diffuse radiation from total irradiance based on weather conditions.
+
+        Models the ratio of diffuse to total solar radiation based on:
+        - Sun elevation angle (lower sun = more diffuse due to atmospheric scattering)
+        - Weather conditions (clouds increase diffuse fraction)
+
+        Args:
+            irradiance_total: Total solar irradiance in W/m²
+            elevation: Sun elevation angle in degrees (0 = horizon, 90 = zenith)
+            weather_condition: Optional weather condition string (e.g., "sunny", "cloudy", "rainy")
+
+        Returns:
+            Estimated diffuse radiation in W/m²
+        """
+        # Base model: 20% at zenith (90°) to 50% at horizon (0°)
+        # This models increased atmospheric scattering at lower sun angles
+        base_diffuse_ratio = 0.2 + (0.3 * (1 - elevation / 90))
+
+        # Adjust for weather conditions
+        if weather_condition:
+            # Normalize to lowercase for comparison
+            weather = weather_condition.lower()
+
+            # Overcast conditions: mostly diffuse radiation
+            if weather in ["cloudy", "overcast", "foggy"]:
+                base_diffuse_ratio = 0.8
+            # Partly cloudy conditions: mix of direct and diffuse
+            elif weather in ["partlycloudy", "mostlycloudy"]:
+                base_diffuse_ratio = 0.5
+            # Clear conditions: use base ratio (already calculated)
+            # "sunny", "clear", "" keep the base ratio
+
+        # Clamp ratio to prevent extreme values (10% to 90%)
+        base_diffuse_ratio = max(0.1, min(0.9, base_diffuse_ratio))
+
+        # Calculate diffuse radiation
+        return irradiance_total * base_diffuse_ratio
+
     async def _async_update(self) -> dict:
         """Update solar energy calculations.
 

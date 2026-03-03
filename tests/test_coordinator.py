@@ -239,3 +239,60 @@ async def test_safe_get_sensor_with_default(hass, coordinator):
 
     # Assert it returns the default value
     assert result == 20.0
+
+
+def test_estimate_diffuse_clear_sky(coordinator):
+    """Test diffuse estimation for clear sky conditions."""
+    # total=800, elevation=45, weather="sunny"
+    result = coordinator._estimate_diffuse(
+        irradiance_total=800,
+        elevation=45,
+        weather_condition="sunny"
+    )
+
+    # For sunny weather at 45° elevation:
+    # Base ratio = 0.2 + (0.3 * (1 - 45/90)) = 0.2 + 0.15 = 0.35
+    # Weather adjustment: "sunny" keeps base ratio
+    # Expected: 800 * 0.35 = 280
+    assert result == 280
+
+
+def test_estimate_diffuse_cloudy(coordinator):
+    """Test diffuse estimation for cloudy conditions."""
+    # total=400, elevation=30, weather="cloudy" → expect 300-350 (~80%)
+    result = coordinator._estimate_diffuse(
+        irradiance_total=400,
+        elevation=30,
+        weather_condition="cloudy"
+    )
+
+    # For cloudy weather, base_ratio should be 0.8
+    # Expected: 400 * 0.8 = 320
+    assert 300 <= result <= 350
+
+
+def test_estimate_diffuse_no_weather_condition(coordinator):
+    """Test diffuse estimation with no weather condition."""
+    # total=600, elevation=60, weather=None → expect 0 < result < total
+    result = coordinator._estimate_diffuse(
+        irradiance_total=600,
+        elevation=60,
+        weather_condition=None
+    )
+
+    # Should be between 0 and total
+    assert 0 < result < 600
+
+
+def test_estimate_diffuse_low_sun(coordinator):
+    """Test diffuse estimation for low sun angle."""
+    # total=500, elevation=10, weather=None → expect result > total*0.4
+    result = coordinator._estimate_diffuse(
+        irradiance_total=500,
+        elevation=10,
+        weather_condition=None
+    )
+
+    # For low sun (10° elevation), base_ratio = 0.2 + (0.3 * (1 - 10/90)) = 0.2 + 0.267 = 0.467
+    # Expected: 500 * 0.467 = 233.5, which is > 200 (total*0.4)
+    assert result > 500 * 0.4
