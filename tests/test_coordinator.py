@@ -296,3 +296,90 @@ def test_estimate_diffuse_low_sun(coordinator):
     # For low sun (10° elevation), base_ratio = 0.2 + (0.3 * (1 - 10/90)) = 0.2 + 0.267 = 0.467
     # Expected: 500 * 0.467 = 233.5, which is > 200 (total*0.4)
     assert result > 500 * 0.4
+
+
+@pytest.mark.asyncio
+async def test_async_update_returns_results(hass, coordinator):
+    """Test _async_update returns results dict with window data."""
+    # Set up sun state (above horizon)
+    hass.states.async_set(
+        "sun.sun",
+        "above_horizon",
+        {
+            "elevation": 45,
+            "azimuth": 180,
+        }
+    )
+
+    # Set up irradiance sensor
+    hass.states.async_set("sensor.solar_irradiance", "800")
+
+    # Set up temperature sensor (not used but good to have)
+    hass.states.async_set("sensor.outdoor_temperature", "28")
+
+    # Call _async_update
+    result = await coordinator._async_update()
+
+    # Assert result is a dict with "test_window" key
+    assert isinstance(result, dict)
+    assert "test_window" in result
+
+
+@pytest.mark.asyncio
+async def test_async_update_night_returns_zero(hass, coordinator):
+    """Test _async_update returns zero results when sun is below horizon."""
+    # Set up sun state (below horizon - night)
+    hass.states.async_set(
+        "sun.sun",
+        "below_horizon",
+        {
+            "elevation": -10,
+            "azimuth": 180,
+        }
+    )
+
+    # Set up sensors (should be ignored at night)
+    hass.states.async_set("sensor.solar_irradiance", "800")
+    hass.states.async_set("sensor.outdoor_temperature", "28")
+
+    # Call _async_update
+    result = await coordinator._async_update()
+
+    # Assert all energies are 0
+    assert "test_window" in result
+    window_result = result["test_window"]
+    assert window_result["direct"] == 0
+    assert window_result["diffuse"] == 0
+    assert window_result["combined"] == 0
+
+
+@pytest.mark.asyncio
+async def test_async_update_calculates_energy(hass, coordinator):
+    """Test _async_update calculates energy correctly."""
+    # Set up sun state (above horizon, south-facing)
+    hass.states.async_set(
+        "sun.sun",
+        "above_horizon",
+        {
+            "elevation": 45,
+            "azimuth": 180,  # South, matching window azimuth
+        }
+    )
+
+    # Set up irradiance sensor
+    hass.states.async_set("sensor.solar_irradiance", "800")
+
+    # Call _async_update
+    result = await coordinator._async_update()
+
+    # Assert energy values are calculated
+    assert "test_window" in result
+    window_result = result["test_window"]
+
+    # All values should be positive
+    assert window_result["direct"] > 0
+    assert window_result["diffuse"] > 0
+    assert window_result["combined"] > 0
+
+    # Combined should equal direct + diffuse
+    assert window_result["combined"] == window_result["direct"] + window_result["diffuse"]

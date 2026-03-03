@@ -76,10 +76,13 @@ def hass():
     class MockStates:
         def __init__(self):
             self._states = {}
+            self._attributes = {}
 
-        def async_set(self, entity_id, state):
+        def async_set(self, entity_id, state, attributes=None):
             """Set a state for an entity."""
             self._states[entity_id] = state
+            if attributes:
+                self._attributes[entity_id] = attributes
 
         def get(self, entity_id):
             """Get a state for an entity, returning None if not found."""
@@ -88,6 +91,11 @@ def hass():
             # Return a mock state object with the state attribute
             state_obj = MagicMock()
             state_obj.state = self._states[entity_id]
+            # Add attributes if they exist
+            if entity_id in self._attributes:
+                state_obj.attributes = self._attributes[entity_id]
+            else:
+                state_obj.attributes = {}
             return state_obj
 
     hass.states = MockStates()

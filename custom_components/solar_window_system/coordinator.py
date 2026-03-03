@@ -156,11 +156,158 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         # Calculate diffuse radiation
         return irradiance_total * base_diffuse_ratio
 
+    def _get_zero_results(self) -> dict:
+        """Get zero energy results for all windows.
+
+        Returns:
+            Dictionary with all windows having direct=0, diffuse=0, combined=0
+        """
+        results = {}
+        for window_id in self.windows:
+            results[window_id] = {
+                "direct": 0,
+                "diffuse": 0,
+                "combined": 0,
+            }
+        return results
+
+    def _calculate_direct_energy(
+        self,
+        irradiance_direct: float,
+        elevation: float,
+        azimuth: float,
+        window: dict
+    ) -> float:
+        """Calculate direct solar energy through a window.
+
+        Args:
+            irradiance_direct: Direct solar irradiance in W/m²
+            elevation: Sun elevation angle in degrees
+            azimuth: Sun azimuth angle in degrees
+            window: Window configuration dictionary
+
+        Returns:
+            Direct energy in watts
+        """
+        geometry = window.get("geometry", {})
+        properties = window.get("properties", {})
+
+        # Get dimensions and properties
+        width = geometry.get("width", 0)
+        height = geometry.get("height", 0)
+        frame_width = properties.get("frame_width", 0)
+        g_value = properties.get("g_value", 0.7)
+        window_azimuth = geometry.get("azimuth", 180)
+
+        # Calculate effective area (subtract frame on all sides)
+        # Area is in cm², convert to m² (divide by 10000)
+        effective_area_m2 = ((width - 2 * frame_width) * (height - 2 * frame_width)) / 10000
+
+        # Calculate incidence factor based on azimuth difference
+        # cos(0) = 1 (sun directly facing window), cos(90) = 0 (sun from side)
+        azimuth_diff = abs(azimuth - window_azimuth)
+        incidence_factor = math.cos(math.radians(azimuth_diff))
+
+        # Calculate direct energy
+        return irradiance_direct * effective_area_m2 * incidence_factor * g_value
+
+    def _calculate_diffuse_energy(
+        self,
+        irradiance_diffuse: float,
+        window: dict
+    ) -> float:
+        """Calculate diffuse solar energy through a window.
+
+        Args:
+            irradiance_diffuse: Diffuse solar irradiance in W/m²
+            window: Window configuration dictionary
+
+        Returns:
+            Diffuse energy in watts
+        """
+        geometry = window.get("geometry", {})
+        properties = window.get("properties", {})
+
+        # Get dimensions and properties
+        width = geometry.get("width", 0)
+        height = geometry.get("height", 0)
+        frame_width = properties.get("frame_width", 0)
+        g_value = properties.get("g_value", 0.7)
+
+        # Calculate effective area (subtract frame on all sides)
+        # Area is in cm², convert to m² (divide by 10000)
+        effective_area_m2 = ((width - 2 * frame_width) * (height - 2 * frame_width)) / 10000
+
+        # Calculate diffuse energy (no incidence factor for diffuse)
+        return irradiance_diffuse * effective_area_m2 * g_value
+
     async def _async_update(self) -> dict:
         """Update solar energy calculations.
 
         Returns:
-            Dictionary with calculation results (placeholder for now)
+            Dictionary with calculation results for each window
         """
-        # Placeholder - will implement in later tasks
-        return {}
+        # Get sun state
+        sun_state = self.hass.states.get("sun.sun")
+
+        # Check if it's night
+        if sun_state is None or sun_state.state == "below_horizon":
+            return self._get_zero_results()
+
+        # Get sun position from attributes
+        sun_attrs = sun_state.attributes
+        elevation = sun_attrs.get("elevation", 0)
+        azimuth = sun_attrs.get("azimuth", 180)
+
+        # Get total irradiance from sensor
+        irradiance_total = await self._safe_get_sensor(
+            self.sensors.get("irradiance_sensor"),
+            default=0
+        )
+
+        # If no irradiance data, return zero results
+        if irradiance_total is None or irradiance_total == 0:
+            return self._get_zero_results()
+
+        # Get or estimate diffuse irradiance
+        # Check if diffuse sensor exists
+        diffuse_sensor = self.sensors.get("diffuse_irradiance_sensor")
+        if diffuse_sensor:
+            irradiance_diffuse = await self._safe_get_sensor(diffuse_sensor, default=0)
+        else:
+            # Estimate diffuse from total
+            irradiance_diffuse = self._estimate_diffuse(irradiance_total, elevation)
+
+        # Calculate direct irradiance
+        irradiance_direct = irradiance_total - irradiance_diffuse
+
+        # Ensure non-negative values
+        irradiance_direct = max(0, irradiance_direct)
+        irradiance_diffuse = max(0, irradiance_diffuse)
+
+        # Calculate energy for each window
+        results = {}
+        for window_id, window in self.windows.items():
+            # Check if sun is visible through this window
+            if self._sun_is_visible(elevation, azimuth, window):
+                # Calculate both direct and diffuse energy
+                direct = self._calculate_direct_energy(
+                    irradiance_direct, elevation, azimuth, window
+                )
+                diffuse = self._calculate_diffuse_energy(irradiance_diffuse, window)
+            else:
+                # Sun not visible, only diffuse energy
+                direct = 0
+                diffuse = self._calculate_diffuse_energy(irradiance_diffuse, window)
+
+            # Calculate combined energy
+            combined = direct + diffuse
+
+            # Store results
+            results[window_id] = {
+                "direct": direct,
+                "diffuse": diffuse,
+                "combined": combined,
+            }
+
+        return results
