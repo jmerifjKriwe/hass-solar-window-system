@@ -81,8 +81,9 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         if shading_depth > 0:
             window_recess = properties.get("window_recess", 0)
             # Calculate shade angle: angle at which shading blocks the sun
+            # atan2(window_recess, shading_depth) gives elevation angle from horizontal
             # The +1 prevents division by zero
-            shade_angle = math.degrees(math.atan2(shading_depth, window_recess + 1))
+            shade_angle = math.degrees(math.atan2(window_recess + 1, shading_depth))
             if elevation < shade_angle:
                 return False
 

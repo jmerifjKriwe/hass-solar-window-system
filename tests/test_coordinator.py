@@ -132,9 +132,46 @@ def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
             "shading_depth": 100,
         },
     }
+    # With shading_depth=100, window_recess=30:
+    # Correct shade_angle = atan2(31, 100) = 17.22°
+    # At elevation=15°, sun should be blocked
     result = coordinator._sun_is_visible(
         elevation=15,
         azimuth=180,
         window=window_with_shading
     )
     assert result is False
+
+
+def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
+    """Test sun is visible when above shading angle.
+
+    This test would catch the atan2 parameter swap bug:
+    - With CORRECT formula: shade_angle = atan2(31, 100) = 17.22°
+      At elevation=45°, sun should be visible (45 > 17.22)
+    - With WRONG formula: shade_angle = atan2(100, 31) = 72.78°
+      At elevation=45°, sun would be blocked (45 < 72.78)
+    """
+    window_with_shading = {
+        "geometry": {
+            "width": 150,
+            "height": 120,
+            "azimuth": 180,
+            "tilt": 90,
+            "visible_azimuth_start": 150,
+            "visible_azimuth_end": 210,
+        },
+        "properties": {
+            "g_value": 0.6,
+            "frame_width": 10,
+            "window_recess": 30,
+            "shading_depth": 100,
+        },
+    }
+    # At elevation=45°, sun should be visible (above the shading angle of ~17°)
+    result = coordinator._sun_is_visible(
+        elevation=45,
+        azimuth=180,
+        window=window_with_shading
+    )
+    assert result is True
