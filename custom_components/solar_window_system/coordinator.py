@@ -158,18 +158,32 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         return irradiance_total * base_diffuse_ratio
 
     def _get_zero_results(self) -> dict:
-        """Get zero energy results for all windows.
+        """Get zero energy results for all windows, groups, and global.
 
         Returns:
-            Dictionary with all windows having direct=0, diffuse=0, combined=0
+            Dictionary with all windows, groups, and global having direct=0, diffuse=0, combined=0
         """
         results = {}
+        # Add zero results for all windows
         for window_id in self.windows:
             results[window_id] = {
                 "direct": 0,
                 "diffuse": 0,
                 "combined": 0,
             }
+        # Add zero results for all groups
+        for group_id in self.groups:
+            results[f"group_{group_id}"] = {
+                "direct": 0,
+                "diffuse": 0,
+                "combined": 0,
+            }
+        # Add zero result for global
+        results["global"] = {
+            "direct": 0,
+            "diffuse": 0,
+            "combined": 0,
+        }
         return results
 
     def _calculate_direct_energy(
@@ -242,6 +256,43 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         # Calculate diffuse energy (no incidence factor for diffuse)
         return irradiance_diffuse * effective_area_m2 * g_value
 
+    def _aggregate_group(self, window_ids: list, results: dict) -> dict:
+        """Aggregate energy values for a group of windows.
+
+        Args:
+            window_ids: List of window IDs to aggregate
+            results: Dictionary containing calculation results for each window
+
+        Returns:
+            Dictionary with aggregated direct, diffuse, and combined energy
+        """
+        aggregated = {"direct": 0, "diffuse": 0, "combined": 0}
+        for window_id in window_ids:
+            if window_id in results:
+                window_data = results[window_id]
+                aggregated["direct"] += window_data.get("direct", 0)
+                aggregated["diffuse"] += window_data.get("diffuse", 0)
+                aggregated["combined"] += window_data.get("combined", 0)
+        return aggregated
+
+    def _aggregate_all(self, results: dict) -> dict:
+        """Aggregate energy values for all windows (global aggregation).
+
+        Args:
+            results: Dictionary containing calculation results for windows and groups
+
+        Returns:
+            Dictionary with aggregated direct, diffuse, and combined energy
+        """
+        aggregated = {"direct": 0, "diffuse": 0, "combined": 0}
+        for key, value in results.items():
+            # Skip group_* and global keys (only sum actual windows)
+            if not key.startswith("group_") and key != "global":
+                aggregated["direct"] += value.get("direct", 0)
+                aggregated["diffuse"] += value.get("diffuse", 0)
+                aggregated["combined"] += value.get("combined", 0)
+        return aggregated
+
     async def _async_update(self) -> dict:
         """Update solar energy calculations.
 
@@ -313,5 +364,16 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
                 "diffuse": diffuse,
                 "combined": combined,
             }
+
+        # Calculate group aggregations
+        for group_id, group in self.groups.items():
+            group_result = self._aggregate_group(
+                group.get("windows", []), results
+            )
+            results[f"group_{group_id}"] = group_result
+
+        # Calculate global aggregation
+        global_result = self._aggregate_all(results)
+        results["global"] = global_result
 
         return results

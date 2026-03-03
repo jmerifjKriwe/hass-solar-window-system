@@ -1,8 +1,6 @@
 """Tests for SolarCalculationCoordinator."""
 
 import pytest
-from datetime import timedelta
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 
@@ -383,3 +381,158 @@ async def test_async_update_calculates_energy(hass, coordinator):
 
     # Combined should equal direct + diffuse
     assert window_result["combined"] == window_result["direct"] + window_result["diffuse"]
+
+
+@pytest.mark.asyncio
+async def test_aggregation_includes_groups(hass, coordinator):
+    """Test that aggregation includes group results."""
+    # Add a group to the coordinator's config
+    coordinator.groups = {
+        "test_group": {
+            "windows": ["test_window"],
+            "name": "Test Group"
+        }
+    }
+
+    # Set up sun state (above horizon)
+    hass.states.async_set(
+        "sun.sun",
+        "above_horizon",
+        {
+            "elevation": 45,
+            "azimuth": 180,
+        }
+    )
+
+    # Set up irradiance sensor
+    hass.states.async_set("sensor.solar_irradiance", "800")
+
+    # Call _async_update
+    result = await coordinator._async_update()
+
+    # Assert group_test_group is in results
+    assert "group_test_group" in result
+    group_result = result["group_test_group"]
+    assert "direct" in group_result
+    assert "diffuse" in group_result
+    assert "combined" in group_result
+
+
+@pytest.mark.asyncio
+async def test_aggregation_includes_global(hass, coordinator):
+    """Test that aggregation includes global results."""
+    # Set up sun state (above horizon)
+    hass.states.async_set(
+        "sun.sun",
+        "above_horizon",
+        {
+            "elevation": 45,
+            "azimuth": 180,
+        }
+    )
+
+    # Set up irradiance sensor
+    hass.states.async_set("sensor.solar_irradiance", "800")
+
+    # Call _async_update
+    result = await coordinator._async_update()
+
+    # Assert global is in results
+    assert "global" in result
+    global_result = result["global"]
+    assert "direct" in global_result
+    assert "diffuse" in global_result
+    assert "combined" in global_result
+
+    # Global energy should be > 0 when sun is above horizon
+    assert global_result["combined"] > 0
+
+
+@pytest.mark.asyncio
+async def test_aggregation_sums_correctly(hass):
+    """Test that aggregation sums window values correctly."""
+    # Create config with two windows and a group
+    config_with_group = {
+        "global": {
+            "sensors": {
+                "irradiance_sensor": "sensor.solar_irradiance",
+            },
+            "thresholds": {},
+        },
+        "windows": {
+            "window_1": {
+                "geometry": {
+                    "width": 100,
+                    "height": 100,
+                    "azimuth": 180,
+                    "tilt": 90,
+                    "visible_azimuth_start": 150,
+                    "visible_azimuth_end": 210,
+                },
+                "properties": {
+                    "g_value": 0.6,
+                    "frame_width": 10,
+                    "window_recess": 0,
+                    "shading_depth": 0,
+                },
+            },
+            "window_2": {
+                "geometry": {
+                    "width": 100,
+                    "height": 100,
+                    "azimuth": 180,
+                    "tilt": 90,
+                    "visible_azimuth_start": 150,
+                    "visible_azimuth_end": 210,
+                },
+                "properties": {
+                    "g_value": 0.6,
+                    "frame_width": 10,
+                    "window_recess": 0,
+                    "shading_depth": 0,
+                },
+            },
+        },
+        "groups": {
+            "test_group": {
+                "windows": ["window_1", "window_2"],
+                "name": "Test Group"
+            }
+        },
+    }
+
+    # Create coordinator with this config
+    from custom_components.solar_window_system.coordinator import SolarCalculationCoordinator
+    coordinator = SolarCalculationCoordinator(hass, config_with_group)
+
+    # Set up sun state (above horizon)
+    hass.states.async_set(
+        "sun.sun",
+        "above_horizon",
+        {
+            "elevation": 45,
+            "azimuth": 180,
+        }
+    )
+
+    # Set up irradiance sensor
+    hass.states.async_set("sensor.solar_irradiance", "800")
+
+    # Call _async_update
+    result = await coordinator._async_update()
+
+    # Assert group sums windows correctly
+    assert "group_test_group" in result
+    group_result = result["group_test_group"]
+
+    # Group direct should equal window_1 direct + window_2 direct
+    expected_direct = result["window_1"]["direct"] + result["window_2"]["direct"]
+    assert group_result["direct"] == expected_direct
+
+    # Group diffuse should equal window_1 diffuse + window_2 diffuse
+    expected_diffuse = result["window_1"]["diffuse"] + result["window_2"]["diffuse"]
+    assert group_result["diffuse"] == expected_diffuse
+
+    # Group combined should equal window_1 combined + window_2 combined
+    expected_combined = result["window_1"]["combined"] + result["window_2"]["combined"]
+    assert group_result["combined"] == expected_combined
