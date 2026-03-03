@@ -71,6 +71,26 @@ def hass():
     """Fixture for Home Assistant instance."""
     from homeassistant.core import HomeAssistant
     hass = HomeAssistant()
+
+    # Create a proper states mock that tracks entities
+    class MockStates:
+        def __init__(self):
+            self._states = {}
+
+        def async_set(self, entity_id, state):
+            """Set a state for an entity."""
+            self._states[entity_id] = state
+
+        def get(self, entity_id):
+            """Get a state for an entity, returning None if not found."""
+            if entity_id not in self._states:
+                return None
+            # Return a mock state object with the state attribute
+            state_obj = MagicMock()
+            state_obj.state = self._states[entity_id]
+            return state_obj
+
+    hass.states = MockStates()
     return hass
 
 

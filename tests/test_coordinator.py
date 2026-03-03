@@ -175,3 +175,67 @@ def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
         window=window_with_shading
     )
     assert result is True
+
+
+@pytest.mark.asyncio
+async def test_safe_get_sensor_valid(hass, coordinator):
+    """Test _safe_get_sensor with valid numeric state."""
+    # Set up a sensor with a valid numeric state
+    hass.states.async_set("sensor.test_temp", "25.5")
+
+    # Call the method
+    result = await coordinator._safe_get_sensor("sensor.test_temp")
+
+    # Assert it returns the float value
+    assert result == 25.5
+
+
+@pytest.mark.asyncio
+async def test_safe_get_sensor_unknown(hass, coordinator):
+    """Test _safe_get_sensor with 'unknown' state."""
+    # Set up a sensor with 'unknown' state
+    hass.states.async_set("sensor.test_temp", "unknown")
+
+    # Call the method
+    result = await coordinator._safe_get_sensor("sensor.test_temp")
+
+    # Assert it returns None for unknown state
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_safe_get_sensor_unavailable(hass, coordinator):
+    """Test _safe_get_sensor with 'unavailable' state."""
+    # Set up a sensor with 'unavailable' state
+    hass.states.async_set("sensor.test_temp", "unavailable")
+
+    # Call the method
+    result = await coordinator._safe_get_sensor("sensor.test_temp")
+
+    # Assert it returns None for unavailable state
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_safe_get_sensor_missing(hass, coordinator):
+    """Test _safe_get_sensor with non-existent sensor."""
+    # Don't create the sensor - it should be missing
+
+    # Call the method
+    result = await coordinator._safe_get_sensor("sensor.nonexistent")
+
+    # Assert it returns None for missing sensor
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_safe_get_sensor_with_default(hass, coordinator):
+    """Test _safe_get_sensor with default value."""
+    # Set up a sensor with 'unknown' state
+    hass.states.async_set("sensor.test_temp", "unknown")
+
+    # Call the method with a default value
+    result = await coordinator._safe_get_sensor("sensor.test_temp", default=20.0)
+
+    # Assert it returns the default value
+    assert result == 20.0

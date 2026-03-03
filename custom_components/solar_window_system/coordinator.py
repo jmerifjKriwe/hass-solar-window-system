@@ -89,6 +89,32 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         return True
 
+    async def _safe_get_sensor(self, entity_id: str, default=None) -> float | None:
+        """Safely get sensor state value with graceful degradation.
+
+        Args:
+            entity_id: Home Assistant entity ID (e.g., "sensor.temperature")
+            default: Default value to return if sensor is unavailable/invalid
+
+        Returns:
+            Float value of sensor state, or default if sensor is unavailable/unknown/invalid
+        """
+        # Get the state from Home Assistant
+        state = self.hass.states.get(entity_id)
+
+        # Check if state exists and is not in a special state
+        if state is None or state.state in ["unknown", "unavailable", None]:
+            return default
+
+        # Try to convert to float
+        try:
+            return float(state.state)
+        except (ValueError, AttributeError, KeyError):
+            # ValueError: state is not numeric
+            # AttributeError: state object is malformed
+            # KeyError: state.attributes is missing (if we ever access them)
+            return default
+
     async def _async_update(self) -> dict:
         """Update solar energy calculations.
 
