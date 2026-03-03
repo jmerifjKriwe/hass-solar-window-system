@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
+import pytest
 
 # Add the custom_components directory to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,6 +20,7 @@ except ImportError:
     sys.modules['homeassistant.helpers'] = MagicMock()
     sys.modules['homeassistant.helpers.entity'] = MagicMock()
     sys.modules['homeassistant.helpers.update_coordinator'] = MagicMock()
+    sys.modules['homeassistant.helpers.storage'] = MagicMock()
     sys.modules['homeassistant.components'] = MagicMock()
     sys.modules['homeassistant.components.sensor'] = MagicMock()
     sys.modules['homeassistant.components.binary_sensor'] = MagicMock()
@@ -30,3 +32,33 @@ except ImportError:
         BINARY_SENSOR = "binary_sensor"
 
     sys.modules['homeassistant.const'].Platform = Platform
+
+    # Add Store mock for storage
+    class MockStore:
+        def __init__(self, hass, version, key):
+            self.hass = hass
+            self.version = version
+            self.key = key
+
+        async def async_load(self):
+            return None
+
+        async def async_save(self, data):
+            pass
+
+    sys.modules['homeassistant.helpers.storage'].Store = MockStore
+
+
+@pytest.fixture
+def hass():
+    """Fixture for Home Assistant instance."""
+    from homeassistant.core import HomeAssistant
+    hass = HomeAssistant()
+    return hass
+
+
+@pytest.fixture
+def store(hass):
+    """Fixture for ConfigStore instance."""
+    from custom_components.solar_window_system.store import ConfigStore
+    return ConfigStore(hass)
