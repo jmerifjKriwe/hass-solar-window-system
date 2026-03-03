@@ -48,6 +48,23 @@ except ImportError:
 
     sys.modules['homeassistant.helpers.storage'].Store = MockStore
 
+    # Add DataUpdateCoordinator mock
+    class MockDataUpdateCoordinator:
+        def __init__(self, hass, logger, name, update_interval):
+            self.hass = hass
+            self.logger = logger
+            self.name = name
+            self.update_interval = update_interval
+            self.data = {}
+
+        async def async_config_entry_first_refresh(self):
+            pass
+
+        async def async_refresh(self):
+            pass
+
+    sys.modules['homeassistant.helpers.update_coordinator'].DataUpdateCoordinator = MockDataUpdateCoordinator
+
 
 @pytest.fixture
 def hass():
