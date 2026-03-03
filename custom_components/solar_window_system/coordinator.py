@@ -14,6 +14,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     CONF_SENSORS,
     CONF_THRESHOLDS,
+    DEFAULT_G_VALUE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -196,7 +197,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         width = geometry.get("width", 0)
         height = geometry.get("height", 0)
         frame_width = properties.get("frame_width", 0)
-        g_value = properties.get("g_value", 0.7)
+        g_value = properties.get("g_value", DEFAULT_G_VALUE)
         window_azimuth = geometry.get("azimuth", 180)
 
         # Calculate effective area (subtract frame on all sides)
@@ -206,7 +207,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         # Calculate incidence factor based on azimuth difference
         # cos(0) = 1 (sun directly facing window), cos(90) = 0 (sun from side)
         azimuth_diff = abs(azimuth - window_azimuth)
-        incidence_factor = math.cos(math.radians(azimuth_diff))
+        incidence_factor = max(0, math.cos(math.radians(azimuth_diff)))
 
         # Calculate direct energy
         return irradiance_direct * effective_area_m2 * incidence_factor * g_value
@@ -232,7 +233,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         width = geometry.get("width", 0)
         height = geometry.get("height", 0)
         frame_width = properties.get("frame_width", 0)
-        g_value = properties.get("g_value", 0.7)
+        g_value = properties.get("g_value", DEFAULT_G_VALUE)
 
         # Calculate effective area (subtract frame on all sides)
         # Area is in cm², convert to m² (divide by 10000)
@@ -274,6 +275,9 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         diffuse_sensor = self.sensors.get("diffuse_irradiance_sensor")
         if diffuse_sensor:
             irradiance_diffuse = await self._safe_get_sensor(diffuse_sensor, default=0)
+            # Explicit None check for type safety
+            if irradiance_diffuse is None:
+                irradiance_diffuse = 0.0
         else:
             # Estimate diffuse from total
             irradiance_diffuse = self._estimate_diffuse(irradiance_total, elevation)
