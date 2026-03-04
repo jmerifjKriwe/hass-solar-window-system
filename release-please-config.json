@@ -1,0 +1,8 @@
+{
+  "branches": ["main"],
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}
