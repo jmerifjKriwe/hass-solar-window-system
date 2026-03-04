@@ -23,7 +23,7 @@ def test_store_initialization(store):
 async def test_load_empty_config(hass, store):
     """Test loading config when no config exists."""
     # Mock the Store's async_load to return None (empty storage)
-    with patch.object(store._store, 'async_load', return_value=None):
+    with patch.object(store._store, "async_load", return_value=None):
         config = await store.async_load()
 
         # Verify empty config structure
@@ -39,21 +39,20 @@ async def test_save_and_load_config(hass, store):
     """Test saving and loading configuration."""
     test_config = {
         "version": STORAGE_VERSION,
-        CONF_GLOBAL: {
-            CONF_SENSORS: {
-                CONF_IRRADIANCE_SENSOR: "sensor.test_irradiance"
-            }
-        },
+        CONF_GLOBAL: {CONF_SENSORS: {CONF_IRRADIANCE_SENSOR: "sensor.test_irradiance"}},
         CONF_GROUPS: {},
-        CONF_WINDOWS: {}
+        CONF_WINDOWS: {},
     }
 
     # Save the config
     await store.async_save(test_config)
 
     # Load it back
-    with patch.object(store._store, 'async_load', return_value=test_config):
+    with patch.object(store._store, "async_load", return_value=test_config):
         loaded_config = await store.async_load()
 
         # Verify the irradiance sensor value matches
-        assert loaded_config[CONF_GLOBAL][CONF_SENSORS][CONF_IRRADIANCE_SENSOR] == "sensor.test_irradiance"
+        assert (
+            loaded_config[CONF_GLOBAL][CONF_SENSORS][CONF_IRRADIANCE_SENSOR]
+            == "sensor.test_irradiance"
+        )

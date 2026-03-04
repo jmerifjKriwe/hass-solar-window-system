@@ -44,7 +44,10 @@ def mock_config():
 @pytest.fixture
 def coordinator(hass, mock_config):
     """Fixture for SolarCalculationCoordinator instance."""
-    from custom_components.solar_window_system.coordinator import SolarCalculationCoordinator
+    from custom_components.solar_window_system.coordinator import (
+        SolarCalculationCoordinator,
+    )
+
     return SolarCalculationCoordinator(hass, mock_config)
 
 
@@ -81,33 +84,21 @@ def test_coordinator_initialization(coordinator, mock_config):
 def test_sun_is_visible_above_horizon(coordinator, mock_config):
     """Test sun is visible when above horizon and within azimuth range."""
     window = mock_config["windows"]["test_window"]
-    result = coordinator._sun_is_visible(
-        elevation=45,
-        azimuth=180,
-        window=window
-    )
+    result = coordinator._sun_is_visible(elevation=45, azimuth=180, window=window)
     assert result is True
 
 
 def test_sun_is_visible_below_horizon(coordinator, mock_config):
     """Test sun is not visible when below horizon."""
     window = mock_config["windows"]["test_window"]
-    result = coordinator._sun_is_visible(
-        elevation=-5,
-        azimuth=180,
-        window=window
-    )
+    result = coordinator._sun_is_visible(elevation=-5, azimuth=180, window=window)
     assert result is False
 
 
 def test_sun_is_visible_outside_azimuth_range(coordinator, mock_config):
     """Test sun is not visible when outside azimuth range."""
     window = mock_config["windows"]["test_window"]
-    result = coordinator._sun_is_visible(
-        elevation=45,
-        azimuth=90,
-        window=window
-    )
+    result = coordinator._sun_is_visible(elevation=45, azimuth=90, window=window)
     assert result is False
 
 
@@ -134,9 +125,7 @@ def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
     # Correct shade_angle = atan2(31, 100) = 17.22°
     # At elevation=15°, sun should be blocked
     result = coordinator._sun_is_visible(
-        elevation=15,
-        azimuth=180,
-        window=window_with_shading
+        elevation=15, azimuth=180, window=window_with_shading
     )
     assert result is False
 
@@ -168,9 +157,7 @@ def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
     }
     # At elevation=45°, sun should be visible (above the shading angle of ~17°)
     result = coordinator._sun_is_visible(
-        elevation=45,
-        azimuth=180,
-        window=window_with_shading
+        elevation=45, azimuth=180, window=window_with_shading
     )
     assert result is True
 
@@ -243,9 +230,7 @@ def test_estimate_diffuse_clear_sky(coordinator):
     """Test diffuse estimation for clear sky conditions."""
     # total=800, elevation=45, weather="sunny"
     result = coordinator._estimate_diffuse(
-        irradiance_total=800,
-        elevation=45,
-        weather_condition="sunny"
+        irradiance_total=800, elevation=45, weather_condition="sunny"
     )
 
     # For sunny weather at 45° elevation:
@@ -259,9 +244,7 @@ def test_estimate_diffuse_cloudy(coordinator):
     """Test diffuse estimation for cloudy conditions."""
     # total=400, elevation=30, weather="cloudy" → expect 300-350 (~80%)
     result = coordinator._estimate_diffuse(
-        irradiance_total=400,
-        elevation=30,
-        weather_condition="cloudy"
+        irradiance_total=400, elevation=30, weather_condition="cloudy"
     )
 
     # For cloudy weather, base_ratio should be 0.8
@@ -273,9 +256,7 @@ def test_estimate_diffuse_no_weather_condition(coordinator):
     """Test diffuse estimation with no weather condition."""
     # total=600, elevation=60, weather=None → expect 0 < result < total
     result = coordinator._estimate_diffuse(
-        irradiance_total=600,
-        elevation=60,
-        weather_condition=None
+        irradiance_total=600, elevation=60, weather_condition=None
     )
 
     # Should be between 0 and total
@@ -286,9 +267,7 @@ def test_estimate_diffuse_low_sun(coordinator):
     """Test diffuse estimation for low sun angle."""
     # total=500, elevation=10, weather=None → expect result > total*0.4
     result = coordinator._estimate_diffuse(
-        irradiance_total=500,
-        elevation=10,
-        weather_condition=None
+        irradiance_total=500, elevation=10, weather_condition=None
     )
 
     # For low sun (10° elevation), base_ratio = 0.2 + (0.3 * (1 - 10/90)) = 0.2 + 0.267 = 0.467
@@ -306,7 +285,7 @@ async def test_async_update_returns_results(hass, coordinator):
         {
             "elevation": 45,
             "azimuth": 180,
-        }
+        },
     )
 
     # Set up irradiance sensor
@@ -333,7 +312,7 @@ async def test_async_update_night_returns_zero(hass, coordinator):
         {
             "elevation": -10,
             "azimuth": 180,
-        }
+        },
     )
 
     # Set up sensors (should be ignored at night)
@@ -361,7 +340,7 @@ async def test_async_update_calculates_energy(hass, coordinator):
         {
             "elevation": 45,
             "azimuth": 180,  # South, matching window azimuth
-        }
+        },
     )
 
     # Set up irradiance sensor
@@ -380,7 +359,9 @@ async def test_async_update_calculates_energy(hass, coordinator):
     assert window_result["combined"] > 0
 
     # Combined should equal direct + diffuse
-    assert window_result["combined"] == window_result["direct"] + window_result["diffuse"]
+    assert (
+        window_result["combined"] == window_result["direct"] + window_result["diffuse"]
+    )
 
 
 @pytest.mark.asyncio
@@ -388,10 +369,7 @@ async def test_aggregation_includes_groups(hass, coordinator):
     """Test that aggregation includes group results."""
     # Add a group to the coordinator's config
     coordinator.groups = {
-        "test_group": {
-            "windows": ["test_window"],
-            "name": "Test Group"
-        }
+        "test_group": {"windows": ["test_window"], "name": "Test Group"}
     }
 
     # Set up sun state (above horizon)
@@ -401,7 +379,7 @@ async def test_aggregation_includes_groups(hass, coordinator):
         {
             "elevation": 45,
             "azimuth": 180,
-        }
+        },
     )
 
     # Set up irradiance sensor
@@ -428,7 +406,7 @@ async def test_aggregation_includes_global(hass, coordinator):
         {
             "elevation": 45,
             "azimuth": 180,
-        }
+        },
     )
 
     # Set up irradiance sensor
@@ -494,15 +472,15 @@ async def test_aggregation_sums_correctly(hass):
             },
         },
         "groups": {
-            "test_group": {
-                "windows": ["window_1", "window_2"],
-                "name": "Test Group"
-            }
+            "test_group": {"windows": ["window_1", "window_2"], "name": "Test Group"}
         },
     }
 
     # Create coordinator with this config
-    from custom_components.solar_window_system.coordinator import SolarCalculationCoordinator
+    from custom_components.solar_window_system.coordinator import (
+        SolarCalculationCoordinator,
+    )
+
     coordinator = SolarCalculationCoordinator(hass, config_with_group)
 
     # Set up sun state (above horizon)
@@ -512,7 +490,7 @@ async def test_aggregation_sums_correctly(hass):
         {
             "elevation": 45,
             "azimuth": 180,
-        }
+        },
     )
 
     # Set up irradiance sensor

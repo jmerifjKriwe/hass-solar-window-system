@@ -13,25 +13,26 @@ try:
     import homeassistant
 except ImportError:
     # Create mock modules for homeassistant
-    sys.modules['homeassistant'] = MagicMock()
-    sys.modules['homeassistant.const'] = MagicMock()
-    sys.modules['homeassistant.config_entries'] = MagicMock()
-    sys.modules['homeassistant.core'] = MagicMock()
-    sys.modules['homeassistant.helpers'] = MagicMock()
-    sys.modules['homeassistant.helpers.entity'] = MagicMock()
-    sys.modules['homeassistant.helpers.update_coordinator'] = MagicMock()
-    sys.modules['homeassistant.helpers.storage'] = MagicMock()
-    sys.modules['homeassistant.components'] = MagicMock()
-    sys.modules['homeassistant.components.sensor'] = MagicMock()
-    sys.modules['homeassistant.components.binary_sensor'] = MagicMock()
+    sys.modules["homeassistant"] = MagicMock()
+    sys.modules["homeassistant.const"] = MagicMock()
+    sys.modules["homeassistant.config_entries"] = MagicMock()
+    sys.modules["homeassistant.core"] = MagicMock()
+    sys.modules["homeassistant.helpers"] = MagicMock()
+    sys.modules["homeassistant.helpers.entity"] = MagicMock()
+    sys.modules["homeassistant.helpers.update_coordinator"] = MagicMock()
+    sys.modules["homeassistant.helpers.storage"] = MagicMock()
+    sys.modules["homeassistant.components"] = MagicMock()
+    sys.modules["homeassistant.components.sensor"] = MagicMock()
+    sys.modules["homeassistant.components.binary_sensor"] = MagicMock()
 
     # Add Platform enum
     from enum import Enum
+
     class Platform(Enum):
         SENSOR = "sensor"
         BINARY_SENSOR = "binary_sensor"
 
-    sys.modules['homeassistant.const'].Platform = Platform
+    sys.modules["homeassistant.const"].Platform = Platform
 
     # Add Store mock for storage
     class MockStore:
@@ -46,7 +47,7 @@ except ImportError:
         async def async_save(self, data):
             pass
 
-    sys.modules['homeassistant.helpers.storage'].Store = MockStore
+    sys.modules["homeassistant.helpers.storage"].Store = MockStore
 
     # Add DataUpdateCoordinator mock
     class MockDataUpdateCoordinator:
@@ -63,7 +64,9 @@ except ImportError:
         async def async_refresh(self):
             pass
 
-    sys.modules['homeassistant.helpers.update_coordinator'].DataUpdateCoordinator = MockDataUpdateCoordinator
+    sys.modules["homeassistant.helpers.update_coordinator"].DataUpdateCoordinator = (
+        MockDataUpdateCoordinator
+    )
 
     # Add entity mocks with proper metaclass handling
     class MockEntity:
@@ -78,10 +81,12 @@ except ImportError:
         def __init__(self, *args, **kwargs):
             pass
 
-    sys.modules['homeassistant.helpers.entity'].Entity = MockEntity
-    sys.modules['homeassistant.helpers.entity'].DeviceInfo = dict
-    sys.modules['homeassistant.helpers.update_coordinator'].CoordinatorEntity = MockCoordinatorEntity
-    sys.modules['homeassistant.components.sensor'].SensorEntity = MockSensorEntity
+    sys.modules["homeassistant.helpers.entity"].Entity = MockEntity
+    sys.modules["homeassistant.helpers.entity"].DeviceInfo = dict
+    sys.modules["homeassistant.helpers.update_coordinator"].CoordinatorEntity = (
+        MockCoordinatorEntity
+    )
+    sys.modules["homeassistant.components.sensor"].SensorEntity = MockSensorEntity
 
     # Add SensorDeviceClass enum
     class SensorDeviceClass:
@@ -89,20 +94,21 @@ except ImportError:
         TEMPERATURE = "temperature"
         ENERGY = "energy"
 
-    sys.modules['homeassistant.components.sensor'].SensorDeviceClass = SensorDeviceClass
+    sys.modules["homeassistant.components.sensor"].SensorDeviceClass = SensorDeviceClass
 
     # Add UnitOfPower constants
     class UnitOfPower:
         WATT = "W"
         KILO_WATT = "kW"
 
-    sys.modules['homeassistant.const'].UnitOfPower = UnitOfPower
+    sys.modules["homeassistant.const"].UnitOfPower = UnitOfPower
 
 
 @pytest.fixture
 def hass():
     """Fixture for Home Assistant instance."""
     from homeassistant.core import HomeAssistant
+
     hass = HomeAssistant()
 
     # Create a proper states mock that tracks entities
@@ -139,4 +145,5 @@ def hass():
 def store(hass):
     """Fixture for ConfigStore instance."""
     from custom_components.solar_window_system.store import ConfigStore
+
     return ConfigStore(hass)

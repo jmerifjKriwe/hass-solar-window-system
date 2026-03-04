@@ -187,11 +187,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         return results
 
     def _calculate_direct_energy(
-        self,
-        irradiance_direct: float,
-        elevation: float,
-        azimuth: float,
-        window: dict
+        self, irradiance_direct: float, elevation: float, azimuth: float, window: dict
     ) -> float:
         """Calculate direct solar energy through a window.
 
@@ -216,7 +212,9 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         # Calculate effective area (subtract frame on all sides)
         # Area is in cm², convert to m² (divide by 10000)
-        effective_area_m2 = ((width - 2 * frame_width) * (height - 2 * frame_width)) / 10000
+        effective_area_m2 = (
+            (width - 2 * frame_width) * (height - 2 * frame_width)
+        ) / 10000
 
         # Calculate incidence factor based on azimuth difference
         # cos(0) = 1 (sun directly facing window), cos(90) = 0 (sun from side)
@@ -227,9 +225,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         return irradiance_direct * effective_area_m2 * incidence_factor * g_value
 
     def _calculate_diffuse_energy(
-        self,
-        irradiance_diffuse: float,
-        window: dict
+        self, irradiance_diffuse: float, window: dict
     ) -> float:
         """Calculate diffuse solar energy through a window.
 
@@ -251,7 +247,9 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         # Calculate effective area (subtract frame on all sides)
         # Area is in cm², convert to m² (divide by 10000)
-        effective_area_m2 = ((width - 2 * frame_width) * (height - 2 * frame_width)) / 10000
+        effective_area_m2 = (
+            (width - 2 * frame_width) * (height - 2 * frame_width)
+        ) / 10000
 
         # Calculate diffuse energy (no incidence factor for diffuse)
         return irradiance_diffuse * effective_area_m2 * g_value
@@ -313,8 +311,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         # Get total irradiance from sensor
         irradiance_total = await self._safe_get_sensor(
-            self.sensors.get("irradiance_sensor"),
-            default=0
+            self.sensors.get("irradiance_sensor"), default=0
         )
 
         # If no irradiance data, return zero results
@@ -367,9 +364,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         # Calculate group aggregations
         for group_id, group in self.groups.items():
-            group_result = self._aggregate_group(
-                group.get("windows", []), results
-            )
+            group_result = self._aggregate_group(group.get("windows", []), results)
             results[f"group_{group_id}"] = group_result
 
         # Calculate global aggregation

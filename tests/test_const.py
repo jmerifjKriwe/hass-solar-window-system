@@ -1,6 +1,5 @@
 """Tests for the Solar Window System constants."""
 
-
 from custom_components.solar_window_system.const import (
     DOMAIN,
     DEFAULT_FORECAST_HIGH,

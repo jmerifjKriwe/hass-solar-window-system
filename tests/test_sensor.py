@@ -42,7 +42,9 @@ def mock_config():
 @pytest.fixture
 def mock_coordinator(hass, mock_config):
     """Fixture for mock coordinator with test data."""
-    from custom_components.solar_window_system.coordinator import SolarCalculationCoordinator
+    from custom_components.solar_window_system.coordinator import (
+        SolarCalculationCoordinator,
+    )
 
     coordinator = SolarCalculationCoordinator(hass, mock_config)
 
@@ -77,11 +79,7 @@ def test_sensor_unique_id(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     assert sensor.unique_id == "solar_window_system_window_test_window_direct"
@@ -96,11 +94,7 @@ def test_sensor_name(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     # Name should contain "Test Window", "Direct", and "Energy"
@@ -119,11 +113,7 @@ def test_sensor_unit(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     assert sensor.unit_of_measurement == UnitOfPower.WATT
@@ -139,11 +129,7 @@ def test_sensor_device_class(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     assert sensor.device_class == SensorDeviceClass.POWER
@@ -158,11 +144,7 @@ def test_sensor_state(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     # coordinator.data.test_window.direct = 500.0
@@ -178,11 +160,7 @@ def test_sensor_diffuse_type(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIFFUSE
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIFFUSE
     )
 
     # Should return diffuse value (200.0)
@@ -198,11 +176,7 @@ def test_sensor_combined_type(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_COMBINED
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_COMBINED
     )
 
     # Should return combined value (700.0)
@@ -218,11 +192,7 @@ def test_sensor_group_level(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_GROUP,
-        "test_group",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_GROUP, "test_group", ENERGY_TYPE_DIRECT
     )
 
     # Should return group_test_group direct value (1000.0)
@@ -238,11 +208,7 @@ def test_sensor_global_level(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_GLOBAL,
-        "global",
-        ENERGY_TYPE_COMBINED
+        mock_coordinator, mock_config, LEVEL_GLOBAL, "global", ENERGY_TYPE_COMBINED
     )
 
     # Should return global combined value (2800.0)
@@ -258,11 +224,7 @@ def test_sensor_state_class(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     assert sensor.state_class == "measurement"
@@ -278,11 +240,7 @@ def test_sensor_device_info(mock_coordinator, mock_config):
     )
 
     sensor = SolarEnergySensor(
-        mock_coordinator,
-        mock_config,
-        LEVEL_WINDOW,
-        "test_window",
-        ENERGY_TYPE_DIRECT
+        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
     )
 
     device_info = sensor.device_info

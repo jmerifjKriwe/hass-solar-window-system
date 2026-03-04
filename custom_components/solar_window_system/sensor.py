@@ -26,40 +26,34 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     # Create entities for each window
     for window_id in config.get("windows", {}).keys():
-        for energy_type in [ENERGY_TYPE_DIRECT, ENERGY_TYPE_DIFFUSE, ENERGY_TYPE_COMBINED]:
+        for energy_type in [
+            ENERGY_TYPE_DIRECT,
+            ENERGY_TYPE_DIFFUSE,
+            ENERGY_TYPE_COMBINED,
+        ]:
             entities.append(
                 SolarEnergySensor(
-                    coordinator,
-                    config,
-                    LEVEL_WINDOW,
-                    window_id,
-                    energy_type
+                    coordinator, config, LEVEL_WINDOW, window_id, energy_type
                 )
             )
 
     # Create entities for each group
     for group_id in config.get("groups", {}).keys():
-        for energy_type in [ENERGY_TYPE_DIRECT, ENERGY_TYPE_DIFFUSE, ENERGY_TYPE_COMBINED]:
+        for energy_type in [
+            ENERGY_TYPE_DIRECT,
+            ENERGY_TYPE_DIFFUSE,
+            ENERGY_TYPE_COMBINED,
+        ]:
             entities.append(
                 SolarEnergySensor(
-                    coordinator,
-                    config,
-                    LEVEL_GROUP,
-                    group_id,
-                    energy_type
+                    coordinator, config, LEVEL_GROUP, group_id, energy_type
                 )
             )
 
     # Create entities for global
     for energy_type in [ENERGY_TYPE_DIRECT, ENERGY_TYPE_DIFFUSE, ENERGY_TYPE_COMBINED]:
         entities.append(
-            SolarEnergySensor(
-                coordinator,
-                config,
-                LEVEL_GLOBAL,
-                "global",
-                energy_type
-            )
+            SolarEnergySensor(coordinator, config, LEVEL_GLOBAL, "global", energy_type)
         )
 
     async_add_entities(entities)
