@@ -248,5 +248,5 @@ async def test_sensor_device_info(mock_coordinator, mock_config):
 
     device_info = sensor.device_info
 
-    assert isinstance(device_info, DeviceInfo)
+    assert isinstance(device_info, dict)
     assert device_info["identifiers"] == {(DOMAIN, "solar_window_system")}
