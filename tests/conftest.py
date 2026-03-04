@@ -106,11 +106,11 @@ except ImportError:
 
 
 @pytest.fixture
-def hass():
+def hass(tmp_path):
     """Fixture for Home Assistant instance."""
     from homeassistant.core import HomeAssistant
 
-    hass = HomeAssistant()
+    hass = HomeAssistant(str(tmp_path))
 
     # Create a proper states mock that tracks entities
     class MockStates:
