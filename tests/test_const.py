@@ -1,6 +1,5 @@
 """Tests for the Solar Window System constants."""
 
-import pytest
 
 from custom_components.solar_window_system.const import (
     DOMAIN,

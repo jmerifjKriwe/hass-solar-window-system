@@ -1,9 +1,8 @@
 """Tests for the ConfigStore class."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
-from custom_components.solar_window_system.store import ConfigStore
 from custom_components.solar_window_system.const import (
     CONF_GLOBAL,
     CONF_GROUPS,

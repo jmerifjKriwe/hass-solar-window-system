@@ -65,6 +65,39 @@ except ImportError:
 
     sys.modules['homeassistant.helpers.update_coordinator'].DataUpdateCoordinator = MockDataUpdateCoordinator
 
+    # Add entity mocks with proper metaclass handling
+    class MockEntity:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class MockCoordinatorEntity:
+        def __init__(self, coordinator):
+            self.coordinator = coordinator
+
+    class MockSensorEntity:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    sys.modules['homeassistant.helpers.entity'].Entity = MockEntity
+    sys.modules['homeassistant.helpers.entity'].DeviceInfo = dict
+    sys.modules['homeassistant.helpers.update_coordinator'].CoordinatorEntity = MockCoordinatorEntity
+    sys.modules['homeassistant.components.sensor'].SensorEntity = MockSensorEntity
+
+    # Add SensorDeviceClass enum
+    class SensorDeviceClass:
+        POWER = "power"
+        TEMPERATURE = "temperature"
+        ENERGY = "energy"
+
+    sys.modules['homeassistant.components.sensor'].SensorDeviceClass = SensorDeviceClass
+
+    # Add UnitOfPower constants
+    class UnitOfPower:
+        WATT = "W"
+        KILO_WATT = "kW"
+
+    sys.modules['homeassistant.const'].UnitOfPower = UnitOfPower
+
 
 @pytest.fixture
 def hass():
