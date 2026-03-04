@@ -3,11 +3,12 @@
   "packages": {
     ".": {
       "release-type": "python",
-      "package-name": "solar-window-system",
+      "package-name": "",
       "extra-files": [
         "custom_components/solar_window_system/manifest.json"
       ],
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "include-v-in-tag": true
     }
   }
 }
