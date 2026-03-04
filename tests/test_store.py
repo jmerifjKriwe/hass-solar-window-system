@@ -14,7 +14,7 @@ from custom_components.solar_window_system.const import (
 )
 
 
-def test_store_initialization(store):
+async def test_store_initialization(store):
     """Test store initializes correctly."""
     assert store is not None
     assert store.version == STORAGE_VERSION

@@ -118,7 +118,7 @@ except ImportError:
     _hass_fixture_available = False
 
     @pytest.fixture
-    def hass(tmp_path):
+    async def hass(tmp_path):
         """Fixture for Home Assistant instance (mock for local testing)."""
         from homeassistant.core import HomeAssistant
 
@@ -159,7 +159,7 @@ except ImportError:
 
 
 @pytest.fixture
-def store(hass):
+async def store(hass):
     """Fixture for ConfigStore instance."""
     from custom_components.solar_window_system.store import ConfigStore
 
