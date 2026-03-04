@@ -69,7 +69,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo [32m  ✓ pytest (testing framework)[0m
 
 echo Installing ruff and pyright...
-pip install ruff==0.9.9 pyright==1.1.356 >nul 2>&1
+pip install ruff==0.15.4 pyright==1.1.408 >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo [31mError:[0m Failed to install ruff/pyright
     exit /b 1
@@ -100,8 +100,8 @@ echo pytest-timeout==2.3.1
 echo pytest-xdist==3.5.0
 echo.
 echo # Code quality
-echo ruff==0.9.9
-echo pyright==1.1.356
+echo ruff==0.15.4
+echo pyright==1.1.408
 echo.
 echo # Type stubs ^(optional^)
 echo types-homeassistant-stubs==2026.2.3

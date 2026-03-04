@@ -68,8 +68,8 @@ echo -e "${GREEN}  ✓ pytest (testing framework)${NC}"
 
 # Code quality tools
 pip install \
-    ruff==0.9.9 \
-    pyright==1.1.356 \
+    ruff==0.15.4 \
+    pyright==1.1.408 \
     > /dev/null
 echo -e "${GREEN}  ✓ ruff (format + lint), pyright (type checking)${NC}"
 
@@ -94,8 +94,8 @@ pytest-timeout==2.3.1
 pytest-xdist==3.5.0
 
 # Code quality
-ruff==0.9.9
-pyright==1.1.356
+ruff==0.15.4
+pyright==1.1.408
 
 # Type stubs (optional)
 types-homeassistant-stubs==2026.2.3
