@@ -15,6 +15,23 @@
         "section": "Bug Fixes"
       },
       {
+        "type": "perf",
+        "section": "Performance"
+      },
+      {
+        "type": "revert",
+        "section": "Reverts"
+      },
+      {
+        "type": "docs",
+        "section": "Documentation"
+      },
+      {
+        "type": "style",
+        "section": "Styling",
+        "hidden": true
+      },
+      {
         "type": "chore",
         "section": "Miscellaneous",
         "hidden": false
@@ -23,9 +40,21 @@
         "type": "ci",
         "section": "CI/CD",
         "hidden": false
+      },
+      {
+        "type": "refactor",
+        "section": "Refactoring",
+        "hidden": true
+      },
+      {
+        "type": "test",
+        "section": "Tests",
+        "hidden": true
       }
     ],
+    "changelog-type": "default",
     "versioning": "python",
-    "include-v-in-tag": true
+    "include-v-in-tag": true,
+    "tag-separator": "-"
   }
 }

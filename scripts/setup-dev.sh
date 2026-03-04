@@ -113,6 +113,11 @@ pre-commit install > /dev/null
 echo -e "${GREEN}✓ pre-commit hooks installed${NC}"
 echo ""
 
+# Install git commit-msg hook
+echo -e "${YELLOW}Installing git commit-msg hook...${NC}"
+./scripts/install-hooks.sh
+echo ""
+
 # Run initial quality gate
 echo -e "${YELLOW}Running initial quality gate...${NC}"
 echo ""

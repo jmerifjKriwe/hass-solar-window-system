@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Commit message hook to validate Conventional Commits format
+
+# Get commit message from file
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Regular expression for Conventional Commits
+# Format: type(scope): description
+# Types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert
+conventional_commit_regex="^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert)(\(.+\))?: .+"
+
+# Valid types
+valid_types="feat|fix|docs|style|refactor|perf|test|chore|ci|revert"
+
+# Check if commit message matches Conventional Commits format
+if [[ ! $commit_msg =~ $conventional_commit_regex ]]; then
+    echo "❌ Invalid commit message format!"
+    echo ""
+    echo "Commit messages must follow the Conventional Commits format:"
+    echo "  type(scope): description"
+    echo ""
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert"
+    echo ""
+    echo "Examples:"
+    echo "  feat(coordinator): add diffuse radiation estimation"
+    echo "  fix(sensor): resolve device info missing"
+    echo "  docs(readme): update installation instructions"
+    echo "  ci(workflow): upgrade to python 3.13"
+    echo ""
+    echo "See COMMIT_CONVENTIONS.md for more details."
+    exit 1
+fi
+
+# Extract type from commit message
+type=$(echo "$commit_msg" | sed -E "s/^([a-z]+)(\(.+\))?: .+/\1/")
+
+# Check if type is valid
+if [[ ! $type =~ ^($valid_types)$ ]]; then
+    echo "❌ Invalid commit type: '$type'"
+    echo ""
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert"
+    echo ""
+    echo "See COMMIT_CONVENTIONS.md for more details."
+    exit 1
+fi
+
+# Check minimum description length (after type and scope)
+description=$(echo "$commit_msg" | sed -E "s/^[a-z]+(\(.+\))?: //")
+if [[ ${#description} -lt 3 ]]; then
+    echo "❌ Commit description too short (minimum 3 characters)"
+    echo ""
+    echo "Example: feat(coordinator): add diffuse radiation estimation"
+    echo ""
+    echo "See COMMIT_CONVENTIONS.md for more details."
+    exit 1
+fi
+
+# Success
+exit 0

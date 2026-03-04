@@ -119,6 +119,11 @@ pre-commit install >nul 2>&1
 echo [32m✓ pre-commit hooks installed[0m
 echo.
 
+REM Install git commit-msg hook
+echo Installing git commit-msg hook...
+call scripts\install-hooks.bat
+echo.
+
 REM Run initial quality gate
 echo Running initial quality gate...
 echo.
