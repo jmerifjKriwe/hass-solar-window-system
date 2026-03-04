@@ -1,0 +1,31 @@
+{
+  ".": {
+    "release-type": "python",
+    "package-name": "solar-window-system",
+    "extra-files": [
+      "custom_components/solar_window_system/manifest.json"
+    ],
+    "changelog-sections": [
+      {
+        "type": "feat",
+        "section": "Features"
+      },
+      {
+        "type": "fix",
+        "section": "Bug Fixes"
+      },
+      {
+        "type": "chore",
+        "section": "Miscellaneous",
+        "hidden": false
+      },
+      {
+        "type": "ci",
+        "section": "CI/CD",
+        "hidden": false
+      }
+    ],
+    "versioning": "python",
+    "include-v-in-tag": true
+  }
+}
