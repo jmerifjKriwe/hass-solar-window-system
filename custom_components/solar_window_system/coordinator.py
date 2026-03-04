@@ -8,13 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
-    CONF_WINDOWS,
-    CONF_GROUPS,
     CONF_GLOBAL,
-    DEFAULT_UPDATE_INTERVAL,
+    CONF_GROUPS,
     CONF_SENSORS,
     CONF_THRESHOLDS,
+    CONF_WINDOWS,
     DEFAULT_G_VALUE,
+    DEFAULT_UPDATE_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,7 +117,10 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
             return default
 
     def _estimate_diffuse(
-        self, irradiance_total: float, elevation: float, weather_condition: str = None
+        self,
+        irradiance_total: float,
+        elevation: float,
+        weather_condition: str | None = None,
     ) -> float:
         """Estimate diffuse radiation from total irradiance based on weather conditions.
 
@@ -212,9 +215,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         # Calculate effective area (subtract frame on all sides)
         # Area is in cm², convert to m² (divide by 10000)
-        effective_area_m2 = (
-            (width - 2 * frame_width) * (height - 2 * frame_width)
-        ) / 10000
+        effective_area_m2 = ((width - 2 * frame_width) * (height - 2 * frame_width)) / 10000
 
         # Calculate incidence factor based on azimuth difference
         # cos(0) = 1 (sun directly facing window), cos(90) = 0 (sun from side)
@@ -224,9 +225,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         # Calculate direct energy
         return irradiance_direct * effective_area_m2 * incidence_factor * g_value
 
-    def _calculate_diffuse_energy(
-        self, irradiance_diffuse: float, window: dict
-    ) -> float:
+    def _calculate_diffuse_energy(self, irradiance_diffuse: float, window: dict) -> float:
         """Calculate diffuse solar energy through a window.
 
         Args:
@@ -247,9 +246,7 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
 
         # Calculate effective area (subtract frame on all sides)
         # Area is in cm², convert to m² (divide by 10000)
-        effective_area_m2 = (
-            (width - 2 * frame_width) * (height - 2 * frame_width)
-        ) / 10000
+        effective_area_m2 = ((width - 2 * frame_width) * (height - 2 * frame_width)) / 10000
 
         # Calculate diffuse energy (no incidence factor for diffuse)
         return irradiance_diffuse * effective_area_m2 * g_value

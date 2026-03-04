@@ -2,6 +2,12 @@
 
 This directory contains scripts for development and testing of the Solar Window System Home Assistant integration.
 
+## Platform-Specific Scripts
+
+- **Windows**: Use `.bat` files (e.g., `quality-gate.bat`)
+- **Linux/Mac**: Use `.sh` files (e.g., `quality-gate.sh`)
+- **Git Bash on Windows**: Can use either `.bat` or `.sh` files
+
 ## Scripts
 
 ### Quality Gate
@@ -9,13 +15,17 @@ This directory contains scripts for development and testing of the Solar Window 
 **File:** `quality-gate.sh`
 
 Runs all quality checks before committing:
-- Black (code formatting)
-- Ruff (linting)
+- Ruff format (code formatting)
+- Ruff lint (linting)
 - Pyright (type checking)
 - Pytest (test suite)
 
 **Usage:**
-```bash
+```powershell
+# Windows
+scripts\quality-gate.bat
+
+# Linux/Mac
 ./scripts/quality-gate.sh
 ```
 
@@ -38,14 +48,18 @@ Sets up a complete Python development environment for working on the custom comp
 2. Creates virtual environment (`venv/`)
 3. Installs all development dependencies:
    - pytest and plugins
-   - black, ruff, pyright
+   - ruff (format + lint), pyright
    - pre-commit
    - type stubs
 4. Installs pre-commit hooks
 5. Runs initial quality gate
 
 **Usage:**
-```bash
+```powershell
+# Windows
+scripts\setup-dev.bat
+
+# Linux/Mac
 ./scripts/setup-dev.sh
 ```
 
@@ -73,13 +87,19 @@ Creates an isolated test environment with Home Assistant installed.
 
 **What it does:**
 1. Creates `ha_test_env/` virtual environment
-2. Installs Home Assistant 2024.3.0
+2. Installs Home Assistant 2026.2.3
 3. Installs test dependencies
 4. Creates test runner script
 5. Creates activation scripts
 
 **Usage:**
-```bash
+```powershell
+# Windows
+scripts\setup-homeassistant-test.bat
+activate_test_env.bat
+python test_runner.py
+
+# Linux/Mac
 ./scripts/setup-homeassistant-test.sh
 source activate_test_env.sh
 python test_runner.py
@@ -96,6 +116,19 @@ python test_runner.py
 
 ### Setup for First Time
 
+**Windows:**
+```powershell
+# 1. Set up dev environment
+scripts\setup-dev.bat
+
+# 2. Activate dev environment
+venv\Scripts\activate
+
+# 3. Install pre-commit hooks (already done by setup-dev.bat)
+pre-commit install
+```
+
+**Linux/Mac:**
 ```bash
 # 1. Set up dev environment
 ./scripts/setup-dev.sh
@@ -109,6 +142,18 @@ pre-commit install
 
 ### Daily Development Workflow
 
+**Windows:**
+```powershell
+# Activate dev environment
+venv\Scripts\activate
+
+# Make some changes...
+git add .
+git commit -m "feat: my changes"
+# Pre-commit hooks run automatically
+```
+
+**Linux/Mac:**
 ```bash
 # Activate dev environment
 source venv/bin/activate
@@ -121,6 +166,17 @@ git commit -m "feat: my changes"
 
 ### Run Tests Manually
 
+**Windows:**
+```powershell
+# In dev environment
+pytest tests/ -v
+
+# In HA test environment (for integration tests)
+activate_test_env.bat
+python test_runner.py
+```
+
+**Linux/Mac:**
 ```bash
 # In dev environment
 pytest tests/ -v
@@ -132,12 +188,24 @@ python test_runner.py
 
 ### Quality Checks
 
+**Windows:**
+```powershell
+# Run all checks
+scripts\quality-gate.bat
+
+# Run individually
+ruff format --check .
+ruff check .
+python -m pytest tests/
+```
+
+**Linux/Mac:**
 ```bash
 # Run all checks
 ./scripts/quality-gate.sh
 
 # Run individually
-black --check .
+ruff format --check .
 ruff check .
 python -m pytest tests/
 ```
@@ -151,8 +219,8 @@ python -m pytest tests/
 **Purpose:** Automated quality checking before commits.
 
 **Checks performed:**
-1. **Black** - Code formatting
-2. **Ruff** - Fast Python linter
+1. **Ruff format** - Code formatting (replaces Black)
+2. **Ruff lint** - Fast Python linter
 3. **Pyright** - Static type checking
 4. **Pytest** - Test suite (38 tests)
 
@@ -179,8 +247,7 @@ Testing:
 - pytest-xdist (parallel tests)
 
 Code Quality:
-- black (code formatter)
-- ruff (fast linter)
+- ruff (format + linter)
 - pyright (type checker)
 
 Development:

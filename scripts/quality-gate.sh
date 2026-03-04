@@ -34,9 +34,9 @@ run_check() {
     echo ""
 }
 
-# 1. Black (code formatting)
-run_check "Black (code formatting)" \
-    "python -m black --check custom_components/solar_window_system/ tests/"
+# 1. Ruff format (code formatting - replaces Black)
+run_check "Ruff format (code formatting)" \
+    "python -m ruff format --check custom_components/solar_window_system/ tests/"
 
 # 2. Ruff (fast Python linter)
 run_check "Ruff (linting)" \

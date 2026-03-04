@@ -32,9 +32,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             ENERGY_TYPE_COMBINED,
         ]:
             entities.append(
-                SolarEnergySensor(
-                    coordinator, config, LEVEL_WINDOW, window_id, energy_type
-                )
+                SolarEnergySensor(coordinator, config, LEVEL_WINDOW, window_id, energy_type)
             )
 
     # Create entities for each group
@@ -45,16 +43,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
             ENERGY_TYPE_COMBINED,
         ]:
             entities.append(
-                SolarEnergySensor(
-                    coordinator, config, LEVEL_GROUP, group_id, energy_type
-                )
+                SolarEnergySensor(coordinator, config, LEVEL_GROUP, group_id, energy_type)
             )
 
     # Create entities for global
     for energy_type in [ENERGY_TYPE_DIRECT, ENERGY_TYPE_DIFFUSE, ENERGY_TYPE_COMBINED]:
-        entities.append(
-            SolarEnergySensor(coordinator, config, LEVEL_GLOBAL, "global", energy_type)
-        )
+        entities.append(SolarEnergySensor(coordinator, config, LEVEL_GLOBAL, "global", energy_type))
 
     async_add_entities(entities)
 

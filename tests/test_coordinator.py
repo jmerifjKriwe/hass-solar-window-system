@@ -124,9 +124,7 @@ def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
     # With shading_depth=100, window_recess=30:
     # Correct shade_angle = atan2(31, 100) = 17.22°
     # At elevation=15°, sun should be blocked
-    result = coordinator._sun_is_visible(
-        elevation=15, azimuth=180, window=window_with_shading
-    )
+    result = coordinator._sun_is_visible(elevation=15, azimuth=180, window=window_with_shading)
     assert result is False
 
 
@@ -156,9 +154,7 @@ def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
         },
     }
     # At elevation=45°, sun should be visible (above the shading angle of ~17°)
-    result = coordinator._sun_is_visible(
-        elevation=45, azimuth=180, window=window_with_shading
-    )
+    result = coordinator._sun_is_visible(elevation=45, azimuth=180, window=window_with_shading)
     assert result is True
 
 
@@ -359,18 +355,14 @@ async def test_async_update_calculates_energy(hass, coordinator):
     assert window_result["combined"] > 0
 
     # Combined should equal direct + diffuse
-    assert (
-        window_result["combined"] == window_result["direct"] + window_result["diffuse"]
-    )
+    assert window_result["combined"] == window_result["direct"] + window_result["diffuse"]
 
 
 @pytest.mark.asyncio
 async def test_aggregation_includes_groups(hass, coordinator):
     """Test that aggregation includes group results."""
     # Add a group to the coordinator's config
-    coordinator.groups = {
-        "test_group": {"windows": ["test_window"], "name": "Test Group"}
-    }
+    coordinator.groups = {"test_group": {"windows": ["test_window"], "name": "Test Group"}}
 
     # Set up sun state (above horizon)
     hass.states.async_set(
@@ -471,9 +463,7 @@ async def test_aggregation_sums_correctly(hass):
                 },
             },
         },
-        "groups": {
-            "test_group": {"windows": ["window_1", "window_2"], "name": "Test Group"}
-        },
+        "groups": {"test_group": {"windows": ["window_1", "window_2"], "name": "Test Group"}},
     }
 
     # Create coordinator with this config

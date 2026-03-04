@@ -7,8 +7,8 @@ from .const import (
     CONF_GLOBAL,
     CONF_GROUPS,
     CONF_WINDOWS,
-    STORAGE_VERSION,
     STORAGE_KEY,
+    STORAGE_VERSION,
 )
 
 

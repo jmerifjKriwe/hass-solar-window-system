@@ -1,14 +1,15 @@
 """Tests for the ConfigStore class."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from custom_components.solar_window_system.const import (
     CONF_GLOBAL,
     CONF_GROUPS,
-    CONF_WINDOWS,
-    CONF_SENSORS,
     CONF_IRRADIANCE_SENSOR,
+    CONF_SENSORS,
+    CONF_WINDOWS,
     STORAGE_VERSION,
 )
 

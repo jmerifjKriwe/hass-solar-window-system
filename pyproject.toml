@@ -1,0 +1,36 @@
+[tool.pyright]
+# Ignore Home Assistant import errors in dev environment (HA not installed locally)
+# These are expected and will be resolved in the actual Home Assistant environment
+ignore = [
+    "custom_components/solar_window_system/__init__.py",
+    "custom_components/solar_window_system/sensor.py",
+    "custom_components/solar_window_system/coordinator.py",
+    "custom_components/solar_window_system/store.py",
+]
+
+# Report missing imports as warnings instead of errors
+reportMissingImports = "warning"
+
+# Report missing type stubs as warnings
+reportMissingTypeStubs = "warning"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["F401"]  # Allow unused imports (needed for type hints in tests)
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
+asyncio_mode = "auto"

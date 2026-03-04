@@ -1,11 +1,11 @@
 """Tests for the Solar Window System constants."""
 
 from custom_components.solar_window_system.const import (
-    DOMAIN,
     DEFAULT_FORECAST_HIGH,
     DEFAULT_INSIDE_TEMP,
     DEFAULT_OUTSIDE_TEMP,
     DEFAULT_SOLAR_ENERGY,
+    DOMAIN,
     ENERGY_TYPE_COMBINED,
     ENERGY_TYPE_DIFFUSE,
     ENERGY_TYPE_DIRECT,

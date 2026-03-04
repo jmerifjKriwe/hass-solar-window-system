@@ -41,7 +41,7 @@ echo ""
 # Install Home Assistant with test dependencies
 echo -e "${YELLOW}Installing Home Assistant (test version)...${NC}"
 pip install \
-    homeassistant==2024.3.0 \
+    homeassistant==2026.2.3 \
     pytest-homeassistant-custom-component==0.13.104 \
     > /dev/null
 
@@ -145,7 +145,7 @@ cat > requirements-ha-test.txt << 'EOF'
 # Install with: pip install -r requirements-ha-test.txt
 
 # Home Assistant core
-homeassistant==2024.3.0
+homeassistant==2026.2.3
 
 # Testing framework
 pytest-homeassistant-custom-component==0.13.104

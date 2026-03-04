@@ -1,17 +1,16 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
     hooks:
-      - id: black
-        language_version: python3.12
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
 
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
+  - repo: local
     hooks:
-      - id: flake8
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        additional_dependencies: []
+      - id: quality-gate
+        name: Quality Gate
+        entry: scripts/quality-gate.sh
+        language: system
+        pass_filenames: false
+        always_run: true

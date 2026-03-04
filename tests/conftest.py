@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
+
 import pytest
 
 # Add the custom_components directory to the Python path
@@ -10,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Mock homeassistant modules if not available
 try:
-    import homeassistant
+    import homeassistant  # noqa: F401
 except ImportError:
     # Create mock modules for homeassistant
     sys.modules["homeassistant"] = MagicMock()
@@ -64,9 +65,9 @@ except ImportError:
         async def async_refresh(self):
             pass
 
-    sys.modules["homeassistant.helpers.update_coordinator"].DataUpdateCoordinator = (
-        MockDataUpdateCoordinator
-    )
+    sys.modules[
+        "homeassistant.helpers.update_coordinator"
+    ].DataUpdateCoordinator = MockDataUpdateCoordinator
 
     # Add entity mocks with proper metaclass handling
     class MockEntity:
@@ -83,9 +84,9 @@ except ImportError:
 
     sys.modules["homeassistant.helpers.entity"].Entity = MockEntity
     sys.modules["homeassistant.helpers.entity"].DeviceInfo = dict
-    sys.modules["homeassistant.helpers.update_coordinator"].CoordinatorEntity = (
-        MockCoordinatorEntity
-    )
+    sys.modules[
+        "homeassistant.helpers.update_coordinator"
+    ].CoordinatorEntity = MockCoordinatorEntity
     sys.modules["homeassistant.components.sensor"].SensorEntity = MockSensorEntity
 
     # Add SensorDeviceClass enum

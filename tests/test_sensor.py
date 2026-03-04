@@ -1,11 +1,13 @@
 """Tests for SolarEnergySensor entities."""
 
 import pytest
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity  # noqa: F401
 from homeassistant.const import UnitOfPower
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import (
+    DeviceInfo,
+    Entity,  # noqa: F401
+)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator  # noqa: F401
 
 
 @pytest.fixture
@@ -72,11 +74,11 @@ def mock_coordinator(hass, mock_config):
 
 def test_sensor_unique_id(mock_coordinator, mock_config):
     """Test sensor unique_id is generated correctly."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
@@ -87,11 +89,11 @@ def test_sensor_unique_id(mock_coordinator, mock_config):
 
 def test_sensor_name(mock_coordinator, mock_config):
     """Test sensor name contains window name and energy type."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
@@ -106,11 +108,11 @@ def test_sensor_name(mock_coordinator, mock_config):
 
 def test_sensor_unit(mock_coordinator, mock_config):
     """Test sensor unit_of_measurement is WATT."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
@@ -121,12 +123,13 @@ def test_sensor_unit(mock_coordinator, mock_config):
 
 def test_sensor_device_class(mock_coordinator, mock_config):
     """Test sensor device_class is POWER."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from homeassistant.components.sensor import SensorDeviceClass
+
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
@@ -137,11 +140,11 @@ def test_sensor_device_class(mock_coordinator, mock_config):
 
 def test_sensor_state(mock_coordinator, mock_config):
     """Test sensor native_value returns correct energy value."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
@@ -153,11 +156,11 @@ def test_sensor_state(mock_coordinator, mock_config):
 
 def test_sensor_diffuse_type(mock_coordinator, mock_config):
     """Test sensor with ENERGY_TYPE_DIFFUSE returns diffuse value."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIFFUSE,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIFFUSE
@@ -169,11 +172,11 @@ def test_sensor_diffuse_type(mock_coordinator, mock_config):
 
 def test_sensor_combined_type(mock_coordinator, mock_config):
     """Test sensor with ENERGY_TYPE_COMBINED returns combined value."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_COMBINED,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_COMBINED
@@ -185,11 +188,11 @@ def test_sensor_combined_type(mock_coordinator, mock_config):
 
 def test_sensor_group_level(mock_coordinator, mock_config):
     """Test sensor at group level returns group data."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_GROUP,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_GROUP, "test_group", ENERGY_TYPE_DIRECT
@@ -201,11 +204,11 @@ def test_sensor_group_level(mock_coordinator, mock_config):
 
 def test_sensor_global_level(mock_coordinator, mock_config):
     """Test sensor at global level returns global data."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_COMBINED,
         LEVEL_GLOBAL,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_GLOBAL, "global", ENERGY_TYPE_COMBINED
@@ -217,11 +220,11 @@ def test_sensor_global_level(mock_coordinator, mock_config):
 
 def test_sensor_state_class(mock_coordinator, mock_config):
     """Test sensor has state_class 'measurement' for statistics."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
@@ -232,12 +235,12 @@ def test_sensor_state_class(mock_coordinator, mock_config):
 
 def test_sensor_device_info(mock_coordinator, mock_config):
     """Test sensor device_info returns DeviceInfo with identifiers."""
-    from custom_components.solar_window_system.sensor import SolarEnergySensor
     from custom_components.solar_window_system.const import (
+        DOMAIN,
         ENERGY_TYPE_DIRECT,
         LEVEL_WINDOW,
-        DOMAIN,
     )
+    from custom_components.solar_window_system.sensor import SolarEnergySensor
 
     sensor = SolarEnergySensor(
         mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT

@@ -67,14 +67,14 @@ pip install pytest==8.0.0 \
 echo -e "${GREEN}  ✓ pytest (testing framework)${NC}"
 
 # Code quality tools
-pip install black==24.1.1 \
-    ruff==0.1.3 \
+pip install \
+    ruff==0.9.9 \
     pyright==1.1.356 \
     > /dev/null
-echo -e "${GREEN}  ✓ black, ruff, pyright (linting/type checking)${NC}"
+echo -e "${GREEN}  ✓ ruff (format + lint), pyright (type checking)${NC}"
 
 # Type stubs (optional, for better IDE support)
-pip install types-homeassistant-stubs==2024.3.0 \
+pip install types-homeassistant-stubs==2026.2.3 \
     > /dev/null 2>&1 || echo -e "${YELLOW}  ! types-homeassistant-stubs not available (optional)${NC}"
 echo -e "${GREEN}  ✓ type stubs (optional)${NC}"
 
@@ -94,12 +94,11 @@ pytest-timeout==2.3.1
 pytest-xdist==3.5.0
 
 # Code quality
-black==24.1.1
-ruff==0.1.3
+ruff==0.9.9
 pyright==1.1.356
 
 # Type stubs (optional)
-types-homeassistant-stubs==2024.3.0
+types-homeassistant-stubs==2026.2.3
 
 # Development tools
 pre-commit==3.7.0
@@ -138,7 +137,7 @@ echo -e "${BLUE}To run quality gate:${NC}"
 echo "  ./scripts/quality-gate.sh"
 echo ""
 echo -e "${BLUE}To format code:${NC}"
-echo "  black ."
+echo "  ruff format ."
 echo ""
 echo -e "${BLUE}For Home Assistant testing:${NC}"
 echo "  See scripts/setup-homeassistant-test.sh"
