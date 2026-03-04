@@ -105,41 +105,57 @@ except ImportError:
     sys.modules["homeassistant.const"].UnitOfPower = UnitOfPower
 
 
-@pytest.fixture
-def hass(tmp_path):
-    """Fixture for Home Assistant instance."""
-    from homeassistant.core import HomeAssistant
+# Check if pytest-homeassistant-custom-component is available
+# If not, provide our own hass fixture for local testing
+try:
+    # This will succeed if pytest-homeassistant-custom-component is installed
+    import pytest_homeassistant_custom_component  # noqa: F401
 
-    hass = HomeAssistant(str(tmp_path))
+    # Package is available, let it provide the hass fixture
+    _hass_fixture_available = True
+except ImportError:
+    # Package not available, provide our own mock fixture
+    _hass_fixture_available = False
 
-    # Create a proper states mock that tracks entities
-    class MockStates:
-        def __init__(self):
-            self._states = {}
-            self._attributes = {}
+    @pytest.fixture
+    def hass(tmp_path):
+        """Fixture for Home Assistant instance (mock for local testing)."""
+        from homeassistant.core import HomeAssistant
 
-        def async_set(self, entity_id, state, attributes=None):
-            """Set a state for an entity."""
-            self._states[entity_id] = state
-            if attributes:
-                self._attributes[entity_id] = attributes
+        # Create a mock HomeAssistant instance
+        hass = MagicMock()
+        hass.config = MagicMock()
+        hass.config.config_dir = str(tmp_path)
+        hass.data = {}
 
-        def get(self, entity_id):
-            """Get a state for an entity, returning None if not found."""
-            if entity_id not in self._states:
-                return None
-            # Return a mock state object with the state attribute
-            state_obj = MagicMock()
-            state_obj.state = self._states[entity_id]
-            # Add attributes if they exist
-            if entity_id in self._attributes:
-                state_obj.attributes = self._attributes[entity_id]
-            else:
-                state_obj.attributes = {}
-            return state_obj
+        # Create a proper states mock that tracks entities
+        class MockStates:
+            def __init__(self):
+                self._states = {}
+                self._attributes = {}
 
-    hass.states = MockStates()
-    return hass
+            def async_set(self, entity_id, state, attributes=None):
+                """Set a state for an entity."""
+                self._states[entity_id] = state
+                if attributes:
+                    self._attributes[entity_id] = attributes
+
+            def get(self, entity_id):
+                """Get a state for an entity, returning None if not found."""
+                if entity_id not in self._states:
+                    return None
+                # Return a mock state object with the state attribute
+                state_obj = MagicMock()
+                state_obj.state = self._states[entity_id]
+                # Add attributes if they exist
+                if entity_id in self._attributes:
+                    state_obj.attributes = self._attributes[entity_id]
+                else:
+                    state_obj.attributes = {}
+                return state_obj
+
+        hass.states = MockStates()
+        return hass
 
 
 @pytest.fixture
