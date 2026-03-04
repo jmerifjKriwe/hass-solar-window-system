@@ -14,7 +14,9 @@ conventional_commit_regex="^(feat|fix|docs|style|refactor|perf|test|chore|ci|rev
 valid_types="feat|fix|docs|style|refactor|perf|test|chore|ci|revert"
 
 # Check if commit message matches Conventional Commits format
-if [[ ! $commit_msg =~ $conventional_commit_regex ]]; then
+# Only check the first line (subject), ignore body for validation
+commit_subject=$(echo "$commit_msg" | head -n 1)
+if [[ ! $commit_subject =~ $conventional_commit_regex ]]; then
     echo "❌ Invalid commit message format!"
     echo ""
     echo "Commit messages must follow the Conventional Commits format:"
@@ -32,8 +34,8 @@ if [[ ! $commit_msg =~ $conventional_commit_regex ]]; then
     exit 1
 fi
 
-# Extract type from commit message
-type=$(echo "$commit_msg" | sed -E "s/^([a-z]+)(\(.+\))?: .+/\1/")
+# Extract type from commit message (first line only)
+type=$(echo "$commit_subject" | sed -E "s/^([a-z]+)(\(.+\))?: .+/\1/")
 
 # Check if type is valid
 if [[ ! $type =~ ^($valid_types)$ ]]; then
@@ -46,7 +48,7 @@ if [[ ! $type =~ ^($valid_types)$ ]]; then
 fi
 
 # Check minimum description length (after type and scope)
-description=$(echo "$commit_msg" | sed -E "s/^[a-z]+(\(.+\))?: //")
+description=$(echo "$commit_subject" | sed -E "s/^[a-z]+(\(.+\))?: //")
 if [[ ${#description} -lt 3 ]]; then
     echo "❌ Commit description too short (minimum 3 characters)"
     echo ""
