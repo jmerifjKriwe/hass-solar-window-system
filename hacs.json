@@ -1,7 +1,6 @@
 {
   "name": "Solar Window System",
-  "content_in_root": false,
   "zip_release": true,
-  "filename": "custom_components/solar_window_system.zip",
+  "filename": "solar_window_system.zip",
   "render_readme": true
 }
