@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.0...v2.1.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* **release:** correct release-please config and HACS ZIP structure ([bef1343](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/bef1343b0481fc9ca84e62c5d59a44cbf38e48ee))
+
 ## [2.1.0](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.0.1...v2.1.0) (2026-03-04)
 
 
