@@ -1,3 +1,11 @@
+[project]
+name = "solar_window_system"
+version = "2.0.1"
+description = "Solar window system custom component for Home Assistant"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
 [tool.pyright]
 # Ignore Home Assistant import errors in dev environment (HA not installed locally)
 # These are expected and will be resolved in the actual Home Assistant environment
@@ -33,4 +41,4 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 python_classes = ["Test*"]
-asyncio_mode = "lazy"
+asyncio_mode = "auto"

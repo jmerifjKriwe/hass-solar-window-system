@@ -42,7 +42,7 @@ def mock_config():
 
 
 @pytest.fixture
-def coordinator(hass, mock_config):
+async def coordinator(hass, mock_config):
     """Fixture for SolarCalculationCoordinator instance."""
     from custom_components.solar_window_system.coordinator import (
         SolarCalculationCoordinator,
@@ -51,7 +51,7 @@ def coordinator(hass, mock_config):
     return SolarCalculationCoordinator(hass, mock_config)
 
 
-def test_coordinator_initialization(coordinator, mock_config):
+async def test_coordinator_initialization(coordinator, mock_config):
     """Test coordinator initialization."""
     # Test coordinator is created
     assert coordinator is not None
@@ -81,28 +81,28 @@ def test_coordinator_initialization(coordinator, mock_config):
     assert coordinator.thresholds == expected_thresholds
 
 
-def test_sun_is_visible_above_horizon(coordinator, mock_config):
+async def test_sun_is_visible_above_horizon(coordinator, mock_config):
     """Test sun is visible when above horizon and within azimuth range."""
     window = mock_config["windows"]["test_window"]
     result = coordinator._sun_is_visible(elevation=45, azimuth=180, window=window)
     assert result is True
 
 
-def test_sun_is_visible_below_horizon(coordinator, mock_config):
+async def test_sun_is_visible_below_horizon(coordinator, mock_config):
     """Test sun is not visible when below horizon."""
     window = mock_config["windows"]["test_window"]
     result = coordinator._sun_is_visible(elevation=-5, azimuth=180, window=window)
     assert result is False
 
 
-def test_sun_is_visible_outside_azimuth_range(coordinator, mock_config):
+async def test_sun_is_visible_outside_azimuth_range(coordinator, mock_config):
     """Test sun is not visible when outside azimuth range."""
     window = mock_config["windows"]["test_window"]
     result = coordinator._sun_is_visible(elevation=45, azimuth=90, window=window)
     assert result is False
 
 
-def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
+async def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
     """Test sun is not visible when blocked by shading."""
     # Create a window with shading
     window_with_shading = {
@@ -128,7 +128,7 @@ def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
     assert result is False
 
 
-def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
+async def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
     """Test sun is visible when above shading angle.
 
     This test would catch the atan2 parameter swap bug:
@@ -222,7 +222,7 @@ async def test_safe_get_sensor_with_default(hass, coordinator):
     assert result == 20.0
 
 
-def test_estimate_diffuse_clear_sky(coordinator):
+async def test_estimate_diffuse_clear_sky(coordinator):
     """Test diffuse estimation for clear sky conditions."""
     # total=800, elevation=45, weather="sunny"
     result = coordinator._estimate_diffuse(
@@ -236,7 +236,7 @@ def test_estimate_diffuse_clear_sky(coordinator):
     assert result == 280
 
 
-def test_estimate_diffuse_cloudy(coordinator):
+async def test_estimate_diffuse_cloudy(coordinator):
     """Test diffuse estimation for cloudy conditions."""
     # total=400, elevation=30, weather="cloudy" → expect 300-350 (~80%)
     result = coordinator._estimate_diffuse(
@@ -248,7 +248,7 @@ def test_estimate_diffuse_cloudy(coordinator):
     assert 300 <= result <= 350
 
 
-def test_estimate_diffuse_no_weather_condition(coordinator):
+async def test_estimate_diffuse_no_weather_condition(coordinator):
     """Test diffuse estimation with no weather condition."""
     # total=600, elevation=60, weather=None → expect 0 < result < total
     result = coordinator._estimate_diffuse(
@@ -259,7 +259,7 @@ def test_estimate_diffuse_no_weather_condition(coordinator):
     assert 0 < result < 600
 
 
-def test_estimate_diffuse_low_sun(coordinator):
+async def test_estimate_diffuse_low_sun(coordinator):
     """Test diffuse estimation for low sun angle."""
     # total=500, elevation=10, weather=None → expect result > total*0.4
     result = coordinator._estimate_diffuse(
