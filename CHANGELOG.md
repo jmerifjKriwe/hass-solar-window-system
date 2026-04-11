@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.1...v2.1.2) (2026-04-11)
+
+
+### Bug Fixes
+
+* correct exception syntax and update hacs.json filename ([a1b6a1c](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/a1b6a1c5de4e78ad4878816c8fbf104a79bf8e16))
+
 ## [2.1.1](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.0...v2.1.1) (2026-04-11)
 
 
