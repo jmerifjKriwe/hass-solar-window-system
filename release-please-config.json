@@ -5,7 +5,16 @@
       "release-type": "python",
       "package-name": "",
       "extra-files": [
-        "custom_components/solar_window_system/manifest.json"
+        {
+          "type": "json",
+          "path": "custom_components/solar_window_system/manifest.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "toml",
+          "path": "pyproject.toml",
+          "jsonpath": "$.project.version"
+        }
       ],
       "changelog-path": "CHANGELOG.md",
       "include-v-in-tag": true
