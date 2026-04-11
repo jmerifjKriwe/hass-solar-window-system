@@ -24,7 +24,7 @@ jobs:
           # Get all commits in this PR or push
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             # For PRs, check commits since the base branch
-            commits=$(git rev-list ${{{ github.event.pull_request.base.sha }}}..${{ github.sha }})
+            commits=$(git rev-list ${{ github.event.pull_request.base.sha }}..${{ github.sha }})
           else
             # For pushes to main, check the last 10 commits
             commits=$(git log -10 --pretty=format:%H)
