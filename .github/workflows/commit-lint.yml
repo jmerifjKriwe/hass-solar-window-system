@@ -40,6 +40,14 @@ jobs:
           failed=0
           for commit in $commits; do
             msg=$(git log -1 --pretty=format:%s "$commit")
+
+            # Skip merge commits (have more than one parent)
+            parent_count=$(git cat-file -p "$commit" | grep -c "^parent ")
+            if [ "$parent_count" -gt 1 ]; then
+              echo "⏭️ Skipping merge commit: $msg"
+              continue
+            fi
+
             echo "Checking: $msg"
 
             if [[ ! $msg =~ $regex ]]; then
