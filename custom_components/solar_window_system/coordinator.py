@@ -110,10 +110,11 @@ class SolarCalculationCoordinator(DataUpdateCoordinator):
         # Try to convert to float
         try:
             return float(state.state)
-        except (ValueError, AttributeError, KeyError):
-            # ValueError: state is not numeric
-            # AttributeError: state object is malformed
-            # KeyError: state.attributes is missing (if we ever access them)
+        except ValueError:
+            return default
+        except AttributeError:
+            return default
+        except KeyError:
             return default
 
     def _estimate_diffuse(
