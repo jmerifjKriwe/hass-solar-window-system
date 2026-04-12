@@ -68,6 +68,7 @@ except ImportError:
     sys.modules["homeassistant.config_entries"] = MagicMock()
     sys.modules["homeassistant.core"] = MagicMock()
     sys.modules["homeassistant.helpers"] = MagicMock()
+    sys.modules["homeassistant.helpers.device_registry"] = MagicMock()
     sys.modules["homeassistant.helpers.entity"] = MagicMock()
     sys.modules["homeassistant.helpers.update_coordinator"] = MagicMock()
     sys.modules["homeassistant.helpers.storage"] = MagicMock()
@@ -133,6 +134,7 @@ except ImportError:
 
     sys.modules["homeassistant.helpers.entity"].Entity = MockEntity
     sys.modules["homeassistant.helpers.entity"].DeviceInfo = dict
+    sys.modules["homeassistant.helpers.device_registry"].DeviceInfo = dict
     sys.modules[
         "homeassistant.helpers.update_coordinator"
     ].CoordinatorEntity = MockCoordinatorEntity

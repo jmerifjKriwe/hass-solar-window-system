@@ -3,10 +3,8 @@
 import pytest
 from homeassistant.components.sensor import SensorEntity  # noqa: F401
 from homeassistant.const import UnitOfPower
-from homeassistant.helpers.entity import (
-    DeviceInfo,
-    Entity,  # noqa: F401
-)
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import Entity  # noqa: F401
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator  # noqa: F401
 
 
