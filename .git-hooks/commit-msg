@@ -5,6 +5,13 @@
 commit_msg_file=$1
 commit_msg=$(cat "$commit_msg_file")
 
+# Allow merge commits to pass validation
+# Merge commits typically start with "Merge branch", "Merge pull request", etc.
+commit_subject=$(echo "$commit_msg" | head -n 1)
+if [[ $commit_subject =~ ^Merge[[:space:]] ]]; then
+    exit 0
+fi
+
 # Regular expression for Conventional Commits
 # Format: type(scope): description (no space before parentheses!)
 # Types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert
@@ -29,7 +36,7 @@ if [[ ! $commit_subject =~ $conventional_commit_regex ]]; then
     echo "  feat(coordinator): add diffuse radiation estimation"
     echo "  fix(sensor): resolve device info missing"
     echo "  docs(readme): update installation instructions"
-    echo "  ci(workflow): upgrade to python 3.13"
+    echo "  ci(workflow): upgrade to python 3.14"
     echo ""
     echo "See COMMIT_CONVENTIONS.md for more details."
     exit 1

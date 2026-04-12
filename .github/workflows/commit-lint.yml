@@ -68,7 +68,7 @@ jobs:
               echo "  feat(coordinator): add diffuse radiation estimation"
               echo "  fix(sensor): resolve device info missing"
               echo "  docs(readme): update installation instructions"
-              echo "  ci(workflow): upgrade to python 3.13"
+              echo "  ci(workflow): upgrade to python 3.14"
               failed=1
             fi
           done

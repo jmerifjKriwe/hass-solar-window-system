@@ -240,7 +240,7 @@ git commit -m "feat: your changes"
 ### Ruff Format (Code Formatting)
 
 - Line length: 100 characters
-- Target Python: 3.10, 3.11, 3.12, 3.13
+- Target Python: 3.10, 3.11, 3.12, 3.14
 - Replaces Black (single tool for format + lint)
 - Excludes: venv, ha_test_env, build artifacts
 

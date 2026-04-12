@@ -11,7 +11,7 @@ if not exist ".git\hooks" mkdir .git\hooks
 REM Copy hooks
 copy /Y .git-hooks\commit-msg .git\hooks\commit-msg >nul
 
-echo [32m✓ Git hooks installed[0m
+echo [OK] Git hooks installed
 echo.
 echo Installed hooks:
 echo   - commit-msg: Validates Conventional Commits format

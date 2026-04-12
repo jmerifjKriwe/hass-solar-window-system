@@ -16,28 +16,31 @@ echo "  Solar Window System - Dev Setup"
 echo "========================================="
 echo ""
 
-# Check Python version
-PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+# Check Python 3.14
+echo -e "${BLUE}Checking Python version...${NC}"
 
-echo -e "${BLUE}Python version:${NC} $PYTHON_VERSION"
-
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
-    echo -e "${RED}Error:${NC} Python 3.10+ required"
+if command -v python3.14 &>/dev/null; then
+    PYTHON_CMD="python3.14"
+elif command -v py &>/dev/null && py -3.14 --version &>/dev/null 2>&1; then
+    PYTHON_CMD="py -3.14"
+else
+    echo -e "${RED}Error:${NC} Python 3.14 not found"
+    echo "Please install Python 3.14 from https://www.python.org/"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Python version OK${NC}"
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
+echo -e "${GREEN}✓ Python version: $PYTHON_VERSION${NC}"
 echo ""
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo -e "${YELLOW}Creating virtual environment...${NC}"
-    python -m venv venv
+    $PYTHON_CMD -m venv venv
     echo -e "${GREEN}✓ Virtual environment created${NC}"
 else
     echo -e "${GREEN}✓ Virtual environment exists${NC}"
+    echo -e "${BLUE}  If you encounter issues, delete the venv folder and re-run this script${NC}"
 fi
 echo ""
 
@@ -54,57 +57,14 @@ echo -e "${GREEN}✓ pip upgraded${NC}"
 echo ""
 
 # Install core dependencies
-echo -e "${YELLOW}Installing core dependencies...${NC}"
-
-# Testing framework
-pip install pytest==8.0.0 \
-    pytest-asyncio==0.23.4 \
-    pytest-homeassistant-custom-component==0.13.104 \
-    pytest-cov==4.1.0 \
-    pytest-timeout==2.3.1 \
-    pytest-xdist==3.5.0 \
-    > /dev/null
-echo -e "${GREEN}  ✓ pytest (testing framework)${NC}"
-
-# Code quality tools
-pip install \
-    ruff==0.15.4 \
-    pyright==1.1.408 \
-    > /dev/null
-echo -e "${GREEN}  ✓ ruff (format + lint), pyright (type checking)${NC}"
-
-# Type stubs (optional, for better IDE support)
-pip install types-homeassistant-stubs==2026.2.3 \
-    > /dev/null 2>&1 || echo -e "${YELLOW}  ! types-homeassistant-stubs not available (optional)${NC}"
-echo -e "${GREEN}  ✓ type stubs (optional)${NC}"
+echo -e "${YELLOW}Installing dependencies from requirements-test.txt...${NC}"
+pip install -r requirements-test.txt > /dev/null
+echo -e "${GREEN}  ✓ Dependencies installed${NC}"
 
 echo ""
 echo -e "${GREEN}✓ Core dependencies installed${NC}"
 echo ""
 
-# Create requirements.txt for reproducibility
-echo -e "${YELLOW}Creating requirements.txt...${NC}"
-cat > requirements-dev.txt << 'EOF'
-# Core testing framework
-pytest==8.0.0
-pytest-asyncio==0.23.4
-pytest-homeassistant-custom-component==0.13.104
-pytest-cov==4.1.0
-pytest-timeout==2.3.1
-pytest-xdist==3.5.0
-
-# Code quality
-ruff==0.15.4
-pyright==1.1.408
-
-# Type stubs (optional)
-types-homeassistant-stubs==2026.2.3
-
-# Development tools
-pre-commit==3.7.0
-EOF
-echo -e "${GREEN}✓ requirements-dev.txt created${NC}"
-echo ""
 
 # Install pre-commit hooks
 echo -e "${YELLOW}Installing pre-commit hooks...${NC}"

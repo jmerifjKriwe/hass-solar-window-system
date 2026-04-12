@@ -45,7 +45,7 @@ Optional - should be the area of the codebase affected:
 feat(coordinator): add diffuse radiation estimation
 fix(sensor): resolve device info missing for window sensors
 docs(readme): update installation instructions
-ci(workflow): upgrade to python 3.13
+ci(workflow): upgrade to python 3.14
 chore(deps): update homeassistant to 2026.2.3
 ```
 

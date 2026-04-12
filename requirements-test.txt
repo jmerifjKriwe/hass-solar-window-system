@@ -1,0 +1,15 @@
+# Test dependencies for Solar Window System
+# Install with: pip install -r requirements-test.txt
+
+# Core testing
+pytest==9.0.0
+pytest-homeassistant-custom-component==0.13.323
+
+# Linting and formatting
+ruff==0.15.10
+
+# Type checking
+pyright==1.1.408
+
+# Required dependencies for homeassistant-custom-component
+homeassistant==2026.4.2

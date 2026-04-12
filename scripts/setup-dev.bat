@@ -2,6 +2,12 @@
 REM Development Environment Setup for Solar Window System
 REM Sets up a complete Python environment for HA custom component development
 
+REM Enable ANSI colors for Windows 10+
+for /f "tokens=*" %%a in ('powershell -Command "$host.UI.RawUI.BackgroundColor" 2^>nul') do set "term_bg=%%a"
+if not defined term_bg (
+    powershell -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8" 2>nul
+)
+
 setlocal enabledelayedexpansion
 
 echo =========================================
@@ -9,114 +15,87 @@ echo   Solar Window System - Dev Setup
 echo =========================================
 echo.
 
-REM Check Python version
+REM Check Python 3.14
 echo Checking Python version...
-python --version >nul 2>&1
+py -3.14 --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [31mError:[0m Python not found in PATH
-    echo Please install Python 3.10+ from https://www.python.org/
+    echo [ERROR] Python 3.14 not found
+    echo Please install Python 3.14 from https://www.python.org/
     exit /b 1
 )
 
-for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYVER=%%i
-echo [32m✓ Python version:[0m %PYVER%
+for /f "tokens=2" %%i in ('py -3.14 --version 2^>^&1') do set PYVER=%%i
+echo [OK] Python version: %PYVER%
 echo.
 
 REM Create virtual environment if it doesn't exist
 if not exist "venv" (
     echo Creating virtual environment...
-    python -m venv venv
+    py -3.14 -m venv venv
     if %ERRORLEVEL% NEQ 0 (
-        echo [31mError:[0m Failed to create virtual environment
+        echo [ERROR] Failed to create virtual environment
         exit /b 1
     )
-    echo [32m✓ Virtual environment created[0m
+    echo [OK] Virtual environment created
 ) else (
-    echo [32m✓ Virtual environment exists[0m
+    echo [OK] Virtual environment exists
+    echo [INFO] If you encounter issues, delete the venv folder and re-run this script
 )
 echo.
 
-REM Activate virtual environment
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
-if %ERRORLEVEL% NEQ 0 (
-    echo [31mError:[0m Failed to activate virtual environment
+REM Verify venv was created correctly
+if not exist "venv\Scripts\python.exe" (
+    echo [ERROR] Virtual environment is missing python.exe
+    echo Please delete the venv folder and re-run this script
     exit /b 1
 )
-echo [32m✓ Virtual environment activated[0m
-echo.
 
-REM Upgrade pip
-echo Upgrading pip...
-python -m pip install --upgrade pip setuptools wheel >nul 2>&1
-echo [32m✓ pip upgraded[0m
-echo.
-
-REM Install core dependencies
-echo Installing core dependencies...
-
-echo Installing pytest and plugins...
-pip install pytest==8.0.0 ^
-    pytest-asyncio==0.23.4 ^
-    pytest-homeassistant-custom-component==0.13.104 ^
-    pytest-cov==4.1.0 ^
-    pytest-timeout==2.3.1 ^
-    pytest-xdist==3.5.0 >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [31mError:[0m Failed to install pytest
-    exit /b 1
-)
-echo [32m  ✓ pytest (testing framework)[0m
-
-echo Installing ruff and pyright...
-pip install ruff==0.15.4 pyright==1.1.408 >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [31mError:[0m Failed to install ruff/pyright
-    exit /b 1
-)
-echo [32m  ✓ ruff (format + lint), pyright (type checking)[0m
-
-echo Installing type stubs...
-pip install types-homeassistant-stubs==2026.2.3 >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [33m  ! types-homeassistant-stubs not available (optional)[0m
-) else (
-    echo [32m  ✓ type stubs (optional)[0m
-)
-
-echo.
-echo [32m✓ Core dependencies installed[0m
-echo.
-
-REM Create requirements.txt for reproducibility
-echo Creating requirements-dev.txt...
+REM Install sitecustomize.py to mock Unix-only modules on Windows
+echo Installing Windows compatibility shim...
 (
-echo # Core testing framework
-echo pytest==8.0.0
-echo pytest-asyncio==0.23.4
-echo pytest-homeassistant-custom-component==0.13.104
-echo pytest-cov==4.1.0
-echo pytest-timeout==2.3.1
-echo pytest-xdist==3.5.0
-echo.
-echo # Code quality
-echo ruff==0.15.4
-echo pyright==1.1.408
-echo.
-echo # Type stubs ^(optional^)
-echo types-homeassistant-stubs==2026.2.3
-echo.
-echo # Development tools
-echo pre-commit==3.7.0
-) > requirements-dev.txt
-echo [32m✓ requirements-dev.txt created[0m
+    echo """Site customization for Windows - mock Unix-only modules."""
+    echo import sys
+    echo from unittest.mock import MagicMock
+    echo.
+    echo for mod in ["fcntl", "grp", "pwd", "termios", "tty", "resource"]:
+    echo     if mod not in sys.modules:
+    echo         sys.modules[mod] = MagicMock^(^)
+) > venv\Lib\site-packages\sitecustomize.py
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to create sitecustomize.py
+    exit /b 1
+)
+echo [OK] Windows compatibility shim installed
 echo.
 
-REM Install pre-commit hooks
+REM Upgrade pip using venv python directly
+echo Upgrading pip...
+venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to upgrade pip
+    exit /b 1
+)
+echo [OK] pip upgraded
+echo.
+
+REM Install core dependencies using venv pip directly
+echo Installing core dependencies...
+echo Installing dependencies from requirements-test.txt...
+venv\Scripts\pip.exe install -r requirements-test.txt
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Failed to install dependencies from requirements-test.txt
+    exit /b 1
+)
+echo [OK] Dependencies installed
+echo.
+echo [OK] Core dependencies installed
+echo.
+
+REM Install pre-commit hooks using venv pip directly
 echo Installing pre-commit hooks...
-pip install pre-commit >nul 2>&1
-pre-commit install >nul 2>&1
-echo [32m✓ pre-commit hooks installed[0m
+venv\Scripts\pip.exe install pre-commit >nul 2>&1
+venv\Scripts\pre-commit.exe install >nul 2>&1
+echo [OK] pre-commit hooks installed
 echo.
 
 REM Install git commit-msg hook
