@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.1.4](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.3...v2.1.4) (2026-04-12)
+
+
+### Bug Fixes
+
+* trigger release for HACS ZIP structure fix ([2392970](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/2392970b490c9ac44c0aeb63bf24d5ef0d900d27))
+* trigger release for HACS ZIP structure fix ([ad62909](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ad6290972bb8da5f4e92c8baef87f2ba8dcc44b1))
+
+
+### CI/CD
+
+* commits are not considered user-facing by release-please. ([2392970](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/2392970b490c9ac44c0aeb63bf24d5ef0d900d27))
+* commits are not considered user-facing by release-please. ([ad62909](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/ad6290972bb8da5f4e92c8baef87f2ba8dcc44b1))
+* **workflow:** fix HACS ZIP folder structure ([2e39ac6](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/2e39ac6d8eeed6ce7e3c9c38b3f89eabbb8172ae))
+
+
+### Chores
+
+* **hooks:** add commit-msg hook with full conventional commit support ([e7c8dcb](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/e7c8dcb08f1693aa4461acf824cac465d7be67b7))
+
 ## [2.1.3](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.2...v2.1.3) (2026-04-12)
 
 
