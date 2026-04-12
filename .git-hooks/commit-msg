@@ -13,13 +13,13 @@ if [[ $commit_subject =~ ^Merge[[:space:]] ]]; then
 fi
 
 # Regular expression for Conventional Commits
-# Format: type(scope): description (no space before parentheses!)
-# Types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert
+# Format: type(scope): description or type!(scope): description for breaking changes
+# Types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert, build
 # IMPORTANT: Must match release-please parser expectations
-conventional_commit_regex="^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert)(\([a-zA-Z0-9_-]+\))?: .+"
+conventional_commit_regex="^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert|build)(\([a-zA-Z0-9_-]+\))?!?: .+"
 
 # Valid types
-valid_types="feat|fix|docs|style|refactor|perf|test|chore|ci|revert"
+valid_types="feat|fix|docs|style|refactor|perf|test|chore|ci|revert|build"
 
 # Check if commit message matches Conventional Commits format
 # Only check the first line (subject), ignore body for validation
@@ -30,7 +30,7 @@ if [[ ! $commit_subject =~ $conventional_commit_regex ]]; then
     echo "Commit messages must follow the Conventional Commits format:"
     echo "  type(scope): description"
     echo ""
-    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert"
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert, build"
     echo ""
     echo "Examples:"
     echo "  feat(coordinator): add diffuse radiation estimation"
@@ -43,20 +43,21 @@ if [[ ! $commit_subject =~ $conventional_commit_regex ]]; then
 fi
 
 # Extract type from commit message (first line only)
-type=$(echo "$commit_subject" | sed -E "s/^([a-z]+)(\(.+\))?: .+/\1/")
+# Handles both normal (type:) and breaking change (type!:) formats
+type=$(echo "$commit_subject" | sed -E "s/^([a-z]+)(\([a-zA-Z0-9_-]+\))?[!]?: .+/\1/")
 
 # Check if type is valid
 if [[ ! $type =~ ^($valid_types)$ ]]; then
     echo "❌ Invalid commit type: '$type'"
     echo ""
-    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert"
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert, build"
     echo ""
     echo "See COMMIT_CONVENTIONS.md for more details."
     exit 1
 fi
 
-# Check minimum description length (after type and scope)
-description=$(echo "$commit_subject" | sed -E "s/^[a-z]+(\(.+\))?: //")
+# Check minimum description length (after type, scope, and optional breaking change marker)
+description=$(echo "$commit_subject" | sed -E "s/^[a-z]+(\([a-zA-Z0-9_-]+\))?[!]?: //")
 if [[ ${#description} -lt 3 ]]; then
     echo "❌ Commit description too short (minimum 3 characters)"
     echo ""

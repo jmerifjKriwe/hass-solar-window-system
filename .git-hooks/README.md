@@ -20,6 +20,7 @@ Validates that commit messages follow the Conventional Commits format.
 - `test` - Tests
 - `chore` - Maintenance
 - `ci` - CI/CD
+- `build` - Build system/dependencies
 - `revert` - Revert commit
 
 ## Installation

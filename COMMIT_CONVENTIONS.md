@@ -23,6 +23,7 @@ This project uses **Conventional Commits** for automated changelog generation an
 - **test**: Adding or updating tests
 - **chore**: Maintenance tasks (build, deps, etc.)
 - **ci**: CI/CD changes
+- **build**: Build system or dependencies
 - **revert**: Reverts a previous commit
 
 ## Scope
@@ -47,6 +48,7 @@ fix(sensor): resolve device info missing for window sensors
 docs(readme): update installation instructions
 ci(workflow): upgrade to python 3.14
 chore(deps): update homeassistant to 2026.2.3
+feat(api)!: remove deprecated endpoint
 ```
 
 ### Bad Commits (avoid these)
