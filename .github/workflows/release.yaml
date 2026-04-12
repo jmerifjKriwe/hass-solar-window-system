@@ -38,11 +38,13 @@ jobs:
       - name: Build HACS ZIP
         if: ${{ steps.release.outputs.release_created }}
         run: |
-          zip -r custom_components/solar_window_system.zip custom_components/solar_window_system/
+          cd custom_components
+          zip -r solar_window_system.zip solar_window_system/
+          mv solar_window_system.zip ../
 
       - name: Upload to GitHub Release
         if: ${{ steps.release.outputs.release_created }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload ${{ steps.release.outputs.tag_name }} dist/* custom_components/solar_window_system.zip
+          gh release upload ${{ steps.release.outputs.tag_name }} dist/* solar_window_system.zip
