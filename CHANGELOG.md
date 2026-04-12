@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.3](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.2...v2.1.3) (2026-04-12)
+
+
+### Bug Fixes
+
+* **coordinator:** work around ruff format bug with exception syntax ([2e9f394](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/2e9f3943f929b31630ea859d055d8685b60b25d3))
+* resolve type checking issues and update imports ([8522b61](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/8522b61564cd23ac8f2a0aa483e0c47ae3c1de22))
+* **tests:** correct DeviceInfo import path for pyright compliance ([91bc464](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/91bc4641dc20f51f84bb6da32c0d70260d2fa12b))
+
 ## [2.1.2](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.1...v2.1.2) (2026-04-11)
 
 
