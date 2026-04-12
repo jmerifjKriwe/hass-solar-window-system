@@ -3,6 +3,10 @@
 import pytest
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from custom_components.solar_window_system.coordinator import (
+    SolarCalculationCoordinator,
+)
+
 
 @pytest.fixture
 def mock_config():
@@ -42,12 +46,8 @@ def mock_config():
 
 
 @pytest.fixture
-async def coordinator(hass, mock_config):
+async def coordinator(hass, mock_config) -> SolarCalculationCoordinator:
     """Fixture for SolarCalculationCoordinator instance."""
-    from custom_components.solar_window_system.coordinator import (
-        SolarCalculationCoordinator,
-    )
-
     return SolarCalculationCoordinator(hass, mock_config)
 
 
@@ -60,25 +60,25 @@ async def test_coordinator_initialization(coordinator, mock_config):
     assert isinstance(coordinator, DataUpdateCoordinator)
 
     # Test config is stored
-    assert coordinator.config == mock_config
+    assert coordinator.config == mock_config  # type: ignore[attr-defined]
 
     # Test windows are extracted
     expected_windows = {"test_window": mock_config["windows"]["test_window"]}
-    assert coordinator.windows == expected_windows
+    assert coordinator.windows == expected_windows  # type: ignore[attr-defined]
 
     # Test groups are extracted
-    assert coordinator.groups == mock_config.get("groups", {})
+    assert coordinator.groups == mock_config.get("groups", {})  # type: ignore[attr-defined]
 
     # Test global_config is extracted
-    assert coordinator.global_config == mock_config["global"]
+    assert coordinator.global_config == mock_config["global"]  # type: ignore[attr-defined]
 
     # Test sensors are extracted from global_config
     expected_sensors = mock_config["global"]["sensors"]
-    assert coordinator.sensors == expected_sensors
+    assert coordinator.sensors == expected_sensors  # type: ignore[attr-defined]
 
     # Test thresholds are extracted from global_config
     expected_thresholds = mock_config["global"]["thresholds"]
-    assert coordinator.thresholds == expected_thresholds
+    assert coordinator.thresholds == expected_thresholds  # type: ignore[attr-defined]
 
 
 async def test_sun_is_visible_above_horizon(coordinator, mock_config):

@@ -7,6 +7,10 @@ requires-python = ">=3.14"
 license = {text = "MIT"}
 
 [tool.pyright]
+# Point to venv for import resolution
+venvPath = "."
+venv = "venv"
+
 # Ignore Home Assistant import errors in dev environment (HA not installed locally)
 # These are expected and will be resolved in the actual Home Assistant environment
 ignore = [

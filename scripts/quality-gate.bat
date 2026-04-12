@@ -52,12 +52,11 @@ echo.
 
 REM Pyright
 echo Running: Pyright - type checking
-venv\Scripts\python.exe -m pyright custom_components\solar_window_system >nul 2>&1
+venv\Scripts\python.exe -m pyright .
 if %ERRORLEVEL% EQU 0 (
     echo [OK] Pyright - type checking
 ) else (
     echo [FAIL] Pyright - type checking
-    echo   Check pyright output above for details
     set /a FAILURES+=1
 )
 echo.

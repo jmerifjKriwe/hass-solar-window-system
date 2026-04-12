@@ -9,12 +9,12 @@ from unittest.mock import MagicMock
 import pytest
 
 # Store original socket.socket class before any patches
-_socket.__original_socket_class = _socket.socket
+_socket.__original_socket_class = _socket.socket  # type: ignore[attr-defined]
 
 # On Windows: prevent pytest-socket from blocking sockets (needed for asyncio proactor)
 # On Linux: keep socket blocking enabled for CI security
 if sys.platform == "win32":
-    import pytest_socket as _pytest_socket
+    import pytest_socket as _pytest_socket  # type: ignore[import-untyped]
 
     def _noop_disable_socket(allow_unix_socket=False):
         """No-op replacement for pytest_socket.disable_socket on Windows."""
@@ -158,7 +158,7 @@ except ImportError:
 # If not, provide our own hass fixture for local testing
 try:
     # This will succeed if pytest-homeassistant-custom-component is installed
-    import pytest_homeassistant_custom_component  # noqa: F401
+    import pytest_homeassistant_custom_component  # noqa: F401 # type: ignore[import-not-found]
 
     # Package is available, let it provide the hass fixture
     _hass_fixture_available = True
