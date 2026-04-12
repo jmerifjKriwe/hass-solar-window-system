@@ -20,6 +20,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ruff pyright
+          pip install voluptuous pytest pytest-homeassistant-custom-component
       - name: Run Ruff format check
         run: ruff format --check .
       - name: Run Ruff lint
