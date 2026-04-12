@@ -38,9 +38,8 @@ jobs:
       - name: Build HACS ZIP
         if: ${{ steps.release.outputs.release_created }}
         run: |
-          cd custom_components
-          zip -r solar_window_system.zip solar_window_system/
-          mv solar_window_system.zip ../
+          cd custom_components/solar_window_system
+          zip -r ../../solar_window_system.zip .
 
       - name: Upload to GitHub Release
         if: ${{ steps.release.outputs.release_created }}
