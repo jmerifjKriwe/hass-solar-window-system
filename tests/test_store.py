@@ -22,17 +22,17 @@ async def test_store_initialization(store):
 
 @pytest.mark.asyncio
 async def test_load_empty_config(hass, store):
-    """Test loading config when no config exists."""
+    """Test loading overrides when no data exists."""
+    from custom_components.solar_window_system.const import CONF_OVERRIDES
+
     # Mock the Store's async_load to return None (empty storage)
     with patch.object(store._store, "async_load", return_value=None):
-        config = await store.async_load()
+        data = await store.async_load()
 
-        # Verify empty config structure
-        assert config is not None
-        assert config["version"] == STORAGE_VERSION
-        assert config[CONF_GLOBAL] == {}
-        assert config[CONF_GROUPS] == {}
-        assert config[CONF_WINDOWS] == {}
+        # Verify empty overrides structure (store only handles overrides, not config)
+        assert data is not None
+        assert data["version"] == STORAGE_VERSION
+        assert data[CONF_OVERRIDES] == {}
 
 
 @pytest.mark.asyncio

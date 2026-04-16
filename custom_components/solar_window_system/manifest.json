@@ -5,9 +5,12 @@
     "@jmerifjKriwe"
   ],
   "config_flow": true,
+  "dependencies": [],
   "documentation": "https://github.com/jmerifjKriwe/solar-window-system",
+  "homeassistant": "2026.4.0",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jmerifjKriwe/solar-window-system/issues",
   "requirements": [],
+  "single_config_entry": true,
   "version": "2.1.3"
 }

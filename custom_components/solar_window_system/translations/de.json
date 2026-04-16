@@ -1,0 +1,417 @@
+{
+  "config_subentries": {
+    "window": {
+      "title": "Fenster hinzufügen",
+      "initiate_flow": {
+        "user": "Fenster hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "Fenster konfigurieren",
+          "description": "Definiere die Geometrie und Eigenschaften des Fensters.",
+          "sections": {
+            "geometry": {
+              "name": "Geometrie",
+              "description": "Physische Abmessungen und Ausrichtung des Fensters",
+              "data": {
+                "width": "Breite (cm)",
+                "height": "Höhe (cm)",
+                "azimuth": "Azimut (°)",
+                "tilt": "Neigungswinkel (°)",
+                "visible_azimuth_start": "Sichtbarer Azimut Start (°)",
+                "visible_azimuth_end": "Sichtbarer Azimut Ende (°)"
+              },
+              "data_description": {
+                "width": "Breite des Fensters in cm",
+                "height": "Höhe des Fensters in cm",
+                "azimuth": "Himmelsrichtung: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West",
+                "tilt": "Neigungswinkel: 0° = waagerecht (Dachfenster), 90° = senkrecht (Wandfenster)",
+                "visible_azimuth_start": "Startwinkel des sichtbaren Himmelsbereichs",
+                "visible_azimuth_end": "Endwinkel des sichtbaren Himmelsbereichs"
+              }
+            },
+            "properties": {
+              "name": "Eigenschaften (optional)",
+              "description": "Optional: Überschreibe globale Eigenschaften für dieses Fenster",
+              "data": {
+                "g_value": "g-Wert (Durchlässigkeit)",
+                "frame_width": "Rahmenbreite (cm)",
+                "window_recess": "Fensterlaibung (cm)",
+                "shading_depth": "Verschattungstiefe (cm)"
+              },
+              "data_description": {
+                "g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+                "frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+                "window_recess": "Einzug der Fensteröffnung in der Laibung",
+                "shading_depth": "Überstand des Sonnenschutzsystems"
+              }
+            }
+          },
+          "data": {
+            "name": "Fenstername",
+            "group_id": "Gruppe (optional)",
+            "geometry": "Geometrie",
+            "geometry/width": "Breite (cm)",
+            "geometry/height": "Höhe (cm)",
+            "geometry/azimuth": "Azimut (°)",
+            "geometry/tilt": "Neigungswinkel (°)",
+            "geometry/visible_azimuth_start": "Sichtbarer Azimut Start (°)",
+            "geometry/visible_azimuth_end": "Sichtbarer Azimut Ende (°)",
+            "properties": "Eigenschaften (optional)",
+            "properties/g_value": "g-Wert (Durchlässigkeit)",
+            "properties/frame_width": "Rahmenbreite (cm)",
+            "properties/window_recess": "Fensterlaibung (cm)",
+            "properties/shading_depth": "Verschattungstiefe (cm)"
+          },
+          "data_description": {
+            "name": "Eindeutiger Name für das Fenster",
+            "group_id": "Optional: Weise das Fenster einer Gruppe zu",
+            "geometry": "Physische Abmessungen und Ausrichtung des Fensters",
+            "geometry/width": "Breite des Fensters in cm",
+            "geometry/height": "Höhe des Fensters in cm",
+            "geometry/azimuth": "Himmelsrichtung: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West",
+            "geometry/tilt": "Neigungswinkel: 0° = waagerecht, 90° = senkrecht (Standard)",
+            "geometry/visible_azimuth_start": "Startwinkel des sichtbaren Himmelsbereichs",
+            "geometry/visible_azimuth_end": "Endwinkel des sichtbaren Himmelsbereichs",
+            "properties": "Optional: Überschreibe globale Eigenschaften für dieses Fenster",
+            "properties/g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+            "properties/frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+            "properties/window_recess": "Einzug der Fensteröffnung in der Laibung",
+            "properties/shading_depth": "Überstand des Sonnenschutzsystems"
+          }
+        },
+        "reconfigure": {
+          "title": "Fenster bearbeiten",
+          "description": "Ändere die Einstellungen dieses Fensters.",
+          "sections": {
+            "geometry": {
+              "name": "Geometrie",
+              "description": "Physische Abmessungen und Ausrichtung des Fensters",
+              "data": {
+                "width": "Breite (cm)",
+                "height": "Höhe (cm)",
+                "azimuth": "Azimut (°)",
+                "tilt": "Neigungswinkel (°)",
+                "visible_azimuth_start": "Sichtbarer Azimut Start (°)",
+                "visible_azimuth_end": "Sichtbarer Azimut Ende (°)"
+              },
+              "data_description": {
+                "width": "Breite des Fensters in cm",
+                "height": "Höhe des Fensters in cm",
+                "azimuth": "Himmelsrichtung: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West",
+                "tilt": "Neigungswinkel: 0° = waagerecht (Dachfenster), 90° = senkrecht (Wandfenster)",
+                "visible_azimuth_start": "Startwinkel des sichtbaren Himmelsbereichs",
+                "visible_azimuth_end": "Endwinkel des sichtbaren Himmelsbereichs"
+              }
+            },
+            "properties": {
+              "name": "Eigenschaften (optional)",
+              "description": "Optional: Überschreibe globale Eigenschaften für dieses Fenster",
+              "data": {
+                "g_value": "g-Wert (Durchlässigkeit)",
+                "frame_width": "Rahmenbreite (cm)",
+                "window_recess": "Fensterlaibung (cm)",
+                "shading_depth": "Verschattungstiefe (cm)"
+              },
+              "data_description": {
+                "g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+                "frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+                "window_recess": "Einzug der Fensteröffnung in der Laibung",
+                "shading_depth": "Überstand des Sonnenschutzsystems"
+              }
+            }
+          },
+          "data": {
+            "name": "Fenstername",
+            "group_id": "Gruppe",
+            "geometry": "Geometrie",
+            "geometry/width": "Breite (cm)",
+            "geometry/height": "Höhe (cm)",
+            "geometry/azimuth": "Azimut (°)",
+            "geometry/tilt": "Neigungswinkel (°)",
+            "geometry/visible_azimuth_start": "Sichtbarer Azimut Start (°)",
+            "geometry/visible_azimuth_end": "Sichtbarer Azimut Ende (°)",
+            "properties": "Eigenschaften (optional)",
+            "properties/g_value": "g-Wert (Durchlässigkeit)",
+            "properties/frame_width": "Rahmenbreite (cm)",
+            "properties/window_recess": "Fensterlaibung (cm)",
+            "properties/shading_depth": "Verschattungstiefe (cm)"
+          },
+          "data_description": {
+            "name": "Eindeutiger Name für das Fenster",
+            "group_id": "Weise das Fenster einer Gruppe zu",
+            "geometry": "Physische Abmessungen und Ausrichtung des Fensters",
+            "geometry/width": "Breite des Fensters in cm",
+            "geometry/height": "Höhe des Fensters in cm",
+            "geometry/azimuth": "Himmelsrichtung: 0° = Nord, 90° = Ost, 180° = Süd, 270° = West",
+            "geometry/tilt": "Neigungswinkel: 0° = waagerecht, 90° = senkrecht (Standard)",
+            "geometry/visible_azimuth_start": "Startwinkel des sichtbaren Himmelsbereichs",
+            "geometry/visible_azimuth_end": "Endwinkel des sichtbaren Himmelsbereichs",
+            "properties": "Optional: Überschreibe globale Eigenschaften für dieses Fenster",
+            "properties/g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+            "properties/frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+            "properties/window_recess": "Einzug der Fensteröffnung in der Laibung",
+            "properties/shading_depth": "Überstand des Sonnenschutzsystems"
+          }
+        }
+      }
+    },
+    "group": {
+      "title": "Gruppe hinzufügen",
+      "initiate_flow": {
+        "user": "Gruppe hinzufügen"
+      },
+      "step": {
+        "user": {
+          "title": "Gruppe konfigurieren",
+          "description": "Definiere die Gruppe und ihre Eigenschaften.",
+          "sections": {
+            "properties": {
+              "name": "Eigenschaften (optional)",
+              "description": "Optional: Überschreibe globale Eigenschaften für diese Gruppe",
+              "data": {
+                "g_value": "g-Wert (Durchlässigkeit)",
+                "frame_width": "Rahmenbreite (cm)",
+                "window_recess": "Fensterlaibung (cm)",
+                "shading_depth": "Verschattungstiefe (cm)"
+              },
+              "data_description": {
+                "g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+                "frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+                "window_recess": "Einzug der Fensteröffnung in der Laibung",
+                "shading_depth": "Überstand des Sonnenschutzsystems"
+              }
+            }
+          },
+          "data": {
+            "name": "Gruppenname",
+            "azimuth": "Ausrichtung (optional)",
+            "temp_indoor": "Innentemperatur Sensor (optional)",
+            "properties": "Eigenschaften (optional)",
+            "properties/g_value": "g-Wert (Durchlässigkeit)",
+            "properties/frame_width": "Rahmenbreite (cm)",
+            "properties/window_recess": "Fensterlaibung (cm)",
+            "properties/shading_depth": "Verschattungstiefe (cm)"
+          },
+          "data_description": {
+            "name": "Eindeutiger Name für die Gruppe",
+            "azimuth": "Ausrichtung in Grad (0=Nord, 90=Ost, 180=Süd, 270=West). Wird an Fenster vererbt.",
+            "temp_indoor": "Innentemperatursensor für diese Gruppe. Wird an Fenster vererbt.",
+            "properties": "Optional: Überschreibe globale Eigenschaften für diese Gruppe",
+            "properties/g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+            "properties/frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+            "properties/window_recess": "Einzug der Fensteröffnung in der Laibung",
+            "properties/shading_depth": "Überstand des Sonnenschutzsystems"
+          }
+        },
+        "reconfigure": {
+          "title": "Gruppe bearbeiten",
+          "description": "Ändere die Einstellungen dieser Gruppe.",
+          "sections": {
+            "properties": {
+              "name": "Eigenschaften (optional)",
+              "description": "Optional: Überschreibe globale Eigenschaften für diese Gruppe",
+              "data": {
+                "g_value": "g-Wert (Durchlässigkeit)",
+                "frame_width": "Rahmenbreite (cm)",
+                "window_recess": "Fensterlaibung (cm)",
+                "shading_depth": "Verschattungstiefe (cm)"
+              },
+              "data_description": {
+                "g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+                "frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+                "window_recess": "Einzug der Fensteröffnung in der Laibung",
+                "shading_depth": "Überstand des Sonnenschutzsystems"
+              }
+            }
+          },
+          "data": {
+            "name": "Gruppenname",
+            "azimuth": "Ausrichtung",
+            "temp_indoor": "Innentemperatur Sensor",
+            "properties": "Eigenschaften (optional)",
+            "properties/g_value": "g-Wert (Durchlässigkeit)",
+            "properties/frame_width": "Rahmenbreite (cm)",
+            "properties/window_recess": "Fensterlaibung (cm)",
+            "properties/shading_depth": "Verschattungstiefe (cm)"
+          },
+          "data_description": {
+            "name": "Eindeutiger Name für die Gruppe",
+            "azimuth": "Ausrichtung in Grad (0=Nord, 90=Ost, 180=Süd, 270=West). Wird an Fenster vererbt.",
+            "temp_indoor": "Innentemperatursensor für diese Gruppe. Wird an Fenster vererbt.",
+            "properties": "Optional: Überschreibe globale Eigenschaften",
+            "properties/g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+            "properties/frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+            "properties/window_recess": "Einzug der Fensteröffnung in der Laibung",
+            "properties/shading_depth": "Überstand des Sonnenschutzsystems"
+          }
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solar Window System einrichten",
+        "description": "Konfiguriere die globale Sensor-Auswahl und Standard-Eigenschaften für alle Fenster.",
+        "sections": {
+          "properties": {
+            "name": "Fenster-Eigenschaften",
+            "description": "Diese Werte können später pro Fenster/Gruppe überschrieben werden",
+            "data": {
+              "g_value": "g-Wert (Durchlässigkeit)",
+              "frame_width": "Rahmenbreite (cm)",
+              "window_recess": "Fensterlaibung (cm)",
+              "shading_depth": "Verschattungstiefe (cm)"
+            },
+            "data_description": {
+              "g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+              "frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+              "window_recess": "Einzug der Fensteröffnung in der Laibung",
+              "shading_depth": "Überstand des Sonnenschutzsystems"
+            }
+          }
+        },
+        "data": {
+          "name": "Name der Installation",
+          "irradiance_sensor": "Globalstrahlung Sensor (W/m²)",
+          "irradiance_diffuse_sensor": "Diffuse Strahlung Sensor (optional)",
+          "temp_outdoor": "Außentemperatur Sensor (optional)",
+          "temp_indoor": "Innentemperatur Sensor (optional)",
+          "weather_warning": "Wetterwarnung Sensor (optional)",
+          "weather_condition": "Wetterzustand Sensor (optional)",
+          "properties": "Fenster-Eigenschaften (Standardwerte)",
+          "properties/g_value": "g-Wert (Durchlässigkeit)",
+          "properties/frame_width": "Rahmenbreite (cm)",
+          "properties/window_recess": "Fensterlaibung (cm)",
+          "properties/shading_depth": "Verschattungstiefe (cm)"
+        },
+        "data_description": {
+          "irradiance_sensor": "Sensor für die aktuelle Sonneneinstrahlung in W/m²",
+          "temp_outdoor": "Außentemperatur für Schwellenwert-Prüfungen (optional)",
+          "properties": "Diese Werte können später pro Fenster/Gruppe überschrieben werden",
+          "properties/g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+          "properties/frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+          "properties/window_recess": "Einzug der Fensteröffnung in der Laibung",
+          "properties/shading_depth": "Überstand des Sonnenschutzsystems"
+        }
+      },
+      "reconfigure": {
+        "title": "Solar Window System neu konfigurieren",
+        "description": "Ändere die globale Konfiguration und Standard-Eigenschaften.",
+        "sections": {
+          "properties": {
+            "name": "Fenster-Eigenschaften",
+            "description": "Diese Werte können später pro Fenster/Gruppe überschrieben werden",
+            "data": {
+              "g_value": "g-Wert (Durchlässigkeit)",
+              "frame_width": "Rahmenbreite (cm)",
+              "window_recess": "Fensterlaibung (cm)",
+              "shading_depth": "Verschattungstiefe (cm)"
+            },
+            "data_description": {
+              "g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+              "frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+              "window_recess": "Einzug der Fensteröffnung in der Laibung",
+              "shading_depth": "Überstand des Sonnenschutzsystems"
+            }
+          }
+        },
+        "data": {
+          "name": "Name der Installation",
+          "irradiance_sensor": "Globalstrahlung Sensor (W/m²)",
+          "use_irradiance_diffuse": "Diffuse Strahlung verwenden",
+          "irradiance_diffuse_sensor": "Diffuse Strahlung Sensor",
+          "use_temp_outdoor": "Außentemperatur verwenden",
+          "temp_outdoor": "Außentemperatur Sensor",
+          "use_temp_indoor": "Innentemperatur verwenden",
+          "temp_indoor": "Innentemperatur Sensor",
+          "use_weather_warning": "Wetterwarnung verwenden",
+          "weather_warning": "Wetterwarnung Sensor",
+          "use_weather_condition": "Wetterzustand verwenden",
+          "weather_condition": "Wetterzustand Sensor",
+          "properties": "Fenster-Eigenschaften (Standardwerte)",
+          "properties/g_value": "g-Wert (Durchlässigkeit)",
+          "properties/frame_width": "Rahmenbreite (cm)",
+          "properties/window_recess": "Fensterlaibung (cm)",
+          "properties/shading_depth": "Verschattungstiefe (cm)"
+        },
+        "data_description": {
+          "irradiance_sensor": "Sensor für die aktuelle Sonneneinstrahlung in W/m²",
+          "use_irradiance_diffuse": "Aktivieren um diffuses Strahlungssensor zu nutzen",
+          "irradiance_diffuse_sensor": "Optionaler Sensor für diffuse Sonneneinstrahlung",
+          "temp_outdoor": "Außentemperatur für Schwellenwert-Prüfungen (optional)",
+          "use_temp_indoor": "Aktivieren um Innentemperatursensor zu nutzen",
+          "temp_indoor": "Optionaler Sensor für die Innentemperatur",
+          "use_weather_warning": "Aktivieren um Wetterwarnungen zu nutzen",
+          "weather_warning": "Optionaler Binary Sensor für Wetterwarnungen",
+          "use_weather_condition": "Aktivieren um Wetterzustand zu nutzen",
+          "weather_condition": "Optionaler Sensor für Wetterzustand (für diffuse Strahlung)",
+          "properties": "Diese Werte können später pro Fenster/Gruppe überschrieben werden",
+          "properties/g_value": "g-Wert der Verglasung (0.1-1.0, typisch 0.6)",
+          "properties/frame_width": "Rahmenbreite des Fensters in cm (je Seite)",
+          "properties/window_recess": "Einzug der Fensteröffnung in der Laibung",
+          "properties/shading_depth": "Überstand des Sonnenschutzsystems"
+        }
+      }
+    },
+    "abort": {
+      "reconfigure_successful": "Neukonfiguration erfolgreich. Die Einstellungen wurden aktualisiert und die Integration neu geladen."
+    },
+    "error": {
+      "unknown": "Unbekannter Fehler",
+      "missing_entity_for_enabled_sensor": "Wenn die Checkbox aktiviert ist, muss ein Sensor ausgewählt werden",
+      "missing_required_sensor": "Dieser Sensor ist erforderlich und muss ausgewählt werden"
+    }
+  },
+  "selector": {
+  },
+  "entity": {
+    "sensor": {
+      "direct_energy": {
+        "name": "Direkte Energie"
+      },
+      "diffuse_energy": {
+        "name": "Diffuse Energie"
+      },
+      "combined_energy": {
+        "name": "Kombinierte Energie"
+      }
+    },
+    "binary_sensor": {
+      "shading_recommended": {
+        "name": "Verschattung empfohlen"
+      }
+    },
+    "number": {
+      "threshold_indoor": {
+        "name": "Innentemperatur Schwellenwert"
+      },
+      "threshold_outdoor": {
+        "name": "Außentemperatur Schwellenwert"
+      },
+      "threshold_forecast": {
+        "name": "Vorhersage Temperatur Schwellenwert"
+      },
+      "threshold_radiation": {
+        "name": "Solarenergie Schwellenwert"
+      }
+    },
+    "switch": {
+      "scenario_indoor": {
+        "name": "Szenario: Innentemperatur"
+      },
+      "scenario_outdoor": {
+        "name": "Szenario: Außentemperatur"
+      },
+      "scenario_forecast": {
+        "name": "Szenario: Wettervorhersage"
+      }
+    },
+    "button": {
+      "reset_overrides": {
+        "name": "Overrides zurücksetzen"
+      }
+    }
+  }
+}

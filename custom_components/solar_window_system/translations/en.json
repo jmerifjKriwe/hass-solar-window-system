@@ -1,0 +1,416 @@
+{
+  "config_subentries": {
+    "window": {
+      "title": "Add Window",
+      "initiate_flow": {
+        "user": "Add Window"
+      },
+      "step": {
+        "user": {
+          "title": "Configure Window",
+          "description": "Define the geometry and properties of the window.",
+          "sections": {
+            "geometry": {
+              "name": "Geometry",
+              "description": "Physical dimensions and orientation of the window",
+              "data": {
+                "width": "Width (cm)",
+                "height": "Height (cm)",
+                "azimuth": "Azimuth (°)",
+                "tilt": "Tilt Angle (°)",
+                "visible_azimuth_start": "Visible Azimuth Start (°)",
+                "visible_azimuth_end": "Visible Azimuth End (°)"
+              },
+              "data_description": {
+                "width": "Width of the window in cm",
+                "height": "Height of the window in cm",
+                "azimuth": "Orientation: 0° = North, 90° = East, 180° = South, 270° = West",
+                "tilt": "Tilt angle: 0° = horizontal (roof window), 90° = vertical (wall window)",
+                "visible_azimuth_start": "Start angle of visible sky sector",
+                "visible_azimuth_end": "End angle of visible sky sector"
+              }
+            },
+            "properties": {
+              "name": "Properties (optional)",
+              "description": "Optional: Override global properties for this window",
+              "data": {
+                "g_value": "g-value (transmittance)",
+                "frame_width": "Frame width (cm)",
+                "window_recess": "Window recess (cm)",
+                "shading_depth": "Shading depth (cm)"
+              },
+              "data_description": {
+                "g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+                "frame_width": "Window frame width in cm (per side)",
+                "window_recess": "Recess of window opening in wall",
+                "shading_depth": "Overhang of shading system"
+              }
+            }
+          },
+          "data": {
+            "name": "Window name",
+            "group_id": "Group (optional)",
+            "geometry": "Geometry",
+            "geometry/width": "Width (cm)",
+            "geometry/height": "Height (cm)",
+            "geometry/azimuth": "Azimuth (°)",
+            "geometry/tilt": "Tilt Angle (°)",
+            "geometry/visible_azimuth_start": "Visible Azimuth Start (°)",
+            "geometry/visible_azimuth_end": "Visible Azimuth End (°)",
+            "properties": "Properties (optional)",
+            "properties/g_value": "g-value (transmittance)",
+            "properties/frame_width": "Frame width (cm)",
+            "properties/window_recess": "Window recess (cm)",
+            "properties/shading_depth": "Shading depth (cm)"
+          },
+          "data_description": {
+            "name": "Unique name for the window",
+            "group_id": "Optional: Assign window to a group",
+            "geometry": "Physical dimensions and orientation of the window",
+            "geometry/width": "Width of the window in cm",
+            "geometry/height": "Height of the window in cm",
+            "geometry/azimuth": "Orientation: 0° = North, 90° = East, 180° = South, 270° = West",
+            "geometry/tilt": "Tilt angle: 0° = horizontal, 90° = vertical (default)",
+            "geometry/visible_azimuth_start": "Start angle of visible sky sector",
+            "geometry/visible_azimuth_end": "End angle of visible sky sector",
+            "properties": "Optional: Override global properties for this window",
+            "properties/g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+            "properties/frame_width": "Window frame width in cm (per side)",
+            "properties/window_recess": "Recess of window opening in wall",
+            "properties/shading_depth": "Overhang of shading system"
+          }
+        },
+        "reconfigure": {
+          "title": "Edit Window",
+          "description": "Change the settings of this window.",
+          "sections": {
+            "geometry": {
+              "name": "Geometry",
+              "description": "Physical dimensions and orientation of the window",
+              "data": {
+                "width": "Width (cm)",
+                "height": "Height (cm)",
+                "azimuth": "Azimuth (°)",
+                "tilt": "Tilt Angle (°)",
+                "visible_azimuth_start": "Visible Azimuth Start (°)",
+                "visible_azimuth_end": "Visible Azimuth End (°)"
+              },
+              "data_description": {
+                "width": "Width of the window in cm",
+                "height": "Height of the window in cm",
+                "azimuth": "Orientation: 0° = North, 90° = East, 180° = South, 270° = West",
+                "tilt": "Tilt angle: 0° = horizontal (roof window), 90° = vertical (wall window)",
+                "visible_azimuth_start": "Start angle of visible sky sector",
+                "visible_azimuth_end": "End angle of visible sky sector"
+              }
+            },
+            "properties": {
+              "name": "Properties (optional)",
+              "description": "Optional: Override global properties for this window",
+              "data": {
+                "g_value": "g-value (transmittance)",
+                "frame_width": "Frame width (cm)",
+                "window_recess": "Window recess (cm)",
+                "shading_depth": "Shading depth (cm)"
+              },
+              "data_description": {
+                "g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+                "frame_width": "Window frame width in cm (per side)",
+                "window_recess": "Recess of window opening in wall",
+                "shading_depth": "Overhang of shading system"
+              }
+            }
+          },
+          "data": {
+            "name": "Window name",
+            "group_id": "Group",
+            "geometry": "Geometry",
+            "geometry/width": "Width (cm)",
+            "geometry/height": "Height (cm)",
+            "geometry/azimuth": "Azimuth (°)",
+            "geometry/tilt": "Tilt Angle (°)",
+            "geometry/visible_azimuth_start": "Visible Azimuth Start (°)",
+            "geometry/visible_azimuth_end": "Visible Azimuth End (°)",
+            "properties": "Properties (optional)",
+            "properties/g_value": "g-value (transmittance)",
+            "properties/frame_width": "Frame width (cm)",
+            "properties/window_recess": "Window recess (cm)",
+            "properties/shading_depth": "Shading depth (cm)"
+          },
+          "data_description": {
+            "name": "Unique name for the window",
+            "group_id": "Assign window to a group",
+            "geometry": "Physical dimensions and orientation of the window",
+            "geometry/width": "Width of the window in cm",
+            "geometry/height": "Height of the window in cm",
+            "geometry/azimuth": "Orientation: 0° = North, 90° = East, 180° = South, 270° = West",
+            "geometry/tilt": "Tilt angle: 0° = horizontal, 90° = vertical (default)",
+            "geometry/visible_azimuth_start": "Start angle of visible sky sector",
+            "geometry/visible_azimuth_end": "End angle of visible sky sector",
+            "properties": "Optional: Override global properties for this window",
+            "properties/g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+            "properties/frame_width": "Window frame width in cm (per side)",
+            "properties/window_recess": "Recess of window opening in wall",
+            "properties/shading_depth": "Overhang of shading system"
+          }
+        }
+      }
+    },
+    "group": {
+      "title": "Add Group",
+      "initiate_flow": {
+        "user": "Add Group"
+      },
+      "step": {
+        "user": {
+          "title": "Configure Group",
+          "description": "Define the group and its properties.",
+          "sections": {
+            "properties": {
+              "name": "Properties (optional)",
+              "description": "Optional: Override global properties for this group",
+              "data": {
+                "g_value": "g-value (transmittance)",
+                "frame_width": "Frame width (cm)",
+                "window_recess": "Window recess (cm)",
+                "shading_depth": "Shading depth (cm)"
+              },
+              "data_description": {
+                "g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+                "frame_width": "Window frame width in cm (per side)",
+                "window_recess": "Recess of window opening in wall",
+                "shading_depth": "Overhang of shading system"
+              }
+            }
+          },
+          "data": {
+            "name": "Group name",
+            "azimuth": "Orientation (optional)",
+            "temp_indoor": "Indoor temperature sensor (optional)",
+            "properties": "Properties (optional)",
+            "properties/g_value": "g-value (transmittance)",
+            "properties/frame_width": "Frame width (cm)",
+            "properties/window_recess": "Window recess (cm)",
+            "properties/shading_depth": "Shading depth (cm)"
+          },
+          "data_description": {
+            "name": "Unique name for the group",
+            "azimuth": "Orientation in degrees (0=North, 90=East, 180=South, 270=West). Inherited by windows.",
+            "temp_indoor": "Indoor temperature sensor for this group. Inherited by windows.",
+            "properties": "Optional: Override global properties for this group",
+            "properties/g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+            "properties/frame_width": "Window frame width in cm (per side)",
+            "properties/window_recess": "Recess of window opening in wall",
+            "properties/shading_depth": "Overhang of shading system"
+          }
+        },
+        "reconfigure": {
+          "title": "Edit Group",
+          "description": "Change the settings of this group.",
+          "sections": {
+            "properties": {
+              "name": "Properties (optional)",
+              "description": "Optional: Override global properties for this group",
+              "data": {
+                "g_value": "g-value (transmittance)",
+                "frame_width": "Frame width (cm)",
+                "window_recess": "Window recess (cm)",
+                "shading_depth": "Shading depth (cm)"
+              },
+              "data_description": {
+                "g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+                "frame_width": "Window frame width in cm (per side)",
+                "window_recess": "Recess of window opening in wall",
+                "shading_depth": "Overhang of shading system"
+              }
+            }
+          },
+          "data": {
+            "name": "Group name",
+            "azimuth": "Orientation",
+            "temp_indoor": "Indoor temperature sensor",
+            "properties": "Properties (optional)",
+            "properties/g_value": "g-value (transmittance)",
+            "properties/frame_width": "Frame width (cm)",
+            "properties/window_recess": "Window recess (cm)",
+            "properties/shading_depth": "Shading depth (cm)"
+          },
+          "data_description": {
+            "name": "Unique name for the group",
+            "azimuth": "Orientation in degrees (0=North, 90=East, 180=South, 270=West). Inherited by windows.",
+            "temp_indoor": "Indoor temperature sensor for this group. Inherited by windows.",
+            "properties": "Optional: Override global properties",
+            "properties/g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+            "properties/frame_width": "Window frame width in cm (per side)",
+            "properties/window_recess": "Recess of window opening in wall",
+            "properties/shading_depth": "Overhang of shading system"
+          }
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Solar Window System",
+        "description": "Configure global sensor selection and default properties for all windows.",
+        "sections": {
+          "properties": {
+            "name": "Window properties",
+            "description": "These values can be overridden per window/group later",
+            "data": {
+              "g_value": "g-value (transmittance)",
+              "frame_width": "Frame width (cm)",
+              "window_recess": "Window recess (cm)",
+              "shading_depth": "Shading depth (cm)"
+            },
+            "data_description": {
+              "g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+              "frame_width": "Window frame width in cm (per side)",
+              "window_recess": "Recess of window opening in wall",
+              "shading_depth": "Overhang of shading system"
+            }
+          }
+        },
+        "data": {
+          "name": "Installation name",
+          "irradiance_sensor": "Irradiance sensor (W/m²)",
+          "irradiance_diffuse_sensor": "Diffuse irradiance sensor (optional)",
+          "temp_outdoor": "Outdoor temperature sensor (optional)",
+          "temp_indoor": "Indoor temperature sensor (optional)",
+          "weather_warning": "Weather warning sensor (optional)",
+          "weather_condition": "Weather condition sensor (optional)",
+          "properties": "Window properties (defaults)",
+          "properties/g_value": "g-value (transmittance)",
+          "properties/frame_width": "Frame width (cm)",
+          "properties/window_recess": "Window recess (cm)",
+          "properties/shading_depth": "Shading depth (cm)"
+        },
+        "data_description": {
+          "irradiance_sensor": "Sensor for current solar irradiance in W/m²",
+          "temp_outdoor": "Outdoor temperature for threshold checks (optional)",
+          "properties": "These values can be overridden per window/group later",
+          "properties/g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+          "properties/frame_width": "Window frame width in cm (per side)",
+          "properties/window_recess": "Recess of window opening in wall",
+          "properties/shading_depth": "Overhang of shading system"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Solar Window System",
+        "description": "Change global configuration and default properties.",
+        "sections": {
+          "properties": {
+            "name": "Window properties",
+            "description": "These values can be overridden per window/group later",
+            "data": {
+              "g_value": "g-value (transmittance)",
+              "frame_width": "Frame width (cm)",
+              "window_recess": "Window recess (cm)",
+              "shading_depth": "Shading depth (cm)"
+            },
+            "data_description": {
+              "g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+              "frame_width": "Window frame width in cm (per side)",
+              "window_recess": "Recess of window opening in wall",
+              "shading_depth": "Overhang of shading system"
+            }
+          }
+        },
+        "data": {
+          "name": "Installation name",
+          "irradiance_sensor": "Irradiance sensor (W/m²)",
+          "use_irradiance_diffuse": "Use diffuse irradiance",
+          "irradiance_diffuse_sensor": "Diffuse irradiance sensor",
+          "temp_outdoor": "Outdoor temperature sensor (required)",
+          "use_temp_indoor": "Use indoor temperature",
+          "temp_indoor": "Indoor temperature sensor",
+          "use_weather_warning": "Use weather warning",
+          "weather_warning": "Weather warning sensor",
+          "use_weather_condition": "Use weather condition",
+          "weather_condition": "Weather condition sensor",
+          "properties": "Window properties (defaults)",
+          "properties/g_value": "g-value (transmittance)",
+          "properties/frame_width": "Frame width (cm)",
+          "properties/window_recess": "Window recess (cm)",
+          "properties/shading_depth": "Shading depth (cm)"
+        },
+        "data_description": {
+          "irradiance_sensor": "Sensor for current solar irradiance in W/m²",
+          "use_irradiance_diffuse": "Enable to use diffuse irradiance sensor",
+          "irradiance_diffuse_sensor": "Optional sensor for diffuse solar irradiance",
+          "temp_outdoor": "Outdoor temperature for threshold checks (required)",
+          "use_temp_indoor": "Enable to use indoor temperature sensor",
+          "temp_indoor": "Optional sensor for indoor temperature",
+          "use_weather_warning": "Enable to use weather warnings",
+          "weather_warning": "Optional binary sensor for weather warnings",
+          "use_weather_condition": "Enable to use weather condition",
+          "weather_condition": "Optional sensor for weather condition (for diffuse estimation)",
+          "properties": "These values can be overridden per window/group later",
+          "properties/g_value": "Glazing g-value (0.1-1.0, typically 0.6)",
+          "properties/frame_width": "Window frame width in cm (per side)",
+          "properties/window_recess": "Recess of window opening in wall",
+          "properties/shading_depth": "Overhang of shading system"
+        }
+      }
+    },
+    "abort": {
+      "reconfigure_successful": "Reconfiguration successful. The settings have been updated and the integration has been reloaded."
+    },
+    "error": {
+      "unknown": "Unknown error",
+      "missing_entity_for_enabled_sensor": "When the checkbox is enabled, a sensor must be selected",
+      "missing_required_sensor": "This sensor is required and must be selected"
+    }
+  },
+  "selector": {
+  },
+  "entity": {
+    "sensor": {
+      "direct_energy": {
+        "name": "Direct energy"
+      },
+      "diffuse_energy": {
+        "name": "Diffuse energy"
+      },
+      "combined_energy": {
+        "name": "Combined energy"
+      }
+    },
+    "binary_sensor": {
+      "shading_recommended": {
+        "name": "Shading recommended"
+      }
+    },
+    "number": {
+      "threshold_indoor": {
+        "name": "Indoor temperature threshold"
+      },
+      "threshold_outdoor": {
+        "name": "Outdoor temperature threshold"
+      },
+      "threshold_forecast": {
+        "name": "Forecast temperature threshold"
+      },
+      "threshold_radiation": {
+        "name": "Solar energy threshold"
+      }
+    },
+    "switch": {
+      "scenario_indoor": {
+        "name": "Scenario: Indoor temperature"
+      },
+      "scenario_outdoor": {
+        "name": "Scenario: Outdoor temperature"
+      },
+      "scenario_forecast": {
+        "name": "Scenario: Weather forecast"
+      }
+    },
+    "button": {
+      "reset_overrides": {
+        "name": "Reset overrides"
+      }
+    }
+  }
+}

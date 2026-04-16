@@ -142,3 +142,7 @@ cython_debug/
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
+
+# Home Assistant configuration
+config/*
+!config/configuration.yaml

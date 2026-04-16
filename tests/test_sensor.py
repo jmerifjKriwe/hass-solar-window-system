@@ -20,6 +20,7 @@ def mock_config():
         },
         "windows": {
             "test_window": {
+                "name": "Test Window",
                 "geometry": {
                     "width": 150,
                     "height": 120,
@@ -46,7 +47,13 @@ async def mock_coordinator(hass, mock_config):
         SolarCalculationCoordinator,
     )
 
-    coordinator = SolarCalculationCoordinator(hass, mock_config)
+    coordinator = SolarCalculationCoordinator(hass, mock_config, {}, {})
+
+    # Populate windows from mock_config (convert to subentries format with type field)
+    coordinator.windows = {
+        window_id: {"type": "window", **window_data}
+        for window_id, window_data in mock_config.get("windows", {}).items()
+    }
 
     # Set up mock data
     coordinator.data = {
@@ -78,9 +85,7 @@ async def test_sensor_unique_id(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT)
 
     assert sensor.unique_id == "solar_window_system_window_test_window_direct"
 
@@ -93,15 +98,12 @@ async def test_sensor_name(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT)
 
-    # Name should contain "Test Window", "Direct", and "Energy"
+    # Name should contain "Test Window" and German "Direkte Energie" (Direct Energy)
     name = sensor.name
     assert "Test Window" in name
-    assert "Direct" in name
-    assert "Energy" in name
+    assert "Direkte Energie" in name
 
 
 async def test_sensor_unit(mock_coordinator, mock_config):
@@ -112,9 +114,7 @@ async def test_sensor_unit(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT)
 
     assert sensor.unit_of_measurement == UnitOfPower.WATT
 
@@ -129,9 +129,7 @@ async def test_sensor_device_class(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT)
 
     assert sensor.device_class == SensorDeviceClass.POWER
 
@@ -144,9 +142,7 @@ async def test_sensor_state(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT)
 
     # coordinator.data.test_window.direct = 500.0
     assert sensor.native_value == 500.0
@@ -160,9 +156,7 @@ async def test_sensor_diffuse_type(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIFFUSE
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIFFUSE)
 
     # Should return diffuse value (200.0)
     assert sensor.native_value == 200.0
@@ -176,9 +170,7 @@ async def test_sensor_combined_type(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_COMBINED
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_COMBINED)
 
     # Should return combined value (700.0)
     assert sensor.native_value == 700.0
@@ -192,9 +184,7 @@ async def test_sensor_group_level(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_GROUP, "test_group", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_GROUP, "test_group", ENERGY_TYPE_DIRECT)
 
     # Should return group_test_group direct value (1000.0)
     assert sensor.native_value == 1000.0
@@ -208,9 +198,7 @@ async def test_sensor_global_level(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_GLOBAL, "global", ENERGY_TYPE_COMBINED
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_GLOBAL, "global", ENERGY_TYPE_COMBINED)
 
     # Should return global combined value (2800.0)
     assert sensor.native_value == 2800.0
@@ -224,9 +212,7 @@ async def test_sensor_state_class(mock_coordinator, mock_config):
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT)
 
     assert sensor.state_class == "measurement"
 
@@ -236,15 +222,13 @@ async def test_sensor_device_info(mock_coordinator, mock_config):
     from custom_components.solar_window_system.const import (
         DOMAIN,
         ENERGY_TYPE_DIRECT,
-        LEVEL_WINDOW,
+        LEVEL_GLOBAL,
     )
     from custom_components.solar_window_system.sensor import SolarEnergySensor
 
-    sensor = SolarEnergySensor(
-        mock_coordinator, mock_config, LEVEL_WINDOW, "test_window", ENERGY_TYPE_DIRECT
-    )
+    sensor = SolarEnergySensor(mock_coordinator, LEVEL_GLOBAL, "global", ENERGY_TYPE_DIRECT)
 
     device_info = sensor.device_info
 
     assert isinstance(device_info, dict)
-    assert device_info["identifiers"] == {(DOMAIN, "solar_window_system")}  # type: ignore[typeddict-item]
+    assert device_info["identifiers"] == {(DOMAIN, DOMAIN)}  # type: ignore[typeddict-item]

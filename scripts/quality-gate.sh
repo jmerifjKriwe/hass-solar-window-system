@@ -16,24 +16,6 @@ echo "  Solar Window System - Quality Gate"
 echo "========================================="
 echo ""
 
-# Check if running in virtual environment
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo -e "${YELLOW}WARNING: No virtual environment detected!${NC}"
-    echo ""
-    echo "It is recommended to use a virtual environment to avoid"
-    echo "conflicts with system Python packages."
-    echo ""
-    echo "To set up:"
-    echo "  ./scripts/setup-dev.sh"
-    echo ""
-    echo "Or manually:"
-    echo "  python3 -m venv venv"
-    echo "  source venv/bin/activate"
-    echo "  pip install -r requirements-test.txt"
-    echo ""
-    sleep 3
-fi
-
 # Track failures
 FAILURES=0
 

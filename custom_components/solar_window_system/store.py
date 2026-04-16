@@ -1,19 +1,28 @@
-"""Configuration storage for the Solar Window System integration."""
+"""Storage for Solar Window System overrides.
+
+This module only handles persistent storage of user overrides
+for thresholds and scenarios. Main configuration is stored
+in the Config Entry (via Config Flow).
+"""
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import (
-    CONF_GLOBAL,
-    CONF_GROUPS,
-    CONF_WINDOWS,
+    CONF_OVERRIDES,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
 
 
 class ConfigStore:
-    """Handle storage of configuration data."""
+    """Handle storage of override data only.
+
+    Main configuration (windows, groups, sensors) is stored in the
+    Config Entry via Home Assistant's Config Flow system.
+    This store only persists user overrides for thresholds and
+    scenarios that are adjusted via dashboard entities.
+    """
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the ConfigStore.
@@ -25,34 +34,32 @@ class ConfigStore:
         self.version = STORAGE_VERSION
 
     async def async_load(self) -> dict:
-        """Load configuration from storage.
+        """Load overrides from storage.
 
         Returns:
-            The configuration dictionary. Returns an empty config structure
-            if no configuration has been saved yet.
+            Dictionary with overrides. Returns empty overrides
+            if no data has been saved yet.
         """
         data = await self._store.async_load()
         if data is None:
-            return self._get_empty_config()
+            return self._get_empty_overrides()
         return data
 
-    async def async_save(self, config: dict) -> None:
-        """Save configuration to storage.
+    async def async_save(self, overrides: dict) -> None:
+        """Save overrides to storage.
 
         Args:
-            config: The configuration dictionary to save.
+            overrides: Dictionary of overrides to save.
         """
-        await self._store.async_save(config)
+        await self._store.async_save(overrides)
 
-    def _get_empty_config(self) -> dict:
-        """Return an empty configuration structure.
+    def _get_empty_overrides(self) -> dict:
+        """Return empty overrides structure.
 
         Returns:
-            A dictionary with the basic structure but no data.
+            Dictionary with empty overrides structure.
         """
         return {
             "version": self.version,
-            CONF_GLOBAL: {},
-            CONF_GROUPS: {},
-            CONF_WINDOWS: {},
+            CONF_OVERRIDES: {},
         }

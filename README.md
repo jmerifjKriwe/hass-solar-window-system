@@ -1,18 +1,20 @@
 # Solar Window System
 
-A Home Assistant custom component that calculates solar energy on windows and provides intelligent recommendations for opening/closing windows based on weather conditions, seasons, and temperature.
+A Home Assistant custom component that calculates solar energy on windows and provides intelligent shading recommendations based on weather conditions, temperature thresholds, and configurable scenarios.
 
 ## Features
 
-- **Solar Energy Calculation**: Calculate solar energy on windows based on orientation and weather
-- **Hierarchical Configuration**: Configure sensors, thresholds, groups, and windows in a structured way
-- **Four Recommendation Scenarios**:
-  - Seasonal: Time of year (winter/summer)
-  - Weather Forecast: Sunny vs. cloudy days
+- **100% UI-Based Configuration**: No YAML required - complete setup through Home Assistant UI
+- **Multi-Step Config Flow**: Guided setup with global sensors, groups, and individual windows
+- **Hierarchical Structure**: Global → Groups → Windows with inheritance and overrides
+- **"Set & Forget" Physical Properties**: Configure geometry once via Config Flow
+- **"Tweak & Play" Thresholds**: Adjust thresholds and scenarios dynamically via dashboard entities
+- **Shading Recommendations**: Smart "Shading Recommended" binary sensors with 3 scenarios:
   - Inside Temperature: Current indoor comfort levels
-  - Outside Temperature: Outdoor conditions
-- **Aggregated Readings**: Combine readings from multiple windows
-- **Weather Override**: Override recommendations based on current weather conditions
+  - Outside Temperature: Outdoor conditions  
+  - Weather Forecast: Predictive based on forecasted temperatures
+- **Weather Override**: Master override via weather warning sensor disables all recommendations
+- **Aggregated Readings**: Energy and shading status at window, group, and global levels
 
 ## Installation
 
@@ -43,58 +45,112 @@ A Home Assistant custom component that calculates solar energy on windows and pr
 
 ## Configuration
 
-The integration uses a hierarchical configuration structure:
+### Initial Setup (Config Flow)
 
-### Sensors
-Configure temperature and weather sensors to use for calculations.
+1. **Global Setup**: Select required sensors and set default window properties
+   - Solar irradiance sensor (required)
+   - Outdoor temperature sensor (required)
+   - Optional: Indoor temperature, diffuse irradiance, weather warning
 
-### Thresholds
-Set temperature thresholds for different scenarios:
-- Summer/winter temperature ranges
-- Inside/outside temperature triggers
+2. **Add Groups** (Subentry Flow): Create logical groups
+   - Room groups: With indoor temperature sensor
+   - Orientation groups: Summary by cardinal direction
+   - Group properties can be inherited by windows
 
-### Groups
-Organize windows into logical groups (e.g., by room or floor).
+3. **Add Windows** (Subentry Flow): Configure each window
+   - Geometry: Width, height, azimuth, visible range
+   - Properties: g-value, frame width, window recess, shading depth
+   - Group assignment for inheritance
 
-### Windows
-Configure individual windows with:
-- Orientation (N, S, E, W, NE, NW, SE, SW)
-- Area (in square meters)
-- Group assignment
-- Associated sensors
+### Reconfiguration
+
+Use "Reconfigure" in the integration settings to:
+- Change global sensors
+- Adjust default properties
+- Add/remove groups and windows via subentries
+
+## "Set & Forget" vs "Tweak & Play"
+
+### Set & Forget (Physical Properties)
+Configured once via Config Flow:
+- **Geometry**: Window size, orientation, visible range
+- **Physical Properties**: g-value, frame width, shading depth
+- These values rarely change and are stored in the Config Entry
+
+### Tweak & Play (Behavioral Thresholds)
+Dynamically adjustable via dashboard entities:
+- **Number Entities**: Thresholds for indoor/outdoor temperature, forecast, solar energy
+- **Switch Entities**: Toggle the 3 scenarios on/off
+- **Button Entities**: Reset overrides per window/group
+- Changes are active immediately and persistently saved
 
 ## Entities
 
-The integration creates the following entities:
+### Sensor Entities (Power/W)
+- `{window} Direct Energy`: Direct solar radiation
+- `{window} Diffuse Energy`: Diffuse radiation from the sky
+- `{window} Combined Energy`: Total solar heat load
+- Group and Global variants for aggregation
 
-### Energy Sensors
-- `sensor.{window}_solar_energy`: Calculated solar energy for each window
-- `sensor.{group}_solar_energy`: Aggregated solar energy for each group
-- `sensor.total_solar_energy`: Total solar energy across all windows
+### Binary Sensor Entities
+- `{window/Group/Global} Shading Recommended`: ON when shading is recommended
+  - Icon: mdi:blinds-closed (ON) / mdi:blinds-open (OFF)
+  - Device Class: window
 
-### Recommendation Sensors
-- `sensor.{window}_recommendation`: Open/close recommendation for each window
-- `sensor.{group}_recommendation`: Aggregated recommendation for each group
-- `sensor.system_recommendation`: Overall system recommendation
+### Config Entities (Number)
+Thresholds for each window/group/global:
+- `Indoor Temperature Threshold`: Trigger for indoor overheating (default: 24°C)
+- `Outdoor Temperature Threshold`: Trigger for outdoor conditions (default: 25°C)
+- `Forecast Temperature Threshold`: Proactive shading (default: 28°C)
+- `Solar Energy Threshold`: Minimum heat load for recommendation (default: 300 W/m²)
 
-## Recommendation Scenarios
+### Config Entities (Switch)
+Scenario toggles for each window/group/global:
+- `Scenario: Indoor Temperature`: Indoor temp check on/off
+- `Scenario: Outdoor Temperature`: Outdoor temp check on/off
+- `Scenario: Weather Forecast`: Forecast check on/off
 
-### 1. Seasonal
-- **Winter**: Recommend closing windows during sunny hours to retain heat
-- **Summer**: Recommend opening windows during cool hours, closing during peak sun
+### Config Entities (Button)
+- `Reset Overrides`: Clears all dynamic overrides, reverts to default values
 
-### 2. Weather Forecast
-- **Sunny**: Adjust recommendations based on forecasted solar gain
-- **Cloudy**: Allow more ventilation as solar heating is reduced
+## Shading Recommendation Logic
 
-### 3. Inside Temperature
-- **Too Hot**: Recommend opening windows for cooling
-- **Too Cold**: Recommend closing windows to retain heat
-- **Comfortable**: Maintain current state
+### Master Override
+Weather warning sensor (optional): When ON, **all** shading recommendations are suppressed.
 
-### 4. Outside Temperature
-- **Moderate**: Favor open windows for ventilation
-- **Extreme**: Recommend closing windows
+### Scenario Logic (OR combination)
+Shading is recommended when:
+1. **Indoor Temperature Scenario** ACTIVE: `indoor_temp > threshold_indoor`
+2. **Outdoor Temperature Scenario** ACTIVE: `outdoor_temp > threshold_outdoor`
+3. **Forecast Scenario** ACTIVE: `forecast_high > threshold_forecast` AND `indoor_temp > threshold_forecast - 2`
+
+**AND** at least one scenario triggers **AND** `solar_energy > threshold_radiation`
+
+### Inheritance
+- Window overrides have priority
+- If not set: Group values
+- If not set: Global defaults
+- Button "Reset Overrides" clears Window/Group overrides
+
+## Development
+
+### DevContainer (Recommended)
+
+The easiest way to develop is using the VS Code DevContainer:
+
+1. Open the project in VS Code
+2. Press `F1` → "Dev Containers: Reopen in Container"
+3. Wait for the container to build (~2-3 minutes)
+4. Run `scripts/start-ha.sh` to start Home Assistant
+5. Open http://localhost:8123
+
+See `.devcontainer/README.md` for details.
+
+### Local Development
+
+Alternatively, you can develop locally with:
+- Python 3.14+
+- See `scripts/README.md` for setup instructions
 
 ## License
 

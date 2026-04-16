@@ -1,8 +1,23 @@
-"""Tests for SolarCalculationCoordinator."""
+"""Tests for SolarCalculationCoordinator with subentries and overrides."""
+
+from typing import cast
 
 import pytest
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from custom_components.solar_window_system.const import (
+    CONF_GEOMETRY,
+    CONF_GROUP_ID,
+    CONF_HEIGHT,
+    CONF_PROPERTIES,
+    CONF_SENSORS,
+    CONF_TEMP_INDOOR,
+    CONF_TEMP_OUTDOOR,
+    CONF_WIDTH,
+    DEFAULT_G_VALUE,
+    LEVEL_GROUP,
+    LEVEL_WINDOW,
+)
 from custom_components.solar_window_system.coordinator import (
     SolarCalculationCoordinator,
 )
@@ -10,151 +25,165 @@ from custom_components.solar_window_system.coordinator import (
 
 @pytest.fixture
 def mock_config():
-    """Fixture for mock configuration."""
+    """Fixture for mock global configuration."""
     return {
-        "global": {
-            "sensors": {
-                "irradiance_sensor": "sensor.solar_irradiance",
-                "temp_outdoor": "sensor.outdoor_temperature",
-            },
-            "thresholds": {
-                "outside_temp": 25.0,
-                "inside_temp": 24.0,
-                "forecast_high": 28.0,
-                "solar_energy": 300,
-            },
+        CONF_SENSORS: {
+            "irradiance_sensor": "sensor.solar_irradiance",
+            "temp_outdoor": "sensor.outdoor_temperature",
         },
-        "windows": {
-            "test_window": {
-                "geometry": {
-                    "width": 150,
-                    "height": 120,
-                    "azimuth": 180,
-                    "tilt": 90,
-                    "visible_azimuth_start": 150,
-                    "visible_azimuth_end": 210,
-                },
-                "properties": {
-                    "g_value": 0.6,
-                    "frame_width": 10,
-                    "window_recess": 0,
-                    "shading_depth": 0,
-                },
+        "properties": {
+            "g_value": DEFAULT_G_VALUE,
+        },
+    }
+
+
+@pytest.fixture
+def mock_subentries():
+    """Fixture for mock subentries (windows and groups)."""
+    return {
+        "test_window": {
+            "type": "window",
+            "name": "Test Window",
+            CONF_GEOMETRY: {
+                CONF_WIDTH: 150,
+                CONF_HEIGHT: 120,
+                "azimuth": 180,
+                "tilt": 90,
+                "visible_azimuth_start": 150,
+                "visible_azimuth_end": 210,
+            },
+            CONF_PROPERTIES: {
+                "g_value": 0.6,
+                "frame_width": 10,
+                "window_recess": 0,
+                "shading_depth": 0,
             },
         },
     }
 
 
 @pytest.fixture
-async def coordinator(hass, mock_config) -> SolarCalculationCoordinator:
-    """Fixture for SolarCalculationCoordinator instance."""
-    return SolarCalculationCoordinator(hass, mock_config)
+def coordinator(hass, mock_config, mock_subentries) -> SolarCalculationCoordinator:
+    """Fixture for SolarCalculationCoordinator instance with subentries."""
+    return SolarCalculationCoordinator(hass, mock_config, mock_subentries, {})
 
 
-async def test_coordinator_initialization(coordinator, mock_config):
-    """Test coordinator initialization."""
+async def test_coordinator_initialization(coordinator, mock_config, mock_subentries):
+    """Test coordinator initialization with subentries."""
+    # Cast to SolarCalculationCoordinator for type checking
+    coord = cast(SolarCalculationCoordinator, coordinator)
+
     # Test coordinator is created
-    assert coordinator is not None
+    assert coord is not None
 
     # Test DataUpdateCoordinator inheritance
-    assert isinstance(coordinator, DataUpdateCoordinator)
+    assert isinstance(coord, DataUpdateCoordinator)
 
     # Test config is stored
-    assert coordinator.config == mock_config  # type: ignore[attr-defined]
+    assert coord.config == mock_config
 
-    # Test windows are extracted
-    expected_windows = {"test_window": mock_config["windows"]["test_window"]}
-    assert coordinator.windows == expected_windows  # type: ignore[attr-defined]
+    # Test windows are extracted from subentries
+    assert "test_window" in coord.windows
+    assert coord.windows["test_window"]["name"] == "Test Window"
 
-    # Test groups are extracted
-    assert coordinator.groups == mock_config.get("groups", {})  # type: ignore[attr-defined]
+    # Test groups are empty (no groups in mock_subentries)
+    assert coord.groups == {}
 
-    # Test global_config is extracted
-    assert coordinator.global_config == mock_config["global"]  # type: ignore[attr-defined]
+    # Test global_sensors are extracted
+    assert coord.global_sensors == mock_config[CONF_SENSORS]
 
-    # Test sensors are extracted from global_config
-    expected_sensors = mock_config["global"]["sensors"]
-    assert coordinator.sensors == expected_sensors  # type: ignore[attr-defined]
-
-    # Test thresholds are extracted from global_config
-    expected_thresholds = mock_config["global"]["thresholds"]
-    assert coordinator.thresholds == expected_thresholds  # type: ignore[attr-defined]
+    # Test global_properties are extracted
+    assert coord.global_properties == mock_config["properties"]
 
 
-async def test_sun_is_visible_above_horizon(coordinator, mock_config):
+async def test_sun_is_visible_above_horizon(coordinator, mock_subentries):
     """Test sun is visible when above horizon and within azimuth range."""
-    window = mock_config["windows"]["test_window"]
-    result = coordinator._sun_is_visible(elevation=45, azimuth=180, window=window)
+    coord = cast(SolarCalculationCoordinator, coordinator)
+    result = coord._sun_is_visible(elevation=45, azimuth=180, window_id="test_window")
     assert result is True
 
 
-async def test_sun_is_visible_below_horizon(coordinator, mock_config):
+async def test_sun_is_visible_below_horizon(coordinator):
     """Test sun is not visible when below horizon."""
-    window = mock_config["windows"]["test_window"]
-    result = coordinator._sun_is_visible(elevation=-5, azimuth=180, window=window)
+    coord = cast(SolarCalculationCoordinator, coordinator)
+    result = coord._sun_is_visible(elevation=-5, azimuth=180, window_id="test_window")
     assert result is False
 
 
-async def test_sun_is_visible_outside_azimuth_range(coordinator, mock_config):
+async def test_sun_is_visible_outside_azimuth_range(coordinator):
     """Test sun is not visible when outside azimuth range."""
-    window = mock_config["windows"]["test_window"]
-    result = coordinator._sun_is_visible(elevation=45, azimuth=90, window=window)
+    coord = cast(SolarCalculationCoordinator, coordinator)
+    result = coord._sun_is_visible(elevation=45, azimuth=90, window_id="test_window")
     assert result is False
 
 
-async def test_sun_is_visible_blocked_by_shading(coordinator, mock_config):
+async def test_sun_is_visible_blocked_by_shading(coordinator, hass, mock_config):
     """Test sun is not visible when blocked by shading."""
-    # Create a window with shading
-    window_with_shading = {
-        "geometry": {
-            "width": 150,
-            "height": 120,
-            "azimuth": 180,
-            "tilt": 90,
-            "visible_azimuth_start": 150,
-            "visible_azimuth_end": 210,
-        },
-        "properties": {
-            "g_value": 0.6,
-            "frame_width": 10,
-            "window_recess": 30,
-            "shading_depth": 100,
+    # Create coordinator with window that has shading
+    subentries_with_shading = {
+        "window_with_shading": {
+            "type": "window",
+            "name": "Window with Shading",
+            CONF_GEOMETRY: {
+                CONF_WIDTH: 150,
+                CONF_HEIGHT: 120,
+                "azimuth": 180,
+                "tilt": 90,
+                "visible_azimuth_start": 150,
+                "visible_azimuth_end": 210,
+            },
+            CONF_PROPERTIES: {
+                "g_value": 0.6,
+                "frame_width": 10,
+                "window_recess": 30,
+                "shading_depth": 100,
+            },
         },
     }
+    coordinator_shading = SolarCalculationCoordinator(
+        hass, mock_config, subentries_with_shading, {}
+    )
+
     # With shading_depth=100, window_recess=30:
     # Correct shade_angle = atan2(31, 100) = 17.22°
     # At elevation=15°, sun should be blocked
-    result = coordinator._sun_is_visible(elevation=15, azimuth=180, window=window_with_shading)
+    result = coordinator_shading._sun_is_visible(
+        elevation=15, azimuth=180, window_id="window_with_shading"
+    )
     assert result is False
 
 
-async def test_sun_is_visible_above_shading_angle(coordinator, mock_config):
-    """Test sun is visible when above shading angle.
-
-    This test would catch the atan2 parameter swap bug:
-    - With CORRECT formula: shade_angle = atan2(31, 100) = 17.22°
-      At elevation=45°, sun should be visible (45 > 17.22)
-    - With WRONG formula: shade_angle = atan2(100, 31) = 72.78°
-      At elevation=45°, sun would be blocked (45 < 72.78)
-    """
-    window_with_shading = {
-        "geometry": {
-            "width": 150,
-            "height": 120,
-            "azimuth": 180,
-            "tilt": 90,
-            "visible_azimuth_start": 150,
-            "visible_azimuth_end": 210,
-        },
-        "properties": {
-            "g_value": 0.6,
-            "frame_width": 10,
-            "window_recess": 30,
-            "shading_depth": 100,
+async def test_sun_is_visible_above_shading_angle(hass, mock_config):
+    """Test sun is visible when above shading angle."""
+    # Create coordinator with window that has shading
+    subentries_with_shading = {
+        "window_with_shading": {
+            "type": "window",
+            "name": "Window with Shading",
+            CONF_GEOMETRY: {
+                CONF_WIDTH: 150,
+                CONF_HEIGHT: 120,
+                "azimuth": 180,
+                "tilt": 90,
+                "visible_azimuth_start": 150,
+                "visible_azimuth_end": 210,
+            },
+            CONF_PROPERTIES: {
+                "g_value": 0.6,
+                "frame_width": 10,
+                "window_recess": 30,
+                "shading_depth": 100,
+            },
         },
     }
+    coordinator_shading = SolarCalculationCoordinator(
+        hass, mock_config, subentries_with_shading, {}
+    )
+
     # At elevation=45°, sun should be visible (above the shading angle of ~17°)
-    result = coordinator._sun_is_visible(elevation=45, azimuth=180, window=window_with_shading)
+    result = coordinator_shading._sun_is_visible(
+        elevation=45, azimuth=180, window_id="window_with_shading"
+    )
     assert result is True
 
 
@@ -290,8 +319,8 @@ async def test_async_update_returns_results(hass, coordinator):
     # Set up temperature sensor (not used but good to have)
     hass.states.async_set("sensor.outdoor_temperature", "28")
 
-    # Call _async_update
-    result = await coordinator._async_update()
+    # Call _async_update_data
+    result = await coordinator._async_update_data()
 
     # Assert result is a dict with "test_window" key
     assert isinstance(result, dict)
@@ -315,8 +344,8 @@ async def test_async_update_night_returns_zero(hass, coordinator):
     hass.states.async_set("sensor.solar_irradiance", "800")
     hass.states.async_set("sensor.outdoor_temperature", "28")
 
-    # Call _async_update
-    result = await coordinator._async_update()
+    # Call _async_update_data
+    result = await coordinator._async_update_data()
 
     # Assert all energies are 0
     assert "test_window" in result
@@ -342,8 +371,8 @@ async def test_async_update_calculates_energy(hass, coordinator):
     # Set up irradiance sensor
     hass.states.async_set("sensor.solar_irradiance", "800")
 
-    # Call _async_update
-    result = await coordinator._async_update()
+    # Call _async_update_data
+    result = await coordinator._async_update_data()
 
     # Assert energy values are calculated
     assert "test_window" in result
@@ -359,10 +388,36 @@ async def test_async_update_calculates_energy(hass, coordinator):
 
 
 @pytest.mark.asyncio
-async def test_aggregation_includes_groups(hass, coordinator):
+async def test_aggregation_includes_groups(hass, mock_config):
     """Test that aggregation includes group results."""
-    # Add a group to the coordinator's config
-    coordinator.groups = {"test_group": {"windows": ["test_window"], "name": "Test Group"}}
+    # Create coordinator with window and group
+    subentries_with_group = {
+        "test_window": {
+            "type": "window",
+            "name": "Test Window",
+            CONF_GEOMETRY: {
+                CONF_WIDTH: 150,
+                CONF_HEIGHT: 120,
+                "azimuth": 180,
+                "tilt": 90,
+                "visible_azimuth_start": 150,
+                "visible_azimuth_end": 210,
+            },
+            CONF_PROPERTIES: {
+                "g_value": 0.6,
+                "frame_width": 10,
+                "window_recess": 0,
+                "shading_depth": 0,
+            },
+            CONF_GROUP_ID: "test_group",
+        },
+        "test_group": {
+            "type": "group",
+            "name": "Test Group",
+            "windows": ["test_window"],
+        },
+    }
+    coordinator = SolarCalculationCoordinator(hass, mock_config, subentries_with_group, {})
 
     # Set up sun state (above horizon)
     hass.states.async_set(
@@ -377,8 +432,8 @@ async def test_aggregation_includes_groups(hass, coordinator):
     # Set up irradiance sensor
     hass.states.async_set("sensor.solar_irradiance", "800")
 
-    # Call _async_update
-    result = await coordinator._async_update()
+    # Call _async_update_data
+    result = await coordinator._async_update_data()
 
     # Assert group_test_group is in results
     assert "group_test_group" in result
@@ -404,8 +459,8 @@ async def test_aggregation_includes_global(hass, coordinator):
     # Set up irradiance sensor
     hass.states.async_set("sensor.solar_irradiance", "800")
 
-    # Call _async_update
-    result = await coordinator._async_update()
+    # Call _async_update_data
+    result = await coordinator._async_update_data()
 
     # Assert global is in results
     assert "global" in result
@@ -421,57 +476,58 @@ async def test_aggregation_includes_global(hass, coordinator):
 @pytest.mark.asyncio
 async def test_aggregation_sums_correctly(hass):
     """Test that aggregation sums window values correctly."""
-    # Create config with two windows and a group
-    config_with_group = {
-        "global": {
-            "sensors": {
-                "irradiance_sensor": "sensor.solar_irradiance",
+    # Create subentries with two windows and a group
+    subentries_with_group = {
+        "window_1": {
+            "type": "window",
+            "name": "Window 1",
+            CONF_GEOMETRY: {
+                CONF_WIDTH: 100,
+                CONF_HEIGHT: 100,
+                "azimuth": 180,
+                "tilt": 90,
+                "visible_azimuth_start": 150,
+                "visible_azimuth_end": 210,
             },
-            "thresholds": {},
-        },
-        "windows": {
-            "window_1": {
-                "geometry": {
-                    "width": 100,
-                    "height": 100,
-                    "azimuth": 180,
-                    "tilt": 90,
-                    "visible_azimuth_start": 150,
-                    "visible_azimuth_end": 210,
-                },
-                "properties": {
-                    "g_value": 0.6,
-                    "frame_width": 10,
-                    "window_recess": 0,
-                    "shading_depth": 0,
-                },
-            },
-            "window_2": {
-                "geometry": {
-                    "width": 100,
-                    "height": 100,
-                    "azimuth": 180,
-                    "tilt": 90,
-                    "visible_azimuth_start": 150,
-                    "visible_azimuth_end": 210,
-                },
-                "properties": {
-                    "g_value": 0.6,
-                    "frame_width": 10,
-                    "window_recess": 0,
-                    "shading_depth": 0,
-                },
+            CONF_PROPERTIES: {
+                "g_value": 0.6,
+                "frame_width": 10,
+                "window_recess": 0,
+                "shading_depth": 0,
             },
         },
-        "groups": {"test_group": {"windows": ["window_1", "window_2"], "name": "Test Group"}},
+        "window_2": {
+            "type": "window",
+            "name": "Window 2",
+            CONF_GEOMETRY: {
+                CONF_WIDTH: 100,
+                CONF_HEIGHT: 100,
+                "azimuth": 180,
+                "tilt": 90,
+                "visible_azimuth_start": 150,
+                "visible_azimuth_end": 210,
+            },
+            CONF_PROPERTIES: {
+                "g_value": 0.6,
+                "frame_width": 10,
+                "window_recess": 0,
+                "shading_depth": 0,
+            },
+        },
+        "test_group": {
+            "type": "group",
+            "name": "Test Group",
+            "windows": ["window_1", "window_2"],
+        },
     }
 
-    # Create coordinator with this config
-    from custom_components.solar_window_system.coordinator import (
-        SolarCalculationCoordinator,
-    )
+    config = {
+        CONF_SENSORS: {
+            "irradiance_sensor": "sensor.solar_irradiance",
+        },
+    }
 
-    coordinator = SolarCalculationCoordinator(hass, config_with_group)
+    coordinator = SolarCalculationCoordinator(hass, config, subentries_with_group, {})
 
     # Set up sun state (above horizon)
     hass.states.async_set(
@@ -486,8 +542,8 @@ async def test_aggregation_sums_correctly(hass):
     # Set up irradiance sensor
     hass.states.async_set("sensor.solar_irradiance", "800")
 
-    # Call _async_update
-    result = await coordinator._async_update()
+    # Call _async_update_data
+    result = await coordinator._async_update_data()
 
     # Assert group sums windows correctly
     assert "group_test_group" in result
@@ -504,3 +560,76 @@ async def test_aggregation_sums_correctly(hass):
     # Group combined should equal window_1 combined + window_2 combined
     expected_combined = result["window_1"]["combined"] + result["window_2"]["combined"]
     assert group_result["combined"] == expected_combined
+
+
+# Tests for override functionality
+@pytest.mark.asyncio
+async def test_set_override(hass, mock_config, mock_subentries):
+    """Test setting an override value."""
+    coordinator = SolarCalculationCoordinator(hass, mock_config, mock_subentries, {})
+
+    # Set an override for a threshold
+    await coordinator.set_override(LEVEL_WINDOW, "test_window", "threshold_indoor", 26.0)
+
+    # Check override is stored
+    assert LEVEL_WINDOW in coordinator._overrides
+    assert "test_window" in coordinator._overrides[LEVEL_WINDOW]
+    assert coordinator._overrides[LEVEL_WINDOW]["test_window"]["threshold_indoor"] == 26.0
+
+
+@pytest.mark.asyncio
+async def test_get_effective_value_with_override(hass, mock_config, mock_subentries):
+    """Test getting effective value with override set."""
+    coordinator = SolarCalculationCoordinator(hass, mock_config, mock_subentries, {})
+
+    # Set an override
+    await coordinator.set_override(LEVEL_WINDOW, "test_window", "threshold_indoor", 26.0)
+
+    # Get effective value should return override
+    value = coordinator.get_effective_value(LEVEL_WINDOW, "test_window", "threshold_indoor")
+    assert value == 26.0
+
+
+@pytest.mark.asyncio
+async def test_get_effective_value_without_override(hass, mock_config, mock_subentries):
+    """Test getting effective value without override (returns default)."""
+    coordinator = SolarCalculationCoordinator(hass, mock_config, mock_subentries, {})
+
+    # Get effective value without override should return default
+    value = coordinator.get_effective_value(LEVEL_WINDOW, "test_window", "threshold_indoor")
+    assert value == 24.0  # DEFAULT_INSIDE_TEMP
+
+
+@pytest.mark.asyncio
+async def test_clear_overrides(hass, mock_config, mock_subentries):
+    """Test clearing overrides."""
+    coordinator = SolarCalculationCoordinator(hass, mock_config, mock_subentries, {})
+
+    # Set an override
+    await coordinator.set_override(LEVEL_WINDOW, "test_window", "threshold_indoor", 26.0)
+
+    # Clear overrides
+    await coordinator.clear_overrides(LEVEL_WINDOW, "test_window")
+
+    # Check override is cleared
+    assert "test_window" not in coordinator._overrides.get(LEVEL_WINDOW, {})
+
+
+@pytest.mark.asyncio
+async def test_subentries_extraction(hass, mock_config):
+    """Test windows and groups extraction from subentries."""
+    subentries = {
+        "window_1": {"type": "window", "name": "Window 1"},
+        "window_2": {"type": "window", "name": "Window 2"},
+        "group_1": {"type": "group", "name": "Group 1", "windows": ["window_1"]},
+        "other_key": {"type": "other", "name": "Other"},  # Should be ignored
+    }
+
+    coordinator = SolarCalculationCoordinator(hass, mock_config, subentries, {})
+
+    # Only windows and groups should be extracted
+    assert "window_1" in coordinator.windows
+    assert "window_2" in coordinator.windows
+    assert "group_1" in coordinator.groups
+    assert "other_key" not in coordinator.windows
+    assert "other_key" not in coordinator.groups

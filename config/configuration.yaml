@@ -1,0 +1,97 @@
+# Home Assistant development configuration for Solar Window System
+# This config provides mock sensors for testing the integration
+
+# Essential components (replacing default_config which requires go2rtc)
+frontend:
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.1
+    - ::1
+api:
+config:
+history:
+logbook:
+
+homeassistant:
+  name: Home
+  unit_system: metric
+  temperature_unit: C
+  time_zone: Europe/Berlin
+  debug: true
+
+
+# Enable the sun integration (required for solar calculations)
+sun:
+
+# Template sensors for testing Solar Window System
+# These provide mock values that simulate real sensors
+template:
+  - sensor:
+      # Outdoor temperature sensor (simulated)
+      - name: "Outdoor Temperature"
+        unique_id: outdoor_temp_mock
+        state: "{{ 22 + range(-5, 15) | random }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      # Indoor temperature sensor (simulated)
+      - name: "Indoor Temperature"
+        unique_id: indoor_temp_mock
+        state: "{{ 20 + range(-2, 5) | random }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      # Solar irradiance sensor (simulated in W/m²)
+      - name: "Solar Irradiance"
+        unique_id: irradiance_mock
+        state: >
+          {% set hour = now().hour %}
+          {% if 6 <= hour < 20 %}
+            {{ range(0, 800) | random }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W/m²"
+        device_class: irradiance
+        state_class: measurement
+
+      # Diffuse solar irradiance (simulated)
+      - name: "Solar Irradiance Diffuse"
+        unique_id: irradiance_diffuse_mock
+        state: >
+          {% set hour = now().hour %}
+          {% if 6 <= hour < 20 %}
+            {{ range(0, 300) | random }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W/m²"
+        device_class: irradiance
+        state_class: measurement
+
+  # Binary sensor for weather warning
+  - binary_sensor:
+      - name: "Weather Warning"
+        unique_id: weather_warning_mock
+        state: "{{ range(0, 10) | random == 0 }}"  # 10% chance of warning
+        device_class: safety
+
+  # Weather condition as a sensor (simplified for testing)
+  - sensor:
+      - name: "Weather Condition"
+        unique_id: weather_condition_mock
+        state: >
+          {% set conditions = ['sunny', 'partlycloudy', 'cloudy', 'rainy'] %}
+          {{ conditions | random }}
+
+# Recorders and history for debugging
+recorder:
+  purge_keep_days: 7
+
+logger:
+  default: info
+  logs:
+    custom_components.solar_window_system: debug

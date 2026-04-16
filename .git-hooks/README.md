@@ -27,28 +27,13 @@ Validates that commit messages follow the Conventional Commits format.
 
 ### Automatic (Recommended)
 
-The hooks are automatically installed when running the setup scripts:
+The hooks are installed automatically in the DevContainer via `.devcontainer/post-create.sh`.
 
-**Windows:**
-```powershell
-scripts\setup-dev.bat
-scripts\install-hooks.bat
-```
-
-**Linux/Mac:**
-```bash
-./scripts/setup-dev.sh
-./scripts/install-hooks.sh
-```
-
-### Manual
+### Manual Installation
 
 ```bash
 # Copy hooks to .git/hooks
-cp .git-hooks/commit-msg .git/hooks/commit-msg
-
-# Make executable
-chmod +x .git/hooks/commit-msg
+./scripts/install-hooks.sh
 ```
 
 ## Testing

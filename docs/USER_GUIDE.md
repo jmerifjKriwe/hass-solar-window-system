@@ -40,9 +40,10 @@ For each window, every 2 minutes:
 
 ### Prerequisites
 
-- Home Assistant 2026.3 or newer
-- Weather station or solar irradiance sensor
-- Temperature sensors (indoor and/or outdoor)
+- Home Assistant 2026.4 or newer (subentry support required)
+- Weather station or solar irradiance sensor (W/m²)
+- Außentemperatur sensor (°C)
+- Optional: Innentemperatur, diffuse Strahlung, Wetterwarnung
 
 ### Step 1: Install the Integration
 
@@ -57,99 +58,129 @@ For each window, every 2 minutes:
 1. Copy `custom_components/solar_window_system/` to your HA config
 2. Restart Home Assistant
 
-### Step 2: Add the Integration
+### Step 2: Initial Setup (Config Flow)
 
 1. Go to **Settings** → **Devices & Services**
 2. Click **+ Add Integration**
 3. Search for "Solar Window System"
-4. Follow the setup wizard
+4. Follow the setup wizard:
 
-### Step 3: Configure Global Settings
+**Global Setup (Step 1):**
+- **Globalstrahlung Sensor** (required): Your weather station's irradiance sensor
+- **Außentemperatur Sensor** (required): Outdoor temperature sensor
+- **Diffuse Strahlung** (optional): Direct diffuse sensor
+- **Innentemperatur Sensor** (optional): Default indoor sensor
+- **Wetterwarnung** (optional): Binary sensor for master override
+- **Wetterzustand** (optional): Weather condition for diffuse estimation
+- **Standard-Eigenschaften**: g-Wert, Rahmenbreite, etc. (can be overridden per window)
 
-**Required Sensors:**
-- **Solar Radiation:** Your weather station's irradiance sensor (W/m²)
-- **Outdoor Temperature:** Temperature sensor outside (°C)
+### Step 3: Add Groups (Subentries)
 
-**Optional Sensors:**
-- **Diffuse Radiation:** Direct diffuse sensor (if available)
-- **Indoor Temperature:** Room temperature sensor
-- **Weather Warning:** Weather alert binary sensor
-- **Weather Condition:** Current condition (sunny, cloudy, etc.)
+After initial setup, add groups via "Konfigurieren" → "Gruppe hinzufügen":
 
-**Thresholds:**
-- **Outside Temperature:** When to start considering shading (default: 25°C)
-- **Solar Energy:** Energy threshold for recommendations (default: 300 W/m²)
+**Gruppentypen:**
+- **Raum**: With Innentemperatur-Sensor (z.B. "Wohnzimmer")
+- **Orientierung**: By direction (z.B. "Süd-Fassade")
 
-### Step 4: Configure Your Windows
+**Gruppen-Eigenschaften:**
+- Können an Fenster vererbt werden
+- Optionaler Innentemperatur-Sensor (überschreibt Global)
+- Eigene Schwellenwerte möglich
 
-**Geometry (Required):**
-- **Name:** e.g., "Living Room South Window"
-- **Width:** Window width in cm
-- **Height:** Window height in cm
-- **Azimuth:** Direction window faces (South=180°, West=270°, North=0°, East=90°)
-- **Azimuth Range:** Sun angles when window is visible (e.g., South window: 150° to 210°)
-- **Tilt:** Usually 90° (vertical windows)
+### Step 4: Add Windows (Subentries)
 
-**Properties (Optional):**
-- **G-value:** Solar heat gain coefficient (default: 0.6)
-  - Single glass: ~0.85
-  - Double glazing: ~0.70
-  - Low-E glass: ~0.50-0.60
-  - Triple glazing: ~0.50
-- **Frame Width:** Frame width in cm (reduces glass area)
-- **Window Recess:** How far back the window is from wall (cm)
-- **Shading Depth:** Roof overhang or balcony depth (cm)
+Füge Fenster via "Konfigurieren" → "Fenster hinzufügen" hinzu:
 
-### Step 5: Create Groups (Optional)
+**Geometrie (Required):**
+- **Name**: z.B. "Wohnzimmer Süd"
+- **Breite/Höhe**: In cm
+- **Ausrichtung**: Azimuth (Süd=180°, West=270°, Nord=0°, Ost=90°)
+- **Sichtbarer Azimuth-Bereich**: z.B. 150°-210° für Süd-Fenster
+- **Neigung**: Normalerweise 90° (senkrecht)
 
-Group windows by:
-- **Room:** "Bedroom", "Kitchen", etc.
-- **Orientation:** "South-facing", "West-facing"
-- **Floor:** "Second floor", "Ground floor"
+**Eigenschaften:**
+- **g-Wert**: Solar heat gain coefficient (default: 0.6)
+- **Rahmenbreite**: In cm (reduziert Glasfläche)
+- **Fensternische**: Fenstereinbau-Tiefe (cm)
+- **Verschattung**: Dachüberstand/Balkon-Tiefe (cm)
 
-Benefits:
-- See total energy per room
-- Automate shading by room
-- Simplify dashboards
+**Gruppenzuordnung:**
+- Optional: Fenster einer Gruppe zuordnen für Vererbung
 
-## Understanding the Sensors
+### Step 5: Tweak & Play (Dashboard)
 
-### Energy Sensors
+Nach der Einrichtung erscheinen Config-Entities im Dashboard:
+
+**Number Entities** (Schwellenwerte):
+- Pro Fenster/Gruppe/Global anpassbar
+- Änderungen werden persistent gespeichert
+
+**Switch Entities** (Szenarien):
+- Szenarien ein-/ausschalten
+- Per Fenster/Gruppe/Global konfigurierbar
+
+**Button Entities**:
+- "Overrides zurücksetzen" löscht alle dynamischen Änderungen
+
+## Understanding the Entities
+
+### Energy Sensors (Power/W)
 
 For each window, you get 3 sensors:
 
-**`sensor.solar_window_system.{window}_direct_energy`**
+**`{window} Direkte Energie`**
 - Direct solar radiation through the window
 - What you feel when sun hits you
 - Measured in Watts (W)
 
-**`sensor.solar_window_system.{window}_diffuse_energy`**
-- Diffuse/scattered radiation
+**`{window} Diffuse Energie`**
+- Diffuse/scattered radiation from the sky
 - Present even when sun isn't directly hitting window
 - Measured in Watts (W)
 
-**`sensor.solar_window_system.{window}_combined_energy`**
+**`{window} Kombinierte Energie`**
 - Total solar energy (direct + diffuse)
 - Use this for automation
 - Measured in Watts (W)
 
-### Group Sensors
+**Group/Global variants** for aggregated energy readings.
 
-If you create groups, you also get:
+### Shading Recommendation (Binary Sensor)
 
-**`sensor.solar_window_system.{group}_direct_energy`**
-- Sum of direct energy for all windows in group
+**`{window/Gruppe/Global} Verschattung empfohlen`**
+- **ON** (mdi:blinds-closed): Close blinds - shading recommended
+- **OFF** (mdi:blinds-open): Open blinds - no shading needed
 
-**`sensor.solar_window_system.{group}_combined_energy`**
-- Total energy for the room/orientation
+Logic:
+1. Master Override: Wetterwarnung ON → always OFF
+2. At least one active scenario triggers:
+   - Innentemperatur > Schwellenwert
+   - Außentemperatur > Schwellenwert
+   - Vorhersage > Schwellenwert AND Innentemp > Vorhersage - 2
+3. Solarenergie > Schwellenwert
 
-### Global Sensors
+### Config Entities (Number)
 
-**`sensor.solar_window_system.home_direct_energy`**
-- Total direct solar energy for entire house
+Adjust thresholds per window/group/global:
 
-**`sensor.solar_window_system.home_combined_energy`**
-- Total solar energy hitting all windows
+- **Innentemperatur Schwellenwert** (default: 24°C)
+- **Außentemperatur Schwellenwert** (default: 25°C)
+- **Vorhersage Temperatur Schwellenwert** (default: 28°C)
+- **Solarenergie Schwellenwert** (default: 300 W/m²)
+
+Changes are persisted to storage immediately.
+
+### Config Entities (Switch)
+
+Toggle scenarios per window/group/global:
+
+- **Szenario: Innentemperatur** - Enable indoor temp check
+- **Szenario: Außentemperatur** - Enable outdoor temp check
+- **Szenario: Wettervorhersage** - Enable forecast check
+
+### Config Entities (Button)
+
+- **Overrides zurücksetzen** - Clear all dynamic overrides, revert to defaults
 
 ## Example Values
 
@@ -181,17 +212,28 @@ Combined Energy:       0 W
 
 ### Automation Examples
 
-**Close blinds when too much sun:**
+**Close blinds when shading recommended:**
 ```yaml
-alias:
-  - id: close_south_blinds
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.solar_window_system.living_room_south_combined_energy
-        above: 400
-    action:
-      - service: cover.close_cover
-        entity_id: cover.living_room_south_blind
+alias: "Close blinds when shading recommended"
+trigger:
+  - platform: state
+    entity_id: binary_sensor.wohnzimmer_sud_verschattung_empfohlen
+    to: "on"
+action:
+  - service: cover.close_cover
+    entity_id: cover.wohnzimmer_sud_rollo
+```
+
+**Close blinds when too much sun (energy-based):**
+```yaml
+alias: "Close south blinds high energy"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.wohnzimmer_sud_kombinierte_energie
+    above: 400
+action:
+  - service: cover.close_cover
+    entity_id: cover.wohnzimmer_sud_rollo
 ```
 
 **Close bedroom blinds during hot afternoon:**
@@ -459,11 +501,17 @@ A: Check if it's night (sun below horizon). Solar energy is 0 at night.
 **Q: The values seem too high/low.**
 A: Check your g-value and frame width. Double-glazed windows (g=0.6) let in less energy than single-pane (g=0.85).
 
+**Q: Can I change thresholds without reconfiguring?**
+A: Yes! Use the Number entities in your dashboard. Changes persist automatically.
+
+**Q: How do I reset overrides?**
+A: Press the "Overrides zurücksetzen" button on the window or group.
+
 **Q: Can I use this with skylights?**
-A: Yes! Just set tilt to 0° (horizontal) and adjust geometry accordingly.
+A: Yes! Set tilt to 0° (horizontal) and adjust geometry accordingly.
 
 **Q: Does this work with shading from trees?**
-A: The system calculates roof/balcony shading. Tree shading would need manual overrides or external sensors.
+A: The system calculates roof/balcony shading. Tree shading would need manual overrides.
 
 **Q: How accurate is this?**
 A: As accurate as your weather sensors. The physics models are based on standard solar radiation equations used in building engineering.
@@ -473,6 +521,9 @@ A: Adjust g-value to match your actual windows. Compare sensor readings with a p
 
 **Q: What's the difference between g-value and SHGC?**
 A: They're similar! G-value is the European term, SHGC is the North American term. Both measure solar heat gain through glass (0-1 scale).
+
+**Q: Why don't I see Config Entities?**
+A: Ensure you're on Home Assistant 2026.4+ and have added the integration via Config Flow (not YAML).
 
 ## Support
 

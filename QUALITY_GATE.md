@@ -1,32 +1,27 @@
 # Quality Gate Guide
 
-This guide explains how to use the quality gate and development environment setup for the Solar Window System project.
+This guide explains how to use the quality gate for the Solar Window System project.
 
 ## Quick Start
 
-### Option 1: Manual Quality Check (Recommended)
+### DevContainer Development (Recommended)
 
-Run the quality gate manually before committing:
+This project is designed for VS Code DevContainer. All tools are pre-installed.
 
-**Windows (PowerShell/cmd):**
-```powershell
-scripts\quality-gate.bat
-```
-
-**Linux/Mac/Git Bash:**
+Run quality checks:
 ```bash
 ./scripts/quality-gate.sh
 ```
 
-This will run all quality checks:
+This runs all quality checks:
 - ✓ Ruff format (code formatting)
 - ✓ Ruff lint (linting)
 - ✓ Pyright (type checking)
-- ✓ Pytest (38 tests)
+- ✓ Pytest (all tests)
 
-### Option 2: Automatic Pre-commit Hooks
+### Pre-commit Hooks
 
-The quality gate is integrated into git pre-commit hooks. However, on Windows you may encounter Python version issues. If pre-commit hooks don't work, use Option 1.
+Quality gate is integrated into git pre-commit hooks and runs automatically on commit.
 
 ## Quality Gate Results
 
@@ -50,75 +45,29 @@ All checks passed:
 Code is ready to commit.
 ```
 
-## Development Environments
+## Development Environment
 
-### Dev Environment (`venv/`)
+### DevContainer (Recommended)
 
-For daily development with quality tools:
+The project uses VS Code DevContainer with all dependencies pre-installed:
 
-**Windows:**
-```powershell
-# Set up dev environment (first time only)
-scripts\setup-dev.bat
+**Setup:**
+1. Open project in VS Code
+2. Click "Reopen in Container" when prompted
+3. Wait for container build (first time only)
 
-# Activate dev environment
-venv\Scripts\activate
-
-# Make changes and test
-scripts\quality-gate.bat
-
-# Commit when quality gate passes
-git commit -m "your changes"
-```
-
-**Linux/Mac:**
+**Daily workflow:**
 ```bash
-# Set up dev environment (first time only)
-./scripts/setup-dev.sh
-
-# Activate dev environment
-source venv/bin/activate
-
 # Make changes and test
 ./scripts/quality-gate.sh
 
-# Commit when quality gate passes
-git commit -m "your changes"
+# Commit
+git commit -m "feat: your changes"
 ```
 
-### Home Assistant Test Environment (`ha_test_env/`)
+### Local Development (Advanced)
 
-For testing with real Home Assistant code:
-
-**Windows:**
-```powershell
-# Set up HA test environment (first time only)
-scripts\setup-homeassistant-test.bat
-
-# Activate test environment
-activate_test_env.bat
-
-# Run tests
-python test_runner.py
-
-# Deactivate when done
-deactivate
-```
-
-**Linux/Mac:**
-```bash
-# Set up HA test environment (first time only)
-./scripts/setup-homeassistant-test.sh
-
-# Activate test environment
-source activate_test_env.sh
-
-# Run tests
-python test_runner.py
-
-# Deactivate when done
-deactivate
-```
+For local development without DevContainer, install dependencies from `requirements-test.txt` directly.
 
 ## Configuration
 
@@ -140,32 +89,18 @@ Pre-commit hooks configuration:
 
 ## Troubleshooting
 
-### Windows: How to Run Scripts
+### Permission Denied on Scripts
 
-**Problem**: Don't know how to run .sh scripts on Windows
-**Solution**: Use the provided .bat files:
-```powershell
-# Quality gate
-scripts\quality-gate.bat
-
-# Setup dev environment
-scripts\setup-dev.bat
-
-# Setup HA test environment
-scripts\setup-homeassistant-test.bat
+```bash
+chmod +x scripts/*.sh
 ```
-
-### Pre-commit Hooks Fail on Windows
-
-**Problem**: Pre-commit can't find Python 3.12
-**Solution**: Use manual quality gate: `scripts\quality-gate.bat` (Windows) or `./scripts/quality-gate.sh` (Linux/Mac)
 
 ### Pyright Shows Import Errors
 
 **Problem**: "Import 'homeassistant' could not be resolved"
 **Solution**: These are expected! HA is not installed in dev environment. The `pyproject.toml` is configured to ignore these errors.
 
-### Tests Pass but Quality Gate Fails
+### Quality Gate Fails
 
 **Problem**: Ruff formatting or linting issues
 **Solution**: Run auto-fix:
@@ -174,14 +109,6 @@ ruff format .
 ruff check --fix .
 ```
 
-### HA Test Environment Issues
-
-**Problem**: Tests fail in HA environment
-**Solution**: Make sure you activated the right environment:
-```bash
-source activate_test_env.sh  # Not venv!
-python test_runner.py
-```
 
 ## Daily Workflow
 
@@ -204,27 +131,19 @@ pytest tests/
 
 ### 3. Check Quality
 
-**Windows:**
-```powershell
-# Run all quality checks
-scripts\quality-gate.bat
-```
-
-**Linux/Mac:**
 ```bash
-# Run all quality checks
 ./scripts/quality-gate.sh
 ```
 
 ### 4. Fix Issues (if any)
 
-```powershell
+```bash
 # Auto-fix formatting and linting
 ruff format .
 ruff check --fix .
 
 # Run quality gate again
-scripts\quality-gate.bat
+./scripts/quality-gate.sh
 ```
 
 ### 5. Commit
@@ -232,7 +151,7 @@ scripts\quality-gate.bat
 ```bash
 git add .
 git commit -m "feat: your changes"
-# Pre-commit hooks run automatically (if configured)
+# Pre-commit hooks run automatically
 ```
 
 ## Quality Check Details
@@ -240,9 +159,9 @@ git commit -m "feat: your changes"
 ### Ruff Format (Code Formatting)
 
 - Line length: 100 characters
-- Target Python: 3.10, 3.11, 3.12, 3.14
-- Replaces Black (single tool for format + lint)
-- Excludes: venv, ha_test_env, build artifacts
+- Target Python: 3.14
+- Single tool for format + lint
+- Excludes: build artifacts, cache directories
 
 ### Ruff Lint (Linting)
 
@@ -253,12 +172,11 @@ git commit -m "feat: your changes"
 ### Pyright (Type Checking)
 
 - Static type checking
-- 0 errors, 0 warnings, 0 informations
-- HA import warnings suppressed (expected)
+- HA import warnings suppressed (expected in dev environment)
 
 ### Pytest (Testing)
 
-- 38 tests, all passing
+- All tests passing
 - Test coverage: coordinator, sensor, store, constants
 - Async support enabled
 - Coverage reporting available

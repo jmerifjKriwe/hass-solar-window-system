@@ -6,20 +6,6 @@ readme = "README.md"
 requires-python = ">=3.14"
 license = {text = "MIT"}
 
-[tool.pyright]
-# Point to venv for import resolution
-venvPath = "."
-venv = "venv"
-
-# Ignore Home Assistant import errors in dev environment (HA not installed locally)
-# These are expected and will be resolved in the actual Home Assistant environment
-ignore = [
-    "custom_components/solar_window_system/__init__.py",
-    "custom_components/solar_window_system/sensor.py",
-    "custom_components/solar_window_system/coordinator.py",
-    "custom_components/solar_window_system/store.py",
-]
-
 # Report missing imports as warnings instead of errors
 reportMissingImports = "warning"
 
@@ -47,4 +33,4 @@ python_functions = ["test_*"]
 python_classes = ["Test*"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "--allow-hosts=localhost,127.0.0.1"
+addopts = "-p no:langsmith --allow-hosts=localhost,127.0.0.1"
