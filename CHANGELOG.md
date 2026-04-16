@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.5](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.4...v2.1.5) (2026-04-16)
+
+
+### Bug Fixes
+
+* config flow and options flow, fix for subentries ([cdd8a72](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/cdd8a7285bdb680612806cd57d440042aaef933f))
+
 ## [2.1.4](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.3...v2.1.4) (2026-04-12)
 
 
