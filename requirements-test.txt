@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements-test.txt
 
 # Core testing
-pytest==9.0.0
+pytest==9.0.3
 pytest-homeassistant-custom-component==0.13.323
 
 # Linting and formatting
