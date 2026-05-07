@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.5](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.4...v2.1.5) (2026-05-07)
+
+
+### Bug Fixes
+
+* config flow and options flow, fix for subentries ([cdd8a72](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/cdd8a7285bdb680612806cd57d440042aaef933f))
+
+
+### Chores
+
+* **deps:** bump pytest from 9.0.0 to 9.0.3 ([7bb844d](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/7bb844d7e6dfd221d4fe5d0fcef82cdfe09b206a))
+* **deps:** bump pytest from 9.0.0 to 9.0.3 ([dbc71be](https://github.com/jmerifjKriwe/hass-solar-window-system/commit/dbc71bec0cde33738ceddf84960e4ec4f0464733))
+
 ## [2.1.4](https://github.com/jmerifjKriwe/hass-solar-window-system/compare/v2.1.3...v2.1.4) (2026-04-12)
 
 
